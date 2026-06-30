@@ -269,4 +269,6 @@ const html = ast.map(node => DocTranspiler.toTailwindHTML(node)).join('\n');
 
 ## License
 
-MIT
+Authorization not yet granted.
+
+~~MIT~~

@@ -129,7 +129,7 @@ Structure and presentation are fully separated. Semantics live in the notation, 
 每個節點遵循相同的四槽結構：
 
 ```
-@node(modifier){styles}[content](action)
+@node(modifier){styles}[content]<action>
 ```
 
 | 槽位 | 角色 | 範例 |
@@ -138,7 +138,7 @@ Structure and presentation are fully separated. Semantics live in the notation, 
 | `(modifier)` | 變體或屬性 | `(primary)`, `(ja)` |
 | `{styles}` | 樣式或元數據 | `{w-300px bg-fff}` |
 | `[content]` | 內容槽位 ── **全域唯一** | `[Submit]` |
-| `(action)` | 尾綴動作 | `(submit)`, `(install)` |
+| `<action>` | 尾綴動作 | `<submit>`, `<install>` |
 
 `[]` 在 @Doc 中只有一個含義：**內容**。沒有例外，沒有逃逸地獄。
 
@@ -161,7 +161,7 @@ Structure and presentation are fully separated. Semantics live in the notation, 
 @card(featured){w-300px bg-f8f9fa text-sm}[
   @title[AI 原生語言]
   @text[具有確定性語法的結構化標記語言，專為雙向 AST 設計]
-  @btn(primary)[立即開始](install)
+  @btn(primary)[立即開始]<install>
 ]
 
 @table[

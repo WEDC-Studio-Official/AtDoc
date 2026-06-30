@@ -45,7 +45,7 @@ Three properties that most existing formats optimize for one or two of, but very
 
 | Property | Markdown | HTML | MDX | @Doc |
 |:---|:---:|:---:|:---:|:---:|
-| **Deterministic Grammar** | ❌ | ⚠️ | ❌ | ✅ |
+| **AI Generation Stability** | ❌ | ⚠️ | ❌ | ✅ |
 | **Queryable Semantics** | ❌ | ⚠️ | ⚠️ | ✅ |
 | **Multi-target Compilation** | ❌ | ❌ | ⚠️ | ✅ |
 
@@ -64,7 +64,7 @@ Three properties that most existing formats optimize for one or two of, but very
 
 | 特性 | Markdown | HTML | MDX | @Doc |
 |:---|:---:|:---:|:---:|:---:|
-| **確定性語法** | ❌ | ⚠️ | ❌ | ✅ |
+| **AI 生成穩定性** | ❌ | ⚠️ | ❌ | ✅ |
 | **語義可查** | ❌ | ⚠️ | ⚠️ | ✅ |
 | **多目標編譯** | ❌ | ❌ | ⚠️ | ✅ |
 

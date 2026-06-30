@@ -10,6 +10,7 @@ Every generation of document notation solved the dominant problem of its era:
 |:---|:---|
 | **Word** | Editing |
 | **HTML** | Rendering |
+| **Markdown** | Human-friendly authoring |
 | **JSON** | Interchange |
 | **JSX** | Composition |
 | **@Doc** | Semantic co-authoring between humans and AI |
@@ -24,6 +25,7 @@ None of them were designed for AI-generated content.
 |:---|:---|
 | **Word** | 文件編輯 |
 | **HTML** | 文件顯示 |
+| **Markdown** | 易於人類撰寫 |
 | **JSON** | 資料交換 |
 | **JSX** | 元件組合 |
 | **@Doc** | AI 與人類共同撰寫的語義文件表示 |

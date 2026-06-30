@@ -1,6 +1,6 @@
 # @Doc — AI-Native Semantic Document Notation
 
-<img src="https://github.com/kami-0121/AtDoc/blob/index/atd.png" width="64"/>
+<img src="https://wedc.cc/atd.png" width="64"/>
 
 ---
 

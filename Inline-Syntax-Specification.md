@@ -1,4 +1,4 @@
-# @Doc Inline Syntax Specification v1.3
+# @Doc Inline Syntax Specification v1.3.1
 
 ## 0. Table of Contents
 
@@ -8,12 +8,13 @@
 * [4. 完整 EBNF 語法定義](#4-完整-ebnf-語法定義)
 * [5. Escape Rule](#5-escape-rule)
 * [6. Unknown Command Fallback](#6-unknown-command-fallback)
-* [7. @link URI Semantics](#7-link-uri-semantics)
-* [7. @raw Opaque Domain](#8-raw-opaque-domain)
-* [8. Nested Parsing](#9-nested-parsing)
-* [9. Parser Recovery Strategy](#10-parser-recovery-strategy)
-* [10. Architecture](#11-architecture)
-* [11. Core Principle](#12-core-principle)
+* [7. @mark Styles Semantics](#7-mark-styles-semantics)
+* [8. @link URI Semantics](#8-link-uri-semantics)
+* [9. @raw Opaque Domain](#9-raw-opaque-domain)
+* [10. Nested Parsing](#10-nested-parsing)
+* [11. Parser Recovery Strategy](#11-parser-recovery-strategy)
+* [12. Architecture](#12-architecture)
+* [13. Core Principle](#13-core-principle)
 
 ---
 
@@ -140,8 +141,8 @@ inline-node =
     | raw
     | sup
     | sub
-    | note
-    | notes
+    | fn
+    | refn
     | kbd
     | link
     | br
@@ -162,8 +163,12 @@ raw       = "@raw" , raw-content ;
 sup       = "@sup" , content ;
 sub       = "@sub" , content ;
 
-note      = "@note" , "[" , integer , "]" ;
-notes     = "@notes" , modifier , content ;
+(* Footnotes:
+   refn = 正文中的引用點（角標），只帶編號
+   fn   = 腳注定義本體，帶編號與實際內容
+*)
+refn      = "@refn" , "[" , integer , "]" ;
+fn        = "@fn" , modifier , content ;
 
 kbd       = "@kbd" , "[" , key , "]" ;
 
@@ -188,11 +193,14 @@ content-element =
 
 raw-content =
     "[" ,
-        { raw-char | escaped-bracket } ,
+        { raw-char | escaped-bracket | escaped-at-bracket } ,
     "]" ;
 
 escaped-bracket =
     "@]" ;
+
+escaped-at-bracket =
+    "@@]" ;
 
 raw-char =
     any-unicode-char - "]" ;
@@ -266,6 +274,9 @@ symbol =
 ### 用途
 
 當使用者需要輸出語法關鍵字本身時使用。
+
+> 此為**全域轉義規則**，適用於一般 inline-stream 上下文。
+> `@raw` 內部有獨立的轉義規則，請參見 [9. @raw Opaque Domain](#9-raw-opaque-domain)。
 
 ---
 
@@ -381,7 +392,89 @@ test@example.com
 
 ---
 
-## 7. @link URI Semantics
+## 7. @mark Styles Semantics
+
+`@mark` 支援可選的 `styles` 修飾語法：
+
+```text
+@mark{style}[content]
+```
+
+其中：
+
+* `style` 為以逗號分隔的樣式標記字串（style token list）。
+* `content` 為被標記的文字內容。
+* `styles` 為**可選**（optional）語法，省略時等同純粹的高亮標記：
+
+```text
+@mark[重要內容]
+```
+
+---
+
+### Style Token 語意
+
+`style` 內容目前定義為以下兩類 token，可混用並以逗號分隔：
+
+**1. 顏色 Token（Color Token）**
+
+代表高亮色彩，Renderer 依語意對應到實際顏色值：
+
+```text
+yellow / red / green / blue / orange / purple / gray
+```
+
+**2. 修飾 Token（Modifier Token）**
+
+代表額外的視覺或語意修飾，非顏色本身：
+
+```text
+underline   (加底線)
+strikethrough (加刪除線)
+bordered    (加外框)
+```
+
+---
+
+### 範例
+
+```text
+@mark[預設高亮]
+@mark{yellow}[黃色高亮]
+@mark{red,underline}[紅色並加底線]
+@mark{blue,bordered}[藍色並加外框]
+```
+
+---
+
+### Renderer 行為
+
+* Renderer MUST 至少支援 `styles` 省略時的預設高亮樣式。
+* Renderer MAY 自行決定各 color token 對應的實際色值（例如深色模式與淺色模式下的 `yellow` 可不同）。
+* Renderer MUST 忽略無法識別的 token，並 SHOULD 以純高亮（無額外樣式）作為 fallback，而非拋出錯誤——此行為與 [6. Unknown Command Fallback](#6-unknown-command-fallback) 中「未知指令退回純文字」的容錯精神一致，但作用範圍限定在 `styles` 內部，`@mark[content]` 本身仍會被正常解析為 `mark` 節點。
+* Token 之間的分隔符固定為半形逗號 `,`，前後允許任意數量空白（Parser 應自動 trim）。
+
+---
+
+### EBNF 補充說明
+
+對應 [4. 完整 EBNF 語法定義](#4-完整-ebnf-語法定義) 中：
+
+```ebnf
+styles =
+    "{" ,
+        { text-char - "}" } ,
+    "}" ;
+```
+
+`styles` 本身在詞法層級僅定義為「花括號包裹的任意字元序列」，實際的 token 切分（以逗號分隔、辨識 color token 與 modifier token）屬於**語意層級（semantic level）**的處理，非 Lexer/Parser 的語法層責任，而是留給 Renderer 或後續語意分析階段完成。這樣設計可確保：
+
+* 新增 style token（例如未來加入 `italic`、`bold` 等）不需要修改 EBNF 語法定義本身。
+* 不同 Renderer 可自行擴充或裁剪其支援的 token 集合，符合 [1. Design Philosophy](#1-design-philosophy) 中「保持 DSL 的可擴充性」的目標。
+
+---
+
+## 8. @link URI Semantics
 
 `@link` 接受任何合法 URI 或 URI-like Identifier。
 
@@ -442,7 +535,7 @@ URI 的實際支援能力由 Renderer 決定。
 
 ---
 
-## 8. @raw Opaque Domain
+## 9. @raw Opaque Domain
 
 `@raw` 屬於：
 
@@ -458,18 +551,13 @@ URI 的實際支援能力由 Renderer 決定。
 
 * 不解析任何內部語法。
 * 所有 `@mark`、`@bold`、`@link` 等關鍵字皆視為純文字。
-* `@@` 不再具有跳脫功能。
-* 唯一保留的特殊規則為：
+* 全域 `@@` 轉義規則（[5. Escape Rule](#5-escape-rule)）不再適用。
+* raw 域內僅保留以下兩條**局部特例規則**：
 
-```text
-@]
-```
-
-代表輸出：
-
-```text
-]
-```
+| 輸入      | 輸出   | 說明                  |
+| --------- | ------ | --------------------- |
+| `@]`      | `]`    | 用於輸出字面 `]`      |
+| `@@]`     | `@]`   | 用於輸出字面 `@]` 兩個字元 |
 
 ---
 
@@ -501,6 +589,10 @@ URI 的實際支援能力由 Renderer 決定。
 @@
 ```
 
+> 說明：此處 `@@` 後方緊接的是 raw-content 的結尾 `]`，
+> 因此並未觸發 `@@]` 特例（`@@]` 須為連續三字元），
+> 應拆解為：一般字元 `@@`（原樣輸出，因全域轉義已停用）+ 結尾 `]`。
+
 ---
 
 輸入：
@@ -517,7 +609,26 @@ URI 的實際支援能力由 Renderer 決定。
 
 ---
 
-## 9. Nested Parsing
+輸入：
+
+```text
+@raw[今天我怕@@]被偵測]
+```
+
+輸出：
+
+```text
+今天我怕@]被偵測
+```
+
+> [!TIP]
+> **TIP**：如果使用者想在 raw 內容裡輸出 `@]` 這 2 個字元，
+> 只要在前面再加一個 `@`（即 `@@]`）即可，這是 raw 域內的局部轉義特例，
+> 與第 5 節的全域 `@@` 轉義規則彼此獨立，互不影響。
+
+---
+
+## 10. Nested Parsing
 
 由於：
 
@@ -552,7 +663,7 @@ Bold
 
 ---
 
-## 10. Parser Recovery Strategy
+## 11. Parser Recovery Strategy
 
 當 Parser 遇到未閉合結構時：
 
@@ -576,6 +687,9 @@ Bold
 Unexpected EOF while parsing @bold
 ```
 
+> [!TIP]
+> **TIP**：AtDoc 選擇直接拋出語法錯誤，並使用非同步錯誤斷點修復機制
+
 ---
 
 ### Editor Mode
@@ -590,7 +704,7 @@ Unexpected EOF while parsing @bold
 
 ---
 
-## 11. Architecture
+## 12. Architecture
 
 推薦解析流程：
 
@@ -621,7 +735,7 @@ Renderer 可以自由輸出：
 
 ---
 
-## 12. Core Principle
+## 13. Core Principle
 
 @Doc 的核心目標並非取代 Markdown。
 

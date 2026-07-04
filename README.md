@@ -173,7 +173,11 @@ Structure and presentation are fully separated. Semantics live in the notation, 
   ]
 ]
 ```
+> [!NOTE]
+> `@btn`在`v1.3`暫時棄用。
 
+> [!TIP]
+> 以上為部分範例，實際內容應按照現有新版本為準。
 ---
 
 ## 雙線並行編譯 / Dual-Track Compilation

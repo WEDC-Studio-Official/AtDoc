@@ -195,7 +195,7 @@ Web：
 Terminal：
 
 ```text
-▸ FAQ(expand for details
+▸ FAQ (expand for details)
 ```
 
 文件平台：由 Renderer 選擇對應的原生 accordion 或 card 元件——而不是由 @Doc 原始碼決定。

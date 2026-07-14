@@ -134,7 +134,7 @@ Structure and presentation are fully separated. Semantics live in the notation, 
 
 | 槽位 | 角色 | 範例 |
 |---|---|---|
-| `@node` | 節點類型 | `@btn`, `@h1`, `@card` |
+| `@node` | 節點類型 | `@h`, `@p`, `@card` |
 | `(modifier)` | 變體或屬性 | `(primary)`, `(ja)` |
 | `{styles}` | 樣式或元數據 | `{w-300px bg-fff}` |
 | `[content]` | 內容槽位 ── **全域唯一** | `[Submit]` |
@@ -173,8 +173,10 @@ description = AI-native semantic document runtime
 ]
 ```
 
+
 > [!NOTE]
 > 以下節點已調整：`@seo`、`@lang` 已併入 `@meta`；`@title` 改用 `@h`；`@text` 改用 `@p`；`@btn` 暫時棄用。以上為部分範例，實際語法以正式規格文件為準。
+
 ---
 
 ## 雙線並行編譯 / Dual-Track Compilation
@@ -183,12 +185,12 @@ description = AI-native semantic document runtime
 
 **Route A — Tailwind JIT**
 ```html
-<button class="text-lg w-[120px] bg-[#fff]">Submit</button>
+<h1 class="text-lg w-[120px]">@Doc 專案規範</h1>
 ```
 
 **Route B — Universal Inline Style**
 ```html
-<button class="text-lg" style="width: 120px; background-color: #fff;">Submit</button>
+<h1 class="text-lg" style="width: 120px;">@Doc 專案規範</h1>
 ```
 
 動態值在 AST 中以結構化資料儲存（`{ prop: "w", value: "120px" }`），而非原始字串。由後端適配器決定如何渲染。
@@ -207,7 +209,7 @@ Dynamic values live in the AST as structured data, not raw strings. The adapter 
 ### Semantic Nodes — 語義容器
 兩種行為模式：
 
-- **Inline Semantic** — 渲染為帶標籤的行內元素
+- **Inline Semantic** — 渲染為帶標籤的行內元素：`@mark[重要]`、`@link(example.com)[連結]`
 - **Block Metadata** — 注入 Host 的設定，不渲染任何 HTML：`@meta[key = value]`
 
 ---

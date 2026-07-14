@@ -192,22 +192,27 @@ card =
 
 note =
     "@note" ,
+    [ title ] ,
     block-content ;
 
 tip =
     "@tip" ,
+    [ title ] ,
     block-content ;
 
 important =
     "@important" ,
+    [ title ] ,
     block-content ;
 
 warning =
     "@warning" ,
+    [ title ] ,
     block-content ;
 
 caution =
     "@caution" ,
+    [ title ] ,
     block-content ;
 
 mermaid =
@@ -582,6 +587,8 @@ HTML:
 
 ## 7. Callout Blocks
 
+`@note`、`@tip`、`@important`、`@warning`、`@caution` 皆可搭配**選填**的 `(title)`（定義見第 4 節），為內容附加一個獨立於本文的標題欄位；省略時則維持純內容形式，兩者皆合法：
+
 ### Note
 
 ```text
@@ -616,6 +623,14 @@ HTML:
 
 ```text
 @warning[
+刪除後將無法復原。
+]
+```
+
+搭配標題：
+
+```text
+@warning(資料保留政策)[
 刪除後將無法復原。
 ]
 ```

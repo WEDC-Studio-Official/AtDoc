@@ -174,7 +174,7 @@ description = AI-native semantic document runtime
 ```
 
 > [!NOTE]
-> v1.3 異動：`@seo`、`@lang` 已併入 `@meta`；`@title` 改用 `@h`；`@text` 改用 `@p`；`@btn` 暫時棄用。以上為部分範例，實際語法以正式規格文件為準。
+> 以下節點已調整：`@seo`、`@lang` 已併入 `@meta`；`@title` 改用 `@h`；`@text` 改用 `@p`；`@btn` 暫時棄用。以上為部分範例，實際語法以正式規格文件為準。
 ---
 
 ## 雙線並行編譯 / Dual-Track Compilation

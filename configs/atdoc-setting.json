@@ -2,8 +2,9 @@
   "id": "AtDoc",
   "extensions": [".atd"],
   "specialRules": {
-    "voidNodes":    ["n"],
-    "symbolTokens": ["@@"]
+    "voidNodes":       ["hr", "n"],
+    "contextNodes":    ["tab"],
+    "escapeSymbols":   ["@@"]
   },
   "tokenGroups": {
     "Metadata": {
@@ -11,14 +12,15 @@
     },
     "Block": {
       "structuralKeywords": ["h", "p", "quote", "list", "code", "img", "table", "hr"],
-      "calloutKeywords":    ["note", "tip", "important", "warning", "caution"],
       "containerKeywords":  ["details", "card"],
-      "widgetKeywords":     ["tabs", "tab", "mermaid"]
+      "calloutKeywords":    ["note", "tip", "important", "warning", "caution"],
+      "widgetKeywords":     ["tabs", "mermaid"]
     },
     "Inline": {
       "formatKeywords":   ["mark", "bold", "italic", "underline", "del", "raw"],
       "semanticKeywords": ["sup", "sub", "kbd", "link"],
-      "footnoteKeywords": ["fn", "refn"]
+      "footnoteKeywords": ["fn", "refn"],
+      "specialKeywords":  ["n"]
     }
   }
 }

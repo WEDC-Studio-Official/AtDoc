@@ -1,0 +1,24 @@
+{
+  "id": "AtDoc",
+  "extensions": [".atd"],
+  "specialRules": {
+    "voidNodes":    ["n"],
+    "symbolTokens": ["@@"]
+  },
+  "tokenGroups": {
+    "Metadata": {
+      "metaKeywords": ["meta"]
+    },
+    "Block": {
+      "structuralKeywords": ["h", "p", "quote", "list", "code", "img", "table", "hr"],
+      "calloutKeywords":    ["note", "tip", "important", "warning", "caution"],
+      "containerKeywords":  ["details", "card"],
+      "widgetKeywords":     ["tabs", "tab", "mermaid"]
+    },
+    "Inline": {
+      "formatKeywords":   ["mark", "bold", "italic", "underline", "del", "raw"],
+      "semanticKeywords": ["sup", "sub", "kbd", "link"],
+      "footnoteKeywords": ["fn", "refn"]
+    }
+  }
+}

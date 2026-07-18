@@ -23,7 +23,7 @@
 
 ## 1. Design Philosophy
 
-README's Node Taxonomy groups `@sup`, `@sub`, `@kbd`, and `@link` under "Semantic Inline" — one of the two behavior modes Semantic Nodes take (see [README § Node Taxonomy](../../../README.md)): nodes that "render as a tagged inline element." What separates this group from Text Formatting (`@bold`, `@italic`, `@underline`, `@del`, `@mark`) is *what* each node names:
+`@sup`, `@sub`, `@kbd`, and `@link` are grouped as "Semantic Inline" in [Block Syntax Specification §2](../../../Block-Syntax-Specification.md#2-document-ast-structure)'s Document AST Structure diagram — not, as it might seem, in README. README's own Node Taxonomy uses a looser, separate pairing: "Inline Semantic" as one of two behavior modes under "Semantic Nodes" (see [README § Node Taxonomy](../../../README.md)), illustrated with a hypothetical `@lang(ja)[日本語]` that names none of these four nodes directly. README's taxonomy isn't even internally consistent with the formal grammar here — its "Core Nodes" list includes `@link` alongside `@h1`/`@p`/`@table`, but `@link` is an `inline-node` in the actual EBNF, never a `block-node`. Treat Block Syntax Specification §2 as the authoritative categorization for this document; README's Node Taxonomy is a separate, less formal narrative that hasn't been reconciled with it. What actually separates this group from Text Formatting (`@bold`, `@italic`, `@underline`, `@del`, `@mark`) is *what* each node names:
 
 ```text
 Text Formatting  →  How the text should look

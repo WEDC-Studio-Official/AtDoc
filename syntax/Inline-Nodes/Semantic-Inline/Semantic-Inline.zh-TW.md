@@ -23,7 +23,7 @@
 
 ## 1. 設計哲學
 
-README 的節點分類將 `@sup`、`@sub`、`@kbd`、`@link` 歸類在「Semantic Inline」之下——這是 Semantic Nodes 兩種行為模式之一(見 [README § 節點分類](../../../README.md))：渲染為「帶標籤的行內元素」的節點。這個分類與 Text Formatting(`@bold`、`@italic`、`@underline`、`@del`、`@mark`)的差別在於：每個節點命名的**是什麼**：
+`@sup`、`@sub`、`@kbd`、`@link` 被歸類為「Semantic Inline」，這個分類出自 [Block Syntax Specification 第 2 節](../../../Block-Syntax-Specification.md#2-document-ast-structure) 的 Document AST Structure 圖示——而不是像表面上看起來的那樣，出自 README。README 自己的節點分類用的是另一套、較不精確的配對：「Inline Semantic」是「Semantic Nodes」底下兩種行為模式之一（見 [README § 節點分類](../../../README.md)），並以一個假設性的 `@lang(ja)[日本語]` 為例示範——這個例子完全沒有直接點名這四個節點中的任何一個。README 的分類甚至與正式文法本身就對不上：它的「Core Nodes」清單把 `@link` 和 `@h1`／`@p`／`@table` 放在一起，但 `@link` 在實際 EBNF 中明確是一個 `inline-node`，從來不是 `block-node`。本文件以 Block Syntax Specification 第 2 節作為權威分類依據；README 的節點分類是另一套較不正式的敘事，尚未與正式文法對齊。這個分類與 Text Formatting(`@bold`、`@italic`、`@underline`、`@del`、`@mark`)真正的差別在於：每個節點命名的**是什麼**：
 
 ```text
 Text Formatting  →  文字應該長什麼樣子

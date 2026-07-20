@@ -1,5 +1,34 @@
-import { Token } from './Lexer';
-import { DocASTNode } from './types';
+// Parser — recursive-descent, driven entirely by registry.ts's NodeDef table.
+// Runs in Strict Mode per Inline Syntax Specification §11 ("AtDoc 選擇直接拋出
+// 語法錯誤，並使用非同步錯誤斷點修復機制"): malformed input throws a
+// DocSyntaxError rather than silently recovering.
+
+import type { Token } from './Lexer.ts';
+import { DocSyntaxError } from './types.ts';
+import type { DocASTNode } from './types.ts';
+import { getNodeDef } from './registry.ts';
+import type { NodeDef } from './registry.ts';
+
+function parseImgOptions(raw: string): Record<string, string> {
+  const options: Record<string, string> = {};
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+  parts.forEach((part, idx) => {
+    const eq = part.indexOf('=');
+    if (eq === -1) {
+      if (idx === 0) options.src = part; // first bare option defaults to src — Block Syntax Spec §5 Image
+      return;
+    }
+    const key = part.slice(0, eq).trim();
+    const value = part.slice(eq + 1).trim();
+    if (key) options[key] = value;
+  });
+  return options;
+}
+
+function clampLevel(raw: string | undefined): number {
+  const lvl = parseInt(raw ?? '1', 10);
+  return Number.isFinite(lvl) && lvl >= 1 && lvl <= 6 ? lvl : 1;
+}
 
 export class DocParser {
   private tokens: Token[];
@@ -8,200 +37,328 @@ export class DocParser {
   constructor(tokens: Token[]) {
     this.tokens = tokens;
   }
-  // 主入口過濾增強
 
-    public parse(): DocASTNode[] {
+  public parse(): DocASTNode[] {
     const ast: DocASTNode[] = [];
-    
-    while (this.cursor < this.tokens.length) {
-        const current = this.tokens[this.cursor];
 
-        // 防禦機制：如果是純空白、純換行符號的 Token，直接消耗並跳過，拒絕產生垃圾節點
-        if (current.type === 'TEXT' && current.value.replace(/[\s\n]/g, '') === '') {
+    while (this.cursor < this.tokens.length) {
+      const cur = this.tokens[this.cursor];
+
+      if (cur.type === 'TEXT' && cur.value.trim() === '') {
         this.cursor++;
         continue;
-        }
+      }
 
-        if (current.type === 'NODE' && this.isBlockNode(current.value)) {
-        const node = this.parseNode();
+      if (cur.type === 'NODE' && this.isTopLevelBlock(cur.value)) {
+        const node = this.parseNode(undefined);
         if (node) ast.push(node);
-        } 
-        else {
-        const pNode = this.parseParagraph();
-        // 防禦機制：再次確認聚合成的段落內容不能只有空白字串
-        const hasContent = pNode.content.some(c => 
-            typeof c === 'object' || (typeof c === 'string' && c.replace(/[\s\n]/g, '') !== '')
-        );
-        if (hasContent) {
-            ast.push(pNode);
-        }
-        }
-    }
-    return ast;
+        continue;
+      }
+
+      // Leniency: stray inline content at document top level gets wrapped in
+      // an implicit @p, the same forgiving behavior the previous prototype had.
+      const p = this.parseImplicitParagraph();
+      const hasContent = p.content.some(c => typeof c !== 'string' || c.trim() !== '');
+      if (hasContent) ast.push(p);
     }
 
-  // 判斷是否為區塊級節00點 (可以根據你的 Spec 自由擴充)
-  private isBlockNode(name: string): boolean {
-    // 防禦機制：確保把 seo, cols, data 也納入區塊守護，防止它們跟普通文字混在一起
-    return ['h1', 'h2', 'h3', 'card', 'table', 'seo', 'p', 'cols', 'data'].includes(name);
+    return ast;
   }
 
-  // 核心機制：將最外層的碎片聚合成標準段落 (@p)
-  private parseParagraph(): DocASTNode {
-    const pNode: DocASTNode = {
-      type: 'p',
-      modifier: [],
-      attributes: { styles: { static: [], dynamic: [] } },
-      content: [],
-      action: null
-    };
+  private isTopLevelBlock(name: string): boolean {
+    const nodeDef = getNodeDef(name);
+    return !!nodeDef && (nodeDef.kind === 'block' || nodeDef.kind === 'meta') && !nodeDef.restrictedTo;
+  }
+
+  private parseImplicitParagraph(): DocASTNode {
+    const content: (DocASTNode | string)[] = [];
 
     while (this.cursor < this.tokens.length) {
-      const current = this.tokens[this.cursor];
+      const cur = this.tokens[this.cursor];
 
-      // 如果遇到了下一個明確的區塊級節點，說明當前普通段落必須中斷
-      if (current.type === 'NODE' && this.isBlockNode(current.value)) {
-        break;
-      }
+      if (cur.type === 'NODE' && this.isTopLevelBlock(cur.value)) break;
 
-      // 如果在段落內部遇到 NODE (例如 @lang)，它是一個行內語義節點
-      if (current.type === 'NODE') {
-        const inlineNode = this.parseNode();
-        if (inlineNode) pNode.content.push(inlineNode);
-      } 
-      // 如果是普通文字，直接塞入內容
-      else if (current.type === 'TEXT') {
-        pNode.content.push(current.value);
-        this.cursor++;
-      } 
-      // 處理其餘非結構符號
-      else {
-        this.cursor++;
+      if (cur.type === 'NODE') {
+        const child = this.parseNode('p');
+        if (child) content.push(child);
+        continue;
       }
+      if (cur.type === 'TEXT') {
+        content.push(cur.value);
+        this.cursor++;
+        continue;
+      }
+      if (cur.type === 'SLOT_OPEN') {
+        content.push('[');
+        this.cursor++;
+        continue;
+      }
+      if (cur.type === 'SLOT_CLOSE') {
+        content.push(']');
+        this.cursor++;
+        continue;
+      }
+      this.cursor++;
     }
 
-    return pNode;
+    return { type: 'p', content };
   }
 
-  // 解析單一標準節點
-  // 內部的 parseNode 增強
-
-    private parseNode(): DocASTNode | null {
+  /**
+   * Parses one node starting at the current NODE token.
+   * `parentType` is the immediate containing node's type (or undefined at
+   * document root) — used to enforce `restrictedTo` (Widget-Blocks.md §3,
+   * Structural-Blocks.md §5 Table: @tab/@cols/@data are only valid inside
+   * their specific parent).
+   */
+  private parseNode(parentType: string | undefined): DocASTNode | null {
     const token = this.tokens[this.cursor];
     if (!token || token.type !== 'NODE') return null;
 
-    const node: DocASTNode = {
-        type: token.value,
-        modifier: [],
-        attributes: { styles: { static: [], dynamic: [] } },
-        content: [],
-        action: null
-    };
+    const name = token.value;
+    const nodeDef = getNodeDef(name);
+    if (!nodeDef) {
+      throw new DocSyntaxError(`Internal error: "@${name}" reached the Parser but isn't registered — the Lexer should never have emitted a NODE token for it.`);
+    }
+    if (nodeDef.restrictedTo && nodeDef.restrictedTo !== parentType) {
+      const where = parentType ? `inside \`@${parentType}\`` : 'at the document root';
+      throw new DocSyntaxError(`\`@${name}\` may only appear directly inside \`@${nodeDef.restrictedTo}\` — found ${where}.`);
+    }
 
-    this.cursor++; // 跳過 NODE
+    this.cursor++; // consume NODE
 
-    // 掃描修飾符與元數據
-    while (this.cursor < this.tokens.length) {
-        const next = this.tokens[this.cursor];
-        if (next.type === 'MODIFIER') {
-        node.modifier = next.value.split(',').map(s => s.trim());
-        this.cursor++;
-        } else if (next.type === 'METADATA') {
-        this.parseAttributes(next.value, node);
-        this.cursor++;
-        } else {
-        break;
+    const node: DocASTNode = { type: name, content: [] };
+
+    if (this.tokens[this.cursor]?.type === 'PAREN') {
+      node.paren = this.tokens[this.cursor].value;
+      this.cursor++;
+    }
+    if (nodeDef.paren === 'required' && node.paren === undefined) {
+      throw new DocSyntaxError(`\`@${name}\` requires a parenthesized ${nodeDef.parenRole ?? 'value'} — e.g. \`@${name}(...)\`.`);
+    }
+
+    switch (nodeDef.parenRole) {
+      case 'level': node.level = clampLevel(node.paren); break;
+      case 'title': node.title = node.paren; break;
+      case 'language': node.language = node.paren; break;
+      case 'uri': node.uri = node.paren; break;
+      case 'id': node.id = node.paren; break;
+      case 'options': node.imgOptions = parseImgOptions(node.paren ?? ''); break;
+    }
+
+    if (this.tokens[this.cursor]?.type === 'STYLES') {
+      node.styles = this.tokens[this.cursor].value.split(',').map(s => s.trim()).filter(Boolean);
+      this.cursor++;
+    }
+
+    return this.parseContentByMode(node, nodeDef);
+  }
+
+  private parseContentByMode(node: DocASTNode, nodeDef: NodeDef): DocASTNode {
+    switch (nodeDef.content) {
+      case 'none':
+        return node;
+
+      case 'raw':
+      case 'raw-escaped':
+      case 'key':
+      case 'integer': {
+        const t = this.tokens[this.cursor];
+        if (!t || t.type !== 'RAW') {
+          throw new DocSyntaxError(`\`@${node.type}\` expects a content slot \`[...]\` immediately after it.`);
         }
-    }
-
-    // 核心優化：進入內容槽位 [ ... ]
-    if (this.tokens[this.cursor]?.type === 'SLOT_OPEN') {
-        this.cursor++; // 跳過 [
-        
-        // 如果是資料密集型節點，開啟純文字黑洞模式，直接吞到該節點的結束方括號為止
-        if (node.type === 'data') {
-        node.content = [this.parseRawTextSlot()];
-        } else {
-        // 其餘普通語義節點，依舊允許巢狀嵌套
-        node.content = this.parseSlotContent();
+        node.raw = t.value;
+        this.cursor++;
+        if (nodeDef.content === 'integer') {
+          if (!/^[0-9]+$/.test(node.raw)) {
+            throw new DocSyntaxError(`\`@${node.type}[...]\` must contain only digits — got \`${node.raw}\` (Inline Syntax Specification §4: refn = "@refn", "[", integer, "]").`);
+          }
+          node.number = parseInt(node.raw, 10);
         }
-        
-        this.cursor++; // 跳過 ]
-    }
+        return node;
+      }
 
-    if (this.tokens[this.cursor]?.type === 'ACTION') {
-        node.action = this.tokens[this.cursor].value;
-        this.cursor++;
-    }
+      case 'comma-list': {
+        this.expectSlotOpen(node.type);
+        const raw = this.collectRawText(node.type);
+        this.expectSlotClose(node.type);
+        node.columns = raw.split(',').map(s => s.trim()).filter(Boolean);
+        return node;
+      }
 
-    return node;
-    }
+      case 'rows': {
+        this.expectSlotOpen(node.type);
+        node.rows = this.parseDataRows();
+        this.expectSlotClose(node.type);
+        return node;
+      }
 
-  // 解析方括號槽位內部的遞迴內容
-  private parseSlotContent(): (DocASTNode | string)[] {
-    const content: (DocASTNode | string)[] = [];
-    while (this.cursor < this.tokens.length && this.tokens[this.cursor].type !== 'SLOT_CLOSE') {
-      const current = this.tokens[this.cursor];
-      if (current.type === 'NODE') {
-        const childNode = this.parseNode();
-        if (childNode) content.push(childNode);
-      } else {
-        content.push(current.value);
-        this.cursor++;
+      case 'table': {
+        this.expectSlotOpen(node.type);
+        this.skipWhitespaceText();
+        const colsTok = this.tokens[this.cursor];
+        if (!colsTok || colsTok.type !== 'NODE' || colsTok.value !== 'cols') {
+          throw new DocSyntaxError('`@table` requires `@cols` as its first child (Block Syntax Specification §5 Table).');
+        }
+        const colsNode = this.parseNode(node.type)!;
+
+        this.skipWhitespaceText();
+        const dataTok = this.tokens[this.cursor];
+        if (!dataTok || dataTok.type !== 'NODE' || dataTok.value !== 'data') {
+          throw new DocSyntaxError('`@table` requires `@data` as its second child, immediately after `@cols` (Block Syntax Specification §5 Table).');
+        }
+        const dataNode = this.parseNode(node.type)!;
+
+        this.skipWhitespaceText();
+        this.expectSlotClose(node.type);
+
+        node.columns = colsNode.columns;
+        node.rows = dataNode.rows;
+        return node;
+      }
+
+      case 'tabs': {
+        this.expectSlotOpen(node.type);
+        const tabs: DocASTNode[] = [];
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          this.skipWhitespaceText();
+          const t = this.tokens[this.cursor];
+          if (!t) throw new DocSyntaxError('`@tabs[...]` is missing its closing `]`.');
+          if (t.type === 'SLOT_CLOSE') { this.cursor++; break; }
+          if (t.type !== 'NODE' || t.value !== 'tab') {
+            const found = t.type === 'NODE' ? `@${t.value}` : t.value;
+            throw new DocSyntaxError(`\`@tabs\` only accepts \`@tab\` children — found \`${found}\` (Block Syntax Specification §8 Tabs).`);
+          }
+          tabs.push(this.parseNode(node.type)!);
+        }
+        node.tabs = tabs;
+        return node;
+      }
+
+      case 'meta': {
+        this.expectSlotOpen(node.type);
+        const raw = this.collectRawText(node.type);
+        this.expectSlotClose(node.type);
+        node.meta = {};
+        raw.split('\n').forEach(line => {
+          const m = line.match(/^\s*([a-zA-Z0-9_-]+)\s*=\s*(.*?)\s*$/);
+          if (m) node.meta![m[1]] = m[2];
+        });
+        return node;
+      }
+
+      case 'generic':
+      default: {
+        this.expectSlotOpen(node.type);
+        node.content = this.parseSlotContent(node.type);
+        this.expectSlotClose(node.type);
+        return node;
       }
     }
+  }
+
+  /** Depth-aware: a literal, unpaired "[" typed as plain text (e.g. "array[0]") stays transparent instead of prematurely closing the slot. */
+  private parseSlotContent(parentType: string): (DocASTNode | string)[] {
+    const content: (DocASTNode | string)[] = [];
+    let depth = 0;
+
+    while (this.cursor < this.tokens.length) {
+      const cur = this.tokens[this.cursor];
+
+      if (cur.type === 'SLOT_CLOSE' && depth === 0) break;
+
+      if (cur.type === 'NODE') {
+        const child = this.parseNode(parentType);
+        if (child) content.push(child);
+        continue;
+      }
+      if (cur.type === 'SLOT_OPEN') {
+        depth++;
+        content.push('[');
+        this.cursor++;
+        continue;
+      }
+      if (cur.type === 'SLOT_CLOSE') {
+        depth--;
+        content.push(']');
+        this.cursor++;
+        continue;
+      }
+      if (cur.type === 'TEXT') {
+        content.push(cur.value);
+        this.cursor++;
+        continue;
+      }
+      // PAREN / STYLES / RAW should never surface here — they're always
+      // consumed inline by parseNode right after their own NODE token.
+      this.cursor++;
+    }
+
     return content;
   }
 
-  // 樣式元數據解析
-  private parseAttributes(rawMeta: string, node: DocASTNode) {
-    if (rawMeta.trim().startsWith('"') || rawMeta.trim().startsWith('{')) {
-      try {
-        node.attributes.rawMetadata = JSON.parse(`{${rawMeta}}`);
-        return;
-      } catch (e) {}
-    }
-
-    const styleTokens = rawMeta.split(/\s+/);
-    styleTokens.forEach(style => {
-      const dynamicMatch = style.match(/^([a-z]+)-([a-zA-Z0-9]+)$/);
-      if (dynamicMatch && (dynamicMatch[2].match(/\d/) || ['fff', '000'].includes(dynamicMatch[2]))) {
-        node.attributes.styles.dynamic.push({
-          prop: dynamicMatch[1],
-          value: dynamicMatch[2]
-        });
-      } else if (style) {
-        node.attributes.styles.static.push(style);
-      }
-    });
-  }
-    private parseRawTextSlot(): string {
-    let rawText = "";
-    // 進入此函數前，Parser 已經消耗了 @data 後面的第一個 '['，所以當前深度設為 1
-    let depth = 1; 
+  /** Like parseSlotContent, but for content modes that only ever hold plain text (comma-list, meta, table rows). */
+  private collectRawText(ownerName: string): string {
+    let buf = '';
+    let depth = 0;
 
     while (this.cursor < this.tokens.length) {
-        const current = this.tokens[this.cursor];
+      const cur = this.tokens[this.cursor];
+      if (cur.type === 'SLOT_CLOSE' && depth === 0) break;
 
-        // 如果在黑洞內部又遇到了內層資料列的 '['
-        if (current.type === 'SLOT_OPEN') {
-        depth++;
-        }
+      if (cur.type === 'NODE') {
+        throw new DocSyntaxError(`\`@${ownerName}\` only accepts plain text in its content slot — found an unexpected \`@${cur.value}\` node.`);
+      }
+      if (cur.type === 'SLOT_OPEN') { depth++; buf += '['; this.cursor++; continue; }
+      if (cur.type === 'SLOT_CLOSE') { depth--; buf += ']'; this.cursor++; continue; }
 
-        // 如果遇到了 ']'
-        if (current.type === 'SLOT_CLOSE') {
-        depth--;
-        // 只有當深度扣到 0，說明遇到了 @data[...] 最外層的那個右方括號，這才是真正的終點！
-        if (depth === 0) {
-            break; 
-        }
-        }
-
-        // 將內容原封不動地還原回字串（包括換行、空格與逗號）
-        rawText += current.value;
-        this.cursor++;
+      buf += cur.value;
+      this.cursor++;
     }
 
-    return rawText;
+    return buf;
+  }
+
+  private parseDataRows(): string[][] {
+    const rows: string[][] = [];
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      this.skipWhitespaceText();
+      const t = this.tokens[this.cursor];
+      if (!t) throw new DocSyntaxError('`@data[...]` is missing its closing `]`.');
+      if (t.type === 'SLOT_CLOSE') break; // caller (expectSlotClose) consumes it
+
+      if (t.type !== 'SLOT_OPEN') {
+        throw new DocSyntaxError('Each row inside `@data[...]` must start with `[` (Block Syntax Specification §5 Table).');
+      }
+      this.cursor++; // consume the row's own "["
+      const raw = this.collectRawText('data row');
+      this.expectSlotClose('data row');
+      rows.push(raw.split(',').map(s => s.trim()));
     }
+    return rows;
+  }
+
+  private skipWhitespaceText(): void {
+    while (this.tokens[this.cursor]?.type === 'TEXT' && this.tokens[this.cursor].value.trim() === '') {
+      this.cursor++;
+    }
+  }
+
+  private expectSlotOpen(ownerName: string): void {
+    const t = this.tokens[this.cursor];
+    if (!t || t.type !== 'SLOT_OPEN') {
+      throw new DocSyntaxError(`\`@${ownerName}\` expects a content slot \`[...]\` immediately after it.`);
+    }
+    this.cursor++;
+  }
+
+  private expectSlotClose(ownerName: string): void {
+    const t = this.tokens[this.cursor];
+    if (!t || t.type !== 'SLOT_CLOSE') {
+      throw new DocSyntaxError(`\`@${ownerName}\` is missing its closing \`]\` (unexpected end of input — see Inline Syntax Specification §11 Parser Recovery Strategy).`);
+    }
+    this.cursor++;
+  }
 }

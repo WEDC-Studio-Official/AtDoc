@@ -1,75 +1,192 @@
-export type TokenType = 'NODE' | 'MODIFIER' | 'METADATA' | 'SLOT_OPEN' | 'SLOT_CLOSE' | 'ACTION' | 'TEXT';
+// Lexer — implements Inline Syntax Specification §2 (Lexer 行為定義) precisely:
+//
+//   1. "@@"                       → literal "@" (checked before any registry lookup)
+//   2. "@" + known command name   → NODE token
+//   3. "@" + anything else        → literal text
+//
+// It is registry-aware (see registry.ts) rather than a context-free tokenizer,
+// because raw-content nodes (@code, @mermaid, @raw, @kbd, @refn) require the
+// Lexer to switch into an opaque scan mode for their bracket content — see
+// Inline Syntax Specification §9 (@raw Opaque Domain) and Special-Nodes.md §6.
+
+import { getNodeDef } from './registry.ts';
+import type { ContentMode } from './registry.ts';
+
+export type TokenType = 'NODE' | 'PAREN' | 'STYLES' | 'SLOT_OPEN' | 'SLOT_CLOSE' | 'RAW' | 'TEXT';
 
 export interface Token {
   type: TokenType;
   value: string;
 }
 
-export function tokenize(source: string): Token[] {
-  const tokens: Token[] = [];
-  
-  // 為了處理資料矩陣，換個更穩健的原生掃描策略
-  const rawTokens = source.match(/@[a-zA-Z0-9_-]+|\([^)]*\)|\{[\s\S]*?\}|\[|\]|[^@[\](){\n]+/g) || [];
-  
-  let i = 0;
-  while (i < rawTokens.length) {
-    let token = rawTokens[i]; // 保留原始換行與空格
-    if (!token) { 
-      i++; 
-      continue; 
+const IDENT_CHAR = /[a-zA-Z0-9_-]/;
+
+function isRawFamily(mode: ContentMode): boolean {
+  return mode === 'raw' || mode === 'raw-escaped' || mode === 'key' || mode === 'integer';
+}
+
+/**
+ * Scans raw, unparsed content starting right after the opening "[".
+ * Tracks nested "[" / "]" depth so literal brackets inside code/diagram
+ * content don't prematurely terminate the slot (see Text-Formatting.md §4 Raw
+ * and Widget-Blocks.md §4 Mermaid for why this matters in practice).
+ *
+ * `localEscape` enables @raw's two local exceptions (Inline Spec §9):
+ *   "@]"  → literal "]"
+ *   "@@]" → literal "@]"
+ * These do NOT apply to @code/@mermaid, which define no escape mechanism at all.
+ */
+function scanDepthRaw(source: string, start: number, localEscape: boolean): { text: string; endPos: number } {
+  let depth = 1;
+  let buf = '';
+  let i = start;
+  const n = source.length;
+
+  while (i < n) {
+    if (localEscape && source[i] === '@' && source[i + 1] === '@' && source[i + 2] === ']') {
+      buf += '@]';
+      i += 3;
+      continue;
+    }
+    if (localEscape && source[i] === '@' && source[i + 1] === ']') {
+      buf += ']';
+      i += 2;
+      continue;
     }
 
-    const trimmed = token.trim();
-
-    // 語義節點判斷與 Lookahead 防禦機制
-    if (token.startsWith('@')) {
-      const nodeName = token.slice(1);
-      let isRealNode = false;
-      
-      // 精準偷看：跳過接下來的純空白/純換行 Token
-      let nextIdx = i + 1;
-      while (nextIdx < rawTokens.length && rawTokens[nextIdx].trim() === '') {
-        nextIdx++;
-      }
-      
-      // 偷看第一個遇到的有效符號，必須是 [ ( { 之一才是真正的語義節點
-      if (nextIdx < rawTokens.length) {
-        const nextValidToken = rawTokens[nextIdx].trim();
-        if (nextValidToken === '[' || nextValidToken.startsWith('(') || nextValidToken.startsWith('{')) {
-          isRealNode = true;
-        }
-      }
-      
-      if (isRealNode) {
-        tokens.push({ type: 'NODE', value: nodeName });
-      } else {
-        tokens.push({ type: 'TEXT', value: token }); // 完美降級為純文字，例如 @Doc
-      }
+    const ch = source[i];
+    if (ch === '[') {
+      depth++;
+      buf += ch;
+      i++;
+      continue;
     }
-    // 修飾符與尾綴動作判斷
-    else if (trimmed.startsWith('(')) {
-      const isAction = tokens.length > 0 && tokens[tokens.length - 1].type === 'SLOT_CLOSE';
-      tokens.push({ type: isAction ? 'ACTION' : 'MODIFIER', value: trimmed.slice(1, -1) });
+    if (ch === ']') {
+      depth--;
+      i++;
+      if (depth === 0) break;
+      buf += ch;
+      continue;
     }
-    // 元數據區塊判斷
-    else if (trimmed.startsWith('{')) {
-      tokens.push({ type: 'METADATA', value: trimmed.slice(1, -1) });
-    }
-    // 符號唯一性：槽位開啟
-    else if (trimmed === '[') {
-      tokens.push({ type: 'SLOT_OPEN', value: '[' });
-    }
-    // 符號唯一性：槽位閉合
-    else if (trimmed === ']') {
-      tokens.push({ type: 'SLOT_CLOSE', value: ']' });
-    }
-    // 純文字、換行與空格兜底
-    else {
-      tokens.push({ type: 'TEXT', value: token });
-    }
-    
+    buf += ch;
     i++;
   }
-  
+
+  return { text: buf, endPos: i };
+}
+
+/** Flat scan for @kbd's `key` and @refn's `integer` — no nesting, no escapes. */
+function scanFlatRaw(source: string, start: number): { text: string; endPos: number } {
+  let i = start;
+  const n = source.length;
+  let buf = '';
+  while (i < n && source[i] !== ']') {
+    buf += source[i];
+    i++;
+  }
+  return { text: buf, endPos: i + 1 };
+}
+
+function scanRawContent(source: string, start: number, mode: ContentMode): { text: string; endPos: number } {
+  if (mode === 'key' || mode === 'integer') return scanFlatRaw(source, start);
+  return scanDepthRaw(source, start, mode === 'raw-escaped');
+}
+
+export function tokenize(source: string): Token[] {
+  const tokens: Token[] = [];
+  const n = source.length;
+  let i = 0;
+  let textBuf = '';
+
+  const flushText = () => {
+    if (textBuf) {
+      tokens.push({ type: 'TEXT', value: textBuf });
+      textBuf = '';
+    }
+  };
+
+  while (i < n) {
+    const ch = source[i];
+
+    if (ch === '@') {
+      // Step 1 (Inline Spec §2): "@@" is checked first, purely by pattern —
+      // before any Command Registry lookup. See Special-Nodes.md §5.
+      if (source[i + 1] === '@') {
+        textBuf += '@';
+        i += 2;
+        continue;
+      }
+
+      // Step 2: maximal-munch identifier, then registry lookup.
+      let j = i + 1;
+      while (j < n && IDENT_CHAR.test(source[j])) j++;
+      const ident = source.slice(i + 1, j);
+      const nodeDef = ident ? getNodeDef(ident) : undefined;
+
+      if (!nodeDef) {
+        // Step 3: unknown command → literal text (Inline Spec §6).
+        textBuf += source.slice(i, j);
+        i = j;
+        continue;
+      }
+
+      flushText();
+      tokens.push({ type: 'NODE', value: ident });
+      i = j;
+
+      // Optional "(...)" — modifier/level/title/language/uri/id/options.
+      // Grammar excludes ")" from the inner text-char set, so a naive
+      // indexOf is faithful (no nested parens are syntactically valid).
+      if (source[i] === '(') {
+        const close = source.indexOf(')', i + 1);
+        const end = close === -1 ? n : close;
+        tokens.push({ type: 'PAREN', value: source.slice(i + 1, end) });
+        i = (close === -1 ? n : close + 1);
+      }
+
+      // Optional "{...}" — styles (only @mark uses it, but tokenize generically).
+      if (source[i] === '{') {
+        const close = source.indexOf('}', i + 1);
+        const end = close === -1 ? n : close;
+        tokens.push({ type: 'STYLES', value: source.slice(i + 1, end) });
+        i = (close === -1 ? n : close + 1);
+      }
+
+      // Void nodes (@hr, @n) take no slot at all — see registry.ts content: 'none'.
+      if (nodeDef.content === 'none') {
+        continue;
+      }
+
+      if (source[i] === '[') {
+        if (isRawFamily(nodeDef.content)) {
+          const { text, endPos } = scanRawContent(source, i + 1, nodeDef.content);
+          tokens.push({ type: 'RAW', value: text });
+          i = endPos;
+        } else {
+          tokens.push({ type: 'SLOT_OPEN', value: '[' });
+          i++;
+        }
+      }
+      continue;
+    }
+
+    if (ch === '[') {
+      flushText();
+      tokens.push({ type: 'SLOT_OPEN', value: '[' });
+      i++;
+      continue;
+    }
+    if (ch === ']') {
+      flushText();
+      tokens.push({ type: 'SLOT_CLOSE', value: ']' });
+      i++;
+      continue;
+    }
+
+    textBuf += ch;
+    i++;
+  }
+
+  flushText();
   return tokens;
 }

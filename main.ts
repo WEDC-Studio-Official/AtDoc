@@ -1,49 +1,37 @@
-import { tokenize } from './src/Lexer';
-import { DocParser } from './src/Parser';
-import { DocTranspiler } from './src/Adapters';
+import { readFileSync } from 'fs';
+import { tokenize } from './src/Lexer.ts';
+import { DocParser } from './src/Parser.ts';
+import { DocTranspiler } from './src/Adapters.ts';
+import { DocSyntaxError } from './src/types.ts';
 
-const sourceCode = `@seo {
-  "title": "@Doc 2026 Spec",
-  "description": "AI-native semantic document runtime"
-}
-
-@h1[@Doc 專案規範]
-
-這是普通段落，其中包含行內語義節點：這是 @lang(ja)[日本語] 的展現。
-
-@card(featured){w-300px bg-f8f9fa text-sm}[
-  @title[AI 原生語言]
-  @text[
-    具有確定性語法的結構化 Markdown，專為雙向 AST 設計。
-  ]
-  @btn(primary)[立即開始](install)
-]
-
-@table[
-  @cols[id,name,price]
-
-  @data[
-    [1,早餐,60]
-    [2,午餐,80]
-    [3,晚餐,90]
-  ]
-]
-`;
+const sourcePath = new URL('./test.atd', import.meta.url);
+const sourceCode = readFileSync(sourcePath, 'utf-8');
 
 // 執行詞法分析
 const tokens = tokenize(sourceCode);
-console.log('--- Tokens ---', tokens);
+console.log('--- Tokens ---', tokens.length, 'tokens');
 
 // 生成 Canonical AST
-const parser = new DocParser(tokens);
-const ast = parser.parse();
-console.log('--- AST ---', JSON.stringify(ast, null, 2));
+try {
+  const parser = new DocParser(tokens);
+  const ast = parser.parse();
+  console.log('--- AST ---');
+  console.log(JSON.stringify(ast, null, 2));
 
-// 雙線適配器輸出
-console.log('--- 路線 A (Tailwind JIT) ---');
-const tailwindHTML = ast.map(node => DocTranspiler.toTailwindHTML(node)).join('\n');
-console.log(tailwindHTML);
+  // 雙線並行編譯
+  const tailwindHTML = ast.map(node => DocTranspiler.toTailwindHTML(node)).join('\n');
+  const inlineHTML = ast.map(node => DocTranspiler.toInlineStyleHTML(node)).join('\n');
 
-console.log('--- 路線 B (Inline Style) ---');
-const inlineHTML = ast.map(node => DocTranspiler.toInlineStyleHTML(node)).join('\n');
-console.log(inlineHTML);
+  console.log('--- Route A: Tailwind JIT HTML ---');
+  console.log(tailwindHTML);
+
+  console.log('--- Route B: Universal Inline Style HTML ---');
+  console.log(inlineHTML);
+} catch (err) {
+  if (err instanceof DocSyntaxError) {
+    console.error('DocSyntaxError:', err.message);
+    process.exitCode = 1;
+  } else {
+    throw err;
+  }
+}

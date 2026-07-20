@@ -1,0 +1,919 @@
+F:\program\node\node.exe .\main.ts
+--- Tokens --- 482 tokens
+--- AST ---
+[
+  {
+    "type": "meta",
+    "content": [],
+    "meta": {
+      "title": "@Doc Full Syntax Test",
+      "author": "WEDC",
+      "description": "Test document exercising every documented @Doc node",
+      "keywords": "test,syntax,coverage"
+    }
+  },
+  {
+    "type": "h",
+    "content": [
+      "@Doc Full Syntax Coverage Test"
+    ],
+    "paren": "1",
+    "level": 1
+  },
+  {
+    "type": "h",
+    "content": [
+      "Structural Blocks"
+    ],
+    "paren": "2",
+    "level": 2
+  },
+  {
+    "type": "h",
+    "content": [
+      "Heading"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "h",
+    "content": [
+      "Heading Level 1"
+    ],
+    "paren": "1",
+    "level": 1
+  },
+  {
+    "type": "h",
+    "content": [
+      "Heading Level 2"
+    ],
+    "paren": "2",
+    "level": 2
+  },
+  {
+    "type": "h",
+    "content": [
+      "Heading Level 3"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "h",
+    "content": [
+      "Heading Level 4"
+    ],
+    "paren": "4",
+    "level": 4
+  },
+  {
+    "type": "h",
+    "content": [
+      "Heading Level 5"
+    ],
+    "paren": "5",
+    "level": 5
+  },
+  {
+    "type": "h",
+    "content": [
+      "Heading Level 6"
+    ],
+    "paren": "6",
+    "level": 6
+  },
+  {
+    "type": "h",
+    "content": [
+      "Paragraph"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "p",
+    "content": [
+      "\nThis is a plain paragraph with ",
+      {
+        "type": "bold",
+        "content": [
+          "bold"
+        ]
+      },
+      " and ",
+      {
+        "type": "italic",
+        "content": [
+          "italic"
+        ]
+      },
+      " text mixed in.\n"
+    ]
+  },
+  {
+    "type": "h",
+    "content": [
+      "Quote"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "quote",
+    "content": [
+      "\nTalk is cheap.\nShow me the code.\n"
+    ]
+  },
+  {
+    "type": "h",
+    "content": [
+      "List"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "list",
+    "content": [
+      "\n- Apple\n- Banana\n- Orange\n"
+    ]
+  },
+  {
+    "type": "h",
+    "content": [
+      "Code"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "code",
+    "content": [],
+    "paren": "ts",
+    "language": "ts",
+    "raw": "\nconst x: number = 1;\nconsole.log(x);\n"
+  },
+  {
+    "type": "h",
+    "content": [
+      "Image"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "img",
+    "content": [
+      "\nWEDC Logo\n"
+    ],
+    "paren": "\nhttps://example.com/logo.png,width=200,align=center\n",
+    "imgOptions": {
+      "src": "https://example.com/logo.png",
+      "width": "200",
+      "align": "center"
+    }
+  },
+  {
+    "type": "h",
+    "content": [
+      "Table"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "table",
+    "content": [],
+    "columns": [
+      "id",
+      "name",
+      "price"
+    ],
+    "rows": [
+      [
+        "1",
+        "早餐",
+        "60"
+      ],
+      [
+        "2",
+        "午餐",
+        "80"
+      ],
+      [
+        "3",
+        "晚餐",
+        "90"
+      ]
+    ]
+  },
+  {
+    "type": "h",
+    "content": [
+      "Horizontal Rule"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "hr",
+    "content": []
+  },
+  {
+    "type": "h",
+    "content": [
+      "Container Blocks"
+    ],
+    "paren": "2",
+    "level": 2
+  },
+  {
+    "type": "h",
+    "content": [
+      "Details"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "details",
+    "content": [
+      "\n這裡是隱藏內容，讀者可以依需求展開查看。\n"
+    ],
+    "paren": "展開更多資訊",
+    "title": "展開更多資訊"
+  },
+  {
+    "type": "h",
+    "content": [
+      "Card"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "card",
+    "content": [
+      "\n請將您的 API 金鑰存放在環境變數中，而不是寫死在程式碼裡。\n"
+    ],
+    "paren": "API Key",
+    "title": "API Key"
+  },
+  {
+    "type": "hr",
+    "content": []
+  },
+  {
+    "type": "h",
+    "content": [
+      "Callout Blocks"
+    ],
+    "paren": "2",
+    "level": 2
+  },
+  {
+    "type": "note",
+    "content": [
+      "\n這是一般補充資訊，非必要閱讀。\n"
+    ]
+  },
+  {
+    "type": "tip",
+    "content": [
+      "\n啟用快取可以加速重複建置。\n"
+    ]
+  },
+  {
+    "type": "important",
+    "content": [
+      "\nAPI v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。\n"
+    ]
+  },
+  {
+    "type": "warning",
+    "content": [
+      "\n此 API 端點將於 3.0 版本移除。\n"
+    ],
+    "paren": "資料保留政策",
+    "title": "資料保留政策"
+  },
+  {
+    "type": "caution",
+    "content": [
+      "\n此操作為不可逆，將永久刪除使用者資料。\n"
+    ]
+  },
+  {
+    "type": "hr",
+    "content": []
+  },
+  {
+    "type": "h",
+    "content": [
+      "Widget Blocks"
+    ],
+    "paren": "2",
+    "level": 2
+  },
+  {
+    "type": "h",
+    "content": [
+      "Tabs"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "tabs",
+    "content": [],
+    "tabs": [
+      {
+        "type": "tab",
+        "content": [
+          "\n        ",
+          {
+            "type": "code",
+            "content": [],
+            "paren": "js",
+            "language": "js",
+            "raw": "console.log(\"hi\");"
+          },
+          "\n    "
+        ],
+        "paren": …       },
+          "\n    "
+        ],
+        "paren": "Python",
+        "title": "Python"
+      },
+      {
+        "type": "tab",
+        "content": [
+          "\n        ",
+          {
+            "type": "code",
+            "content": [],
+            "paren": "rust",
+            "language": "rust",
+            "raw": "println!(\"hi\");"
+          },
+          "\n    "
+        ],
+        "paren": "Rust",
+        "title": "Rust"
+      }
+    ]
+  },
+  {
+    "type": "h",
+    "content": [
+      "Mermaid"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "mermaid",
+    "content": [],
+    "raw": "\ngraph TD\nA --> B\nB --> C\n"
+  },
+  {
+    "type": "hr",
+    "content": []
+  },
+  {
+    "type": "h",
+    "content": [
+      "Inline Nodes"
+    ],
+    "paren": "2",
+    "level": 2
+  },
+  {
+    "type": "h",
+    "content": [
+      "Text Formatting"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "p",
+    "content": [
+      "\n",
+      {
+        "type": "bold",
+        "content": [
+          "粗體文字"
+        ]
+      },
+      "、",
+      {
+        "type": "italic",
+        "content": [
+          "斜體文字"
+        ]
+      },
+      "、",
+      {
+        "type": "underline",
+        "content": [
+          "底線文字"
+        ]
+      },
+      "、",
+      {
+        "type": "del",
+        "content": [
+          "刪除線文字"
+        ]
+      },
+      "。\n"
+    ]
+  },
+  {
+    "type": "p",
+    "content": [
+      "\n",
+      {
+        "type": "mark",
+        "content": [
+          "預設高亮"
+        ]
+      },
+      "\n",
+      {
+        "type": "mark",
+        "content": [
+          "黃色高亮"
+        ],
+        "styles": [
+          "yellow"
+        ]
+      },
+      "\n",
+      {
+        "type": "mark",
+        "content": [
+          "紅色並加底線"
+        ],
+        "styles": [
+          "red",
+          "underline"
+        ]
+      },
+      "\n"
+    ]
+  },
+  {
+    "type": "p",
+    "content": [
+      "\nRaw domain 範例：",
+      {
+        "type": "raw",
+        "content": [],
+        "raw": "這裡的 @mark[hello] 不會被解析，只會照字面輸出。"
+      },
+      "\n"
+    ]
+  },
+  {
+    "type": "h",
+    "content": [
+      "Semantic Inline"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "p",
+    "content": [
+      "\nE = mc",
+      {
+        "type": "sup",
+        "content": [
+          "2"
+        ]
+      },
+      "，H",
+      {
+        "type": "sub",
+        "content": [
+          "2"
+        ]
+      },
+      "O。\n"
+    ]
+  },
+  {
+    "type": "p",
+    "content": [
+      "\n按下",
+      {
+        "type": "kbd",
+        "content": [],
+        "raw": "Ctrl"
+      },
+      "+",
+      {
+        "type": "kbd",
+        "content": [],
+        "raw": "C"
+      },
+      "複製。\n"
+    ]
+  },
+  {
+    "type": "p",
+    "content": [
+      "\n詳見",
+      {
+        "type": "link",
+        "content": [
+          "官方網站"
+        ],
+        "paren": "https://example.com",
+        "uri": "https://example.com"
+      },
+      "，或寄信至",
+      {
+        "type": "link",
+        "content": [
+          "聯絡我們"
+        ],
+        "paren": "test@example.com",
+        "uri": "test@example.com"
+      },
+      "。\n"
+    ]
+  },
+  {
+    "type": "h",
+    "content": [
+      "Footnotes"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "p",
+    "content": [
+      "\nRust 的所有權系統",
+      {
+        "type": "refn",
+        "content": [],
+        "raw": "1",
+        "number": 1
+      },
+      "從根本上消除了資料競爭。\n"
+    ]
+  },
+  {
+    "type": "p",
+    "content": [
+      {
+        "type": "fn",
+        "content": [
+          "\nSee ",
+          {
+            "type": "link",
+            "content": [
+              "The Rust Programming Language, Ch. 4"
+            ],
+            "paren": "https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html",
+            "uri": "https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html"
+          },
+          ".\n"
+        ],
+        "paren": "1",
+        "id": "1"
+      },
+      "\n\n"
+    ]
+  },
+  {
+    "type": "h",
+    "content": [
+      "Special Nodes"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "p",
+    "content": [
+      "\n第一行",
+      {
+        "type": "n",
+        "content": []
+      },
+      "第二行。\n"
+    ]
+  },
+  {
+    "type": "p",
+    "content": [
+      "\n輸出字面指令名稱本身：@mark 與 @bold",
+      "[",
+      "hello",
+      "]",
+      " 不會被解析成節點。\n"
+    ]
+  },
+  {
+    "type": "hr",
+    "content": []
+  },
+  {
+    "type": "h",
+    "content": [
+      "Nested Parsing Example"
+    ],
+    "paren": "2",
+    "level": 2
+  },
+  {
+    "type": "p",
+    "content": [
+      "\n",
+      {
+        "type": "bold",
+        "content": [
+          "\n    這是粗體，\n    裡面有\n    ",
+          {
+            "type": "mark",
+            "content": [
+              "重要高亮"
+            ],
+            "styles": [
+              "yellow"
+            ]
+          },
+          "\n    與\n    ",
+          {
+            "type": "underline",
+            "content": [
+              "底線"
+            ]
+          },
+          "\n"
+        ]
+      },
+      "\n"
+    ]
+  }
+]…
+--- Route A: Tailwind JIT HTML ---
+
+<h1>@Doc Full Syntax Coverage Test</h1>
+<h2>Structural Blocks</h2>
+<h3>Heading</h3>
+<h1>Heading Level 1</h1>
+<h2>Heading Level 2</h2>
+<h3>Heading Level 3</h3>
+<h4>Heading Level 4</h4>
+<h5>Heading Level 5</h5>
+<h6>Heading Level 6</h6>
+<h3>Paragraph</h3>
+<p>
+This is a plain paragraph with <strong>bold</strong> and <em>italic</em> text mixed in.
+</p>
+<h3>Quote</h3>
+<blockquote>
+Talk is cheap.
+Show me the code.
+</blockquote>
+<h3>List</h3>
+<ul><li>Apple</li><li>Banana</li><li>Orange</li></ul>
+<h3>Code</h3>
+<pre><code class="language-ts">
+const x: number = 1;
+console.log(x);
+</code></pre>
+<h3>Image</h3>
+<img src="https://example.com/logo.png" alt="WEDC Logo" width="200" style="display:block;margin:0 auto;">
+<h3>Table</h3>
+<table><thead><tr><th>id</th><th>name</th><th>price</th></tr></thead><tbody><tr><td>1</td><td>早餐</td><td>60</td></tr><tr><td>2</td><td>午餐</td><td>80</td></tr><tr><td>3</td><td>晚餐</td><td>90</td></tr></tbody></table>
+<h3>Horizontal Rule</h3>
+<hr>
+<h2>Container Blocks</h2>
+<h3>Details</h3>
+<details><summary>展開更多資訊</summary>
+這裡是隱藏內容，讀者可以依需求展開查看。
+</details>
+<h3>Card</h3>
+<article><header>API Key</header>
+請將您的 API 金鑰存放在環境變數中，而不是寫死在程式碼裡。
+</article>
+<hr>
+<h2>Callout Blocks</h2>
+<aside class="note">
+這是一般補充資訊，非必要閱讀。
+</aside>
+<aside class="tip">
+啟用快取可以加速重複建置。
+</aside>
+<aside class="important">
+API v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。
+</aside>
+<aside class="warning"><strong>資料保留政策</strong>
+此 API 端點將於 3.0 版本移除。
+</aside>
+<aside class="caution">
+此操作為不可逆，將永久刪除使用者資料。
+</aside>
+<hr>
+<h2>Widget Blocks</h2>
+<h3>Tabs</h3>
+<div class="tabs"><div role="tablist"><button role="tab" aria-controls="tab-panel-0">JavaScript</button><button role="tab" aria-controls="tab-panel-1">Python</button><button role="tab" aria-controls="tab-panel-2">Rust</button></div><div role="tabpanel" id="tab-panel-0">
+        <pre><code class="language-js">console.log(&quot;hi&quot;);</code></pre>
+    </div><div role="tabpanel" id="tab-panel-1">
+        <pre><code class="language-py">print(&quot;hi&quot;)</code></pre>
+    </div><div role="tabpanel" id="tab-panel-2">
+        <pre><code class="language-rust">println!(&quot;hi&quot;);</code></pre>
+    </div></div>
+<h3>Mermaid</h3>
+<pre class="mermaid">
+graph TD
+A --&gt; B
+B --&gt; C
+</pre>
+<hr>
+<h2>Inline Nodes</h2>
+<h3>Text Formatting</h3>
+<p>
+<strong>粗體文字</strong>、<em>斜體文字</em>、<u>底線文字</u>、<del>刪除線文字</del>。
+</p>
+<p>
+<mark class="mark">預設高亮</mark>
+<mark class="mark mark-yellow">黃色高亮</mark>
+<mark class="mark mark-red mark-underline">紅色並加底線</mark>
+</p>
+<p>
+Raw domain 範例：這裡的 @mark[hello] 不會被解析，只會照字面輸出。
+</p>
+<h3>Semantic Inline</h3>
+<p>
+E = mc<sup>2</sup>，H<sub>2</sub>O。
+</p>
+<p>
+按下<kbd>Ctrl</kbd>+<kbd>C</kbd>複製。
+</p>
+<p>
+詳見<a href="https://example.com">官方網站</a>，或寄信至<a href="mailto:test@example.com">聯絡我們</a>。
+</p>
+<h3>Footnotes</h3>
+<p>
+Rust 的所有權系統<sup id="fnref1"><a href="#fn1">1</a></sup>從根本上消除了資料競爭。
+</p>
+<p><li id="fn1">
+See <a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html">The Rust Programming Language, Ch. 4</a>.
+ <a href="#fnref1">↩</a></li>
+
+</p>
+<h3>Special Nodes</h3>
+<p>
+第一行<br>第二行。
+</p>
+<p>
+輸出字面指令名稱本身：@mark 與 @bold[hello] 不會被解析成節點。
+</p>
+<hr>
+<h2>Nested Parsing Example</h2>
+<p>
+<strong>
+    這是粗體，
+    裡面有
+    <mark class="mark mark-yellow">重要高亮</mark>
+    與
+    <u>底線</u>
+</strong>
+</p>
+--- Route B: Universal Inline Style HTML ---
+
+<h1>@Doc Full Syntax Coverage Test</h1>
+<h2>Structural Blocks</h2>
+<h3>Heading</h3>
+<h1>Heading Level 1</h1>
+<h2>Heading Level 2</h2>
+<h3>Heading Level 3</h3>
+<h4>Heading Level 4</h4>
+<h5>Heading Level 5</h5>
+<h6>Heading Level 6</h6>
+<h3>Paragraph</h3>
+<p>
+This is a plain paragraph with <strong>bold</strong> and <em>italic</em> text mixed in.
+</p>
+<h3>Quote</h3>
+<blockquote>
+Talk is cheap.
+Show me the code.
+</blockquote>
+<h3>List</h3>
+<ul><li>Apple</li><li>Banana</li><li>Orange</li></ul>
+<h3>Code</h3>
+<pre><code class="language-ts">
+const x: number = 1;
+console.log(x);
+</code></pre>
+<h3>Image</h3>
+<img src="https://example.com/logo.png" alt="WEDC Logo" width="200" style="display:block;margin:0 auto;">
+<h3>Table</h3>
+<table><thead><tr><th>id</th><th>name</th><th>price</th></tr></thead><tbody><tr><td>1</td><td>早餐</td><td>60</td></tr><tr><td>2</td><td>午餐</td><td>80</td></tr><tr><td>3</td><td>晚餐</td><td>90</td></tr></tbody></table>
+<h3>Horizontal Rule</h3>
+<hr>
+<h2>Container Blocks</h2>
+<h3>Details</h3>
+<details><summary>展開更多資訊</summary>
+這裡是隱藏內容，讀者可以依需求展開查看。
+</details>
+<h3>Card</h3>
+<article><header>API Key</header>
+請將您的 API 金鑰存放在環境變數中，而不是寫死在程式碼裡。
+</article>
+<hr>
+<h2>Callout Blocks</h2>
+<aside class="note">
+這是一般補充資訊，非必要閱讀。
+</aside>
+<aside class="tip">
+啟用快取可以加速重複建置。
+</aside>
+<aside class="important">
+API v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。
+</aside>
+<aside class="warning"><strong>資料保留政策</strong>
+此 API 端點將於 3.0 版本移除。
+</aside>
+<aside class="caution">
+此操作為不可逆，將永久刪除使用者資料。
+</aside>
+<hr>
+<h2>Widget Blocks</h2>
+<h3>Tabs</h3>
+<div class="tabs"><div role="tablist"><button role="tab" aria-controls="tab-panel-0">JavaScript</button><button role="tab" aria-controls="tab-panel-1">Python</button><button role="tab" aria-controls="tab-panel-2">Rust</button></div><div role="tabpanel" id="tab-panel-0">
+        <pre><code class="language-js">console.log(&quot;hi&quot;);</code></pre>
+    </div><div role="tabpanel" id="tab-panel-1">
+        <pre><code class="language-py">print(&quot;hi&quot;)</code></pre>
+    </div><div role="tabpanel" id="tab-panel-2">
+        <pre><code class="language-rust">println!(&quot;hi&quot;);</code></pre>
+    </div></div>
+<h3>Mermaid</h3>
+<pre class="mermaid">
+graph TD
+A --&gt; B
+B --&gt; C
+</pre>
+<hr>
+<h2>Inline Nodes</h2>
+<h3>Text Formatting</h3>
+<p>
+<strong>粗體文字</strong>、<em>斜體文字</em>、<u>底線文字</u>、<del>刪除線文字</del>。
+</p>
+<p>
+<mark>預設高亮</mark>
+<mark style="background-color: #fff3a3;">黃色高亮</mark>
+<mark style="background-color: #ffd2d2; text-decoration: underline;">紅色並加底線</mark>
+</p>
+<p>
+Raw domain 範例：這裡的 @mark[hello] 不會被解析，只會照字面輸出。
+</p>
+<h3>Semantic Inline</h3>
+<p>
+E = mc<sup>2</sup>，H<sub>2</sub>O。
+</p>
+<p>
+按下<kbd>Ctrl</kbd>+<kbd>C</kbd>複製。
+</p>
+<p>
+詳見<a href="https://example.com">官方網站</a>，或寄信至<a href="mailto:test@example.com">聯絡我們</a>。
+</p>
+<h3>Footnotes</h3>
+<p>
+Rust 的所有權系統<sup id="fnref1"><a href="#fn1">1</a></sup>從根本上消除了資料競爭。
+</p>
+<p><li id="fn1">
+See <a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html">The Rust Programming Language, Ch. 4</a>.
+ <a href="#fnref1">↩</a></li>
+
+</p>
+<h3>Special Nodes</h3>
+<p>
+第一行<br>第二行。
+</p>
+<p>
+輸出字面指令名稱本身：@mark 與 @bold[hello] 不會被解析成節點。
+</p>
+<hr>
+<h2>Nested Parsing Example</h2>
+<p>
+<strong>
+    這是粗體，
+    裡面有
+    <mark style="background-color: #fff3a3;">重要高亮</mark>
+    與
+    <u>底線</u>
+</strong>
+</p>

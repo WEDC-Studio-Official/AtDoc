@@ -3,7 +3,7 @@
   "extensions": [".atd"],
   "specialRules": {
     "voidNodes":       ["hr", "n"],
-    "contextNodes":    ["tab"],
+    "contextNodes":    ["tab", "cols", "data"],
     "escapeSymbols":   ["@@"]
   },
   "tokenGroups": {

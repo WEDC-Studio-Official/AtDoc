@@ -1,0 +1,30 @@
+@meta[
+title = Test Document
+author = QA
+]
+
+@h(1)[Valid Document]
+
+@p[This paragraph has @bold[bold], @italic[italic], and a @link(https://example.com)[link].]
+
+@table[
+    @cols[id,name]
+
+    @data[
+        [1,Alice]
+        [2,Bob]
+    ]
+]
+
+@tabs[
+    @tab(A)[Content A]
+    @tab(B)[Content B]
+]
+
+@note[
+A footnote follows@refn[1].
+]
+
+@fn(1)[
+Footnote content.
+]

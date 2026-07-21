@@ -1,0 +1,69 @@
+{
+  "01-valid.atd": {
+    "shouldThrow": false
+  },
+  "02-missing-closing-bracket.atd": {
+    "shouldThrow": true,
+    "messageContains": "missing its closing"
+  },
+  "03-incomplete-node-name-fallback.atd": {
+    "shouldThrow": false,
+    "note": "\"met\" is not registered — Unknown Command Fallback (Inline Spec §6), not an error."
+  },
+  "04-bare-at-symbol-fallback.atd": {
+    "shouldThrow": false,
+    "note": "Bare \"@\" and \"@GitHub\" both fall back to plain text (Inline Spec §2/§6)."
+  },
+  "05-stray-closing-bracket-fallback.atd": {
+    "shouldThrow": false,
+    "note": "An unpaired \"]\" at the document root is lenient, not Strict-Mode-checked — see parseImplicitParagraph."
+  },
+  "06-missing-required-paren-tab.atd": {
+    "shouldThrow": true,
+    "messageContains": "requires a parenthesized"
+  },
+  "07-missing-required-paren-link.atd": {
+    "shouldThrow": true,
+    "messageContains": "requires a parenthesized"
+  },
+  "08-missing-required-paren-fn.atd": {
+    "shouldThrow": true,
+    "messageContains": "requires a parenthesized"
+  },
+  "09-missing-required-paren-img.atd": {
+    "shouldThrow": true,
+    "messageContains": "requires a parenthesized"
+  },
+  "10-restricted-context-tab-outside-tabs.atd": {
+    "shouldThrow": true,
+    "messageContains": "may only appear directly inside"
+  },
+  "11-restricted-context-cols-outside-table.atd": {
+    "shouldThrow": true,
+    "messageContains": "may only appear directly inside"
+  },
+  "12-table-missing-data.atd": {
+    "shouldThrow": true,
+    "messageContains": "requires `@data`"
+  },
+  "13-table-wrong-child-order.atd": {
+    "shouldThrow": true,
+    "messageContains": "requires `@cols` as its first child"
+  },
+  "14-tabs-invalid-child.atd": {
+    "shouldThrow": true,
+    "messageContains": "only accepts `@tab` children"
+  },
+  "15-refn-non-integer.atd": {
+    "shouldThrow": true,
+    "messageContains": "must contain only digits"
+  },
+  "16-unclosed-raw-domain-silent-swallow.atd": {
+    "shouldThrow": false,
+    "note": "KNOWN LIMITATION: no EOF check in the raw-content scanner — it silently consumes to end of file instead of erroring. See tests/README.md."
+  },
+  "17-unknown-node-in-comma-list.atd": {
+    "shouldThrow": true,
+    "messageContains": "only accepts plain text"
+  }
+}

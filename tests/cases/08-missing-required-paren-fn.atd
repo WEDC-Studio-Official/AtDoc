@@ -1,0 +1,7 @@
+@p[
+這裡有一個註腳@refn[1]，但下面的定義忘記寫編號。
+]
+
+@fn[
+Footnote content with no (id) — @fn requires a parenthesized identifier.
+]

@@ -1,0 +1,5 @@
+@card(Demo)[
+    @tab(Oops)[
+        @tab can only ever appear directly inside @tabs — never inside @card.
+    ]
+]

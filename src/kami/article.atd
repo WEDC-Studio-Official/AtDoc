@@ -1,0 +1,251 @@
+@meta[
+title = @Doc：為 AI 而生的語義文件格式
+author = WEDC
+description = 一篇涵蓋所有 @Doc 節點的完整測試文章
+keywords = doc,ast,parser,ai,syntax
+]
+
+@h(1)[@Doc：為 AI 而生的語義文件格式]
+
+@p[
+每一代文件格式，都在解決那個時代最核心的問題。@bold[Word] 解決了編輯，@bold[HTML] 解決了顯示，@bold[Markdown] 解決了人類易寫性，@bold[JSON] 解決了資料交換，@bold[JSX] 解決了元件組合。但沒有一種格式，是@mark{yellow}[真正為 AI 生成內容而設計]的。
+]
+
+@quote[
+Semantic First, Layout Later.
+語意優先，排版在後。
+]
+
+@hr
+
+@h(2)[為什麼需要新的格式]
+
+@p[
+LLM 讀 Markdown 沒問題，問題出在反過來：讓 LLM @italic[生成] Markdown 並交給下游程式解析時，輸出結構幾乎@underline[無法被可靠保證]。縮排歧義、巢狀清單漂移、表格損壞、parser 方言差異，每一項都是實務中的地雷。
+]
+
+@important(核心觀察)[
+Markdown 沒有語義意圖。它無法表達「這個按鈕是 primary variant」，也無法表達「這張表格需要斑馬紋」。
+]
+
+@p[
+HTML 可以表達任何東西，但代價是把展示邏輯寫死在結構裡。@del[這曾經被認為是優點]。同一份內容要渲染到不同平台？重寫。要讓 AI 生成穩定的 HTML？面對幻覺標籤與未閉合元素的風險。
+]
+
+@h(3)[MDX 的取捨]
+
+@p[
+MDX 將文件與程式碼融合，為人類開發者提供極高的表達能力。但這種自由度對生成式模型而言意味著另一件事：更高的語法不穩定性。
+]
+
+@table[
+    @cols[dimension,mdx,doc]
+
+    @data[
+        [本質定位,把文件變成程式,把文件變成語義資料]
+        [AI生成穩定性,容易語法崩潰,確定性語法]
+        [括號語義,多重混淆,全域唯一即Content]
+        [Token成本,冗長樣板代碼,語法極度壓縮]
+    ]
+]
+
+@hr
+
+@h(2)[@Doc 的設計哲學]
+
+@card(Semantic First)[
+區塊節點描述的是文件的@bold[語意]（What），而不是@bold[呈現方式]（How）。因此 @Doc 不提供 @code(text)[@div]、@code(text)[@span]、@code(text)[@flex] 這類版面節點。
+]
+
+@list[
+- 降低學習成本
+- 避免與 Email、Mention 系統衝突
+- 提高 AI 解析穩定性
+- 提高編輯器容錯能力
+- 保持 DSL 的可擴充性
+- 建立穩定且可預測的 AST
+]
+
+@tip(設計取捨)[
+`@@cols` 與 `@@data` 順序固定且皆為必填，這是刻意的設計取捨——犧牲一點靈活性，換取 Parser 與 AI 生成內容時的高度可預測性。
+]
+
+@h(3)[Known Command Recognition]
+
+@p[
+@Doc 採用「只有已知指令具有語法意義」的原則。當 Lexer 掃描到 @code(text)[@] 時，會依照優先順序判斷：若後續為 @code(text)[@@]，解析為單一純文字 @code(text)[@]；若符合已註冊指令名稱，進入對應語法解析流程；否則整段視為普通文字輸出。
+]
+
+@details(範例對照表)[
+輸入 @code(text)[@mark[hello]] 會被解析為 mark 節點。
+輸入 @code(text)[@@mark] 會輸出純文字 @code(text)[@mark]。
+輸入 @code(text)[test@example.com] 保持為純文字，不會誤觸發解析。
+]
+
+@warning(常見誤解)[
+不要以為所有 @code(text)[@] 開頭的字串都會被解析——@code(text)[@GitHub]、@code(text)[@unknown] 這類未註冊指令，Lexer 會直接退回純文字模式。
+]
+
+@hr
+
+@h(2)[節點總覽]
+
+@h(3)[結構型區塊]
+
+@p[
+標題、段落、引用、清單、程式碼、圖片、表格、分隔線，這八種構成了文件的骨架。
+]
+
+@code(ts)[
+interface DocASTNode {
+  type: string;
+  content: (DocASTNode | string)[];
+}
+]
+
+@img(
+https://example.com/architecture-diagram.png,width=480,align=center
+)[
+@Doc AST 架構示意圖
+]
+
+@h(3)[容器區塊]
+
+@p[
+@code(text)[@details] 與 @code(text)[@card] 提供了可摺疊與可強調的容器語意，不涉及任何樣式假設。
+]
+
+@h(3)[標註區塊]
+
+@note[
+這是一般性補充資訊，讀者可依需求選擇性閱讀。
+]
+
+@caution[
+在 Strict Mode 下，未閉合的區塊會直接拋出 @code(text)[DocSyntaxError]，不會嘗試靜默修復。
+]
+
+@h(3)[小工具區塊]
+
+@p[
+@code(text)[@tabs] 與 @code(text)[@mermaid] 屬於 Widget Blocks，前者用於多分頁內容切換：
+]
+
+@tabs[
+    @tab(語法層)[
+        @p[
+        @code(text)[@Doc] 的語法層完全由 EBNF 定義，Lexer 與 Parser 對照同一份 Command Registry 運作。
+        ]
+    ]
+
+    @tab(渲染層)[
+        @p[
+        Renderer 可以自由決定輸出目標，包含 HTML、React、PDF、DOCX、Discord、Terminal，甚至是 AI UI。
+        ]
+    ]
+
+    @tab(生態層)[
+        @p[
+        Kami Adapter 是 Renderer 生態中的一個成員，示範了同一份 AST 如何映射到不同的視覺規範。
+        ]
+    ]
+]
+
+@mermaid[
+graph TD
+A[Source Text] --> B[Lexer]
+B --> C[Token Stream]
+C --> D[Parser]
+D --> E[AST]
+E --> F[Renderer]
+]
+
+@hr
+
+@h(2)[行內語意節點]
+
+@p[
+文字格式化節點包含 @bold[粗體]、@italic[斜體]、@underline[底線]、@del[刪除線]，以及可自訂樣式的 @mark{blue,bordered}[標記文字]。
+]
+
+@p[
+語意行內節點則涵蓋數學與科學符號：E = mc@sup[2]，H@sub[2]O。也包含鍵盤按鍵標示，例如按下 @kbd[Ctrl] + @kbd[C] 進行複製，或 @kbd[Cmd] + @kbd[Shift] + @kbd[P] 開啟命令面板。
+]
+
+@p[
+連結節點會依內容自動推導 URI Scheme：詳見@link(https://github.com/wedc/atdoc)[官方 GitHub Repo]，或寄信至@link(hello@example.com)[聯絡信箱]，也可以直接撥打@link(+886912345678)[客服專線]。
+]
+
+@h(3)[腳注系統]
+
+@p[
+Rust 的所有權系統@refn[1]從根本上消除了資料競爭問題，這也是它區別於 C++ 手動記憶體管理的核心賣點@refn[2]。
+]
+
+@p[
+@fn(1)[
+See @link(https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html)[The Rust Programming Language, Ch. 4].
+]
+]
+
+@p[
+@fn(2)[
+比較討論可參見 Herb Sutter 的相關演講與著作，此處不展開列舉。
+]
+]
+
+@h(3)[特殊節點]
+
+@p[
+換行節點用於段落內強制斷行：第一行@n第二行@n第三行。
+]
+
+@p[
+逃逸規則讓使用者可以輸出指令關鍵字本身：輸出字面 @raw[@mark] 與 @raw[@bold[hello]] 不會被解析成節點，寫法是用 @@ 全域轉義，或整段包進 @@raw[...] 讓解析器完全跳過。
+]
+
+@hr
+
+@h(2)[Raw Domain 示範]
+
+@p[
+@code(text)[@raw] 屬於 Opaque Domain，進入之後不解析任何內部語法：
+]
+
+@p[
+Raw 範例：@raw[這裡的 @mark[hello] 與 @bold[world] 都不會被解析，只會照字面輸出。]
+]
+
+@hr
+
+@h(2)[巢狀解析範例]
+
+@p[
+由於 content-element 同時允許 inline-node 與 plain-text-char，@Doc 支援完整遞迴嵌套：
+]
+
+@p[
+@bold[
+這是粗體外層，
+裡面包含
+@mark{yellow}[重要高亮]
+以及
+@underline[底線強調]
+甚至還可以再包一層
+@italic[斜體加@mark{red}[紅色標記]的組合]
+。
+]
+]
+
+@hr
+
+@h(2)[結語]
+
+@p[
+@Doc 的核心目標並非取代 Markdown，而是建立 @bold[Human Editable]、@bold[Machine Deterministic]、@bold[AI Friendly]、@bold[Cross Platform] 的新一代文件中介格式。
+]
+
+@card(Core Principle)[
+HTML 是 Renderer。Markdown 是 Renderer。React 是 Renderer。
+而 @Doc 是 Source of Truth。
+]

@@ -189,8 +189,12 @@ export function renderKamiNode(node: DocASTNode): string {
     case 'tip':
     case 'important':
     case 'warning':
-    case 'caution':
-      return `<aside data-kami="callout" data-variant="${node.type}">${node.title ? `<strong>${escapeHtml(node.title)}</strong> ` : ''}${renderChildren(node.content)}</aside>`;
+    case 'caution': {
+      const labelMap: Record<string, string> = {
+        note: 'NOTE', tip: 'TIP', important: 'IMPORTANT', warning: 'WARNING', caution: 'CAUTION',
+      };
+      return `<aside data-kami="callout" data-variant="${node.type}"><span data-kami="callout-label">${labelMap[node.type]}</span>${node.title ? `<strong>${escapeHtml(node.title)}</strong> ` : ''}${renderChildren(node.content)}</aside>`;
+    }
 
     // --- Widget Blocks --- (TODO)
     case 'tabs': {

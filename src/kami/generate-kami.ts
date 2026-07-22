@@ -4,7 +4,7 @@ import { DocParser } from '../Parser.ts';
 import { KamiTranspiler } from './KamiAdapter.ts';
 import { DocSyntaxError } from '../types.ts';
 
-const sourcePath = new URL('./test.atd', import.meta.url);
+const sourcePath = new URL('./article.atd', import.meta.url);
 const sourceCode = readFileSync(sourcePath, 'utf-8');
 const tokens = tokenize(sourceCode);
 

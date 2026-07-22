@@ -70,7 +70,7 @@ body {
   color: var(--kami-dark-warm);
 }
 [data-kami="dash-list"] li::before {
-  content: "–";
+  content: "•";
   position: absolute;
   left: 0;
   color: var(--kami-ink-blue);
@@ -105,15 +105,56 @@ body {
 
 [data-kami="callout"] {
   border-radius: 8px;
-  padding: 12px 16px;
+  padding: 14px 16px;
   margin: 16px 0;
-  background: var(--kami-tint-default);
-  border-left: 3px solid var(--kami-ink-blue);
   font-size: 13px;
   color: var(--kami-dark-warm);
+  border-left: 3px solid transparent;
 }
-[data-kami="callout"][data-variant="warning"] { background: #F3E9C7; border-left-color: #B5883A; }
-[data-kami="callout"][data-variant="caution"] { background: #F1DCDC; border-left-color: #B53333; }
+[data-kami="callout-label"] {
+  display: block;
+  font-family: var(--kami-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+}
+
+/* NOTE — 中性灰藍，一般性補充 */
+[data-kami="callout"][data-variant="note"] {
+  background: #EEF2F7;
+  border-left-color: var(--kami-stone);
+}
+[data-kami="callout"][data-variant="note"] [data-kami="callout-label"] { color: var(--kami-stone); }
+
+/* TIP — 綠，最佳實踐建議 */
+[data-kami="callout"][data-variant="tip"] {
+  background: #E3EEDC;
+  border-left-color: #4C7A3E;
+}
+[data-kami="callout"][data-variant="tip"] [data-kami="callout-label"] { color: #4C7A3E; }
+
+/* IMPORTANT — 品牌油墨藍，優先閱讀 */
+[data-kami="callout"][data-variant="important"] {
+  background: #E4ECF5;
+  border-left-color: var(--kami-ink-blue);
+}
+[data-kami="callout"][data-variant="important"] [data-kami="callout-label"] { color: var(--kami-ink-blue); }
+
+/* WARNING — 黃橙，需注意但非危險 */
+[data-kami="callout"][data-variant="warning"] {
+  background: #F3E9C7;
+  border-left-color: #B5883A;
+}
+[data-kami="callout"][data-variant="warning"] [data-kami="callout-label"] { color: #8A6423; }
+
+/* CAUTION — 紅，不可逆/危險操作 */
+[data-kami="callout"][data-variant="caution"] {
+  background: #F1DCDC;
+  border-left-color: #B53333;
+}
+[data-kami="callout"][data-variant="caution"] [data-kami="callout-label"] { color: #B53333; }
+
 [data-kami="callout"] strong { font-weight: 500; margin-right: 4px; }
 
 [data-kami="mark"] { padding: 1px 4px; border-radius: 3px; }

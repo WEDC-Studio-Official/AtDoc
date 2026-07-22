@@ -16,7 +16,7 @@
 // 不適用於 Terminal、Discord 等純文字 Renderer 目標。
 // ============================================================================
 
-import type { DocASTNode } from '../types.ts';
+import type { DocASTNode } from './types.ts';
 
 // ----------------------------------------------------------------------------
 // Phase 1: Design Tokens
@@ -108,15 +108,15 @@ export const KamiTokens = {
 //  3. 若 color token 不在下列對照表中 → fallback 為 Kami 預設 tint（同規則 1），
 //     不拋出錯誤（呼應 Inline Spec §6 Unknown Command Fallback 的容錯精神）。
 const MARK_COLOR_TO_KAMI_TINT: Record<string, string> = {
-  yellow: '#F3E9C7', // 收斂進暖色系，而非原始 mark 的鮮黃
-  red: KamiTokens.color.tagTint['0.30'],
+  yellow: '#F3E9C7',
+  red: '#F1DCDC',
   green: '#DCE8D6',
-  blue: KamiTokens.color.tagTint['0.18'],
+  blue: '#D6E1EE',
   orange: '#EEDFC7',
   purple: '#E3DCE8',
   gray: '#E6E4DA',
 };
-const DEFAULT_MARK_TINT = KamiTokens.color.tagTint['0.14'];
+const DEFAULT_MARK_TINT = KamiTokens.color.tagTint.default;
 
 function resolveMarkTint(styles: string[] | undefined): string {
   const colorToken = styles?.find(t => t in MARK_COLOR_TO_KAMI_TINT);
@@ -156,9 +156,11 @@ export function renderKamiNode(node: DocASTNode): string {
     case 'quote':
       // TODO: 左 2px 品牌實線 + olive 色（Kami Quote 元件）
       return `<blockquote data-kami="quote">${renderChildren(node.content)}</blockquote>`;
-    case 'list':
-      // TODO: dash list 風格（短橫線取代圓點）
-      return `<ul data-kami="dash-list">${renderChildren(node.content)}</ul>`;
+    case 'list': {
+      const flat = node.content.map(c => (typeof c === 'string' ? escapeHtml(c) : renderKamiNode(c))).join('');
+      const items = flat.split('\n').map(l => l.trim()).filter(l => l.startsWith('- ')).map(l => l.slice(2).trim());
+      return `<ul data-kami="dash-list">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+    }
     case 'code':
       // TODO: ivory 底 + 0.5px border + 6px 圓角 + mono 字體（Kami Code Block）
       return `<pre data-kami="code"><code class="language-${escapeHtml(node.language ?? 'text')}">${escapeHtml(node.raw ?? '')}</code></pre>`;
@@ -167,9 +169,11 @@ export function renderKamiNode(node: DocASTNode): string {
       const opts = node.imgOptions ?? {};
       return `<img data-kami="image" src="${escapeHtml(opts.src ?? '')}">`;
     }
-    case 'table':
-      // TODO: 暖灰虛線表格（Kami Table 元件）
-      return `<table data-kami="table"></table>`;
+    case 'table': {
+      const thead = `<thead><tr>${(node.columns ?? []).map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>`;
+      const tbody = `<tbody>${(node.rows ?? []).map(r => `<tr>${r.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+      return `<table data-kami="table">${thead}${tbody}</table>`;
+    }
     case 'hr':
       return `<hr data-kami="hr">`;
 
@@ -228,11 +232,11 @@ export function renderKamiNode(node: DocASTNode): string {
     case 'link':
       return `<a data-kami="link" href="${escapeHtml(node.uri ?? '')}">${renderChildren(node.content)}</a>`;
 
-    // --- Footnotes --- (TODO)
+    // --- Footnotes ---
     case 'fn':
-      return `<li data-kami="footnote" id="fn${escapeHtml(node.id ?? '')}">${renderChildren(node.content)}</li>`;
+      return `<li data-kami="footnote" id="fn${escapeHtml(node.id ?? '')}">${renderChildren(node.content)} <a data-kami="footnote-back" href="#fnref${escapeHtml(node.id ?? '')}">↩</a></li>`;
     case 'refn':
-      return `<sup data-kami="footnote-ref" id="fnref${node.number}">${node.number}</sup>`;
+      return `<sup data-kami="footnote-ref" id="fnref${node.number}"><a href="#fn${node.number}">${node.number}</a></sup>`;
 
     // --- Special Nodes ---
     case 'n':

@@ -1,0 +1,205 @@
+@meta[
+title = @Doc Full Syntax Test
+author = WEDC
+description = Test document exercising every documented @Doc node
+keywords = test,syntax,coverage
+]
+
+@h(1)[@Doc Full Syntax Coverage Test]
+
+@h(2)[Structural Blocks]
+
+@h(3)[Heading]
+
+@h(1)[Heading Level 1]
+@h(2)[Heading Level 2]
+@h(3)[Heading Level 3]
+@h(4)[Heading Level 4]
+@h(5)[Heading Level 5]
+@h(6)[Heading Level 6]
+
+@h(3)[Paragraph]
+
+@p[
+This is a plain paragraph with @bold[bold] and @italic[italic] text mixed in.
+]
+
+@h(3)[Quote]
+
+@quote[
+Talk is cheap.
+Show me the code.
+]
+
+@h(3)[List]
+
+@list[
+- Apple
+- Banana
+- Orange
+]
+
+@h(3)[Code]
+
+@code(ts)[
+const x: number = 1;
+console.log(x);
+]
+
+@h(3)[Image]
+
+@img(
+https://example.com/logo.png,width=200,align=center
+)[
+WEDC Logo
+]
+
+@h(3)[Table]
+
+@table[
+    @cols[id,name,price]
+
+    @data[
+        [1,早餐,60]
+        [2,午餐,80]
+        [3,晚餐,90]
+    ]
+]
+
+@h(3)[Horizontal Rule]
+
+@hr
+
+@h(2)[Container Blocks]
+
+@h(3)[Details]
+
+@details(展開更多資訊)[
+這裡是隱藏內容，讀者可以依需求展開查看。
+]
+
+@h(3)[Card]
+
+@card(API Key)[
+請將您的 API 金鑰存放在環境變數中，而不是寫死在程式碼裡。
+]
+
+@hr
+
+@h(2)[Callout Blocks]
+
+@note[
+這是一般補充資訊，非必要閱讀。
+]
+
+@tip[
+啟用快取可以加速重複建置。
+]
+
+@important[
+API v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。
+]
+
+@warning(資料保留政策)[
+此 API 端點將於 3.0 版本移除。
+]
+
+@caution[
+此操作為不可逆，將永久刪除使用者資料。
+]
+
+@hr
+
+@h(2)[Widget Blocks]
+
+@h(3)[Tabs]
+
+@tabs[
+    @tab(JavaScript)[
+        @code(js)[console.log("hi");]
+    ]
+
+    @tab(Python)[
+        @code(py)[print("hi")]
+    ]
+
+    @tab(Rust)[
+        @code(rust)[println!("hi");]
+    ]
+]
+
+@h(3)[Mermaid]
+
+@mermaid[
+graph TD
+A --> B
+B --> C
+]
+
+@hr
+
+@h(2)[Inline Nodes]
+
+@h(3)[Text Formatting]
+
+@p[
+@bold[粗體文字]、@italic[斜體文字]、@underline[底線文字]、@del[刪除線文字]。
+]
+
+@p[
+@mark[預設高亮]
+@mark{yellow}[黃色高亮]
+@mark{red,underline}[紅色並加底線]
+]
+
+@p[
+Raw domain 範例：@raw[這裡的 @mark[hello] 不會被解析，只會照字面輸出。]
+]
+
+@h(3)[Semantic Inline]
+
+@p[
+E = mc@sup[2]，H@sub[2]O。
+]
+
+@p[
+按下@kbd[Ctrl]+@kbd[C]複製。
+]
+
+@p[
+詳見@link(https://example.com)[官方網站]，或寄信至@link(test@example.com)[聯絡我們]。
+]
+
+@h(3)[Footnotes]
+
+@p[
+Rust 的所有權系統@refn[1]從根本上消除了資料競爭。
+]
+
+@fn(1)[
+See @link(https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html)[The Rust Programming Language, Ch. 4].
+]
+
+@h(3)[Special Nodes]
+
+@p[
+第一行@n第二行。
+]
+
+@p[
+輸出字面指令名稱本身：@@mark 與 @@bold[hello] 不會被解析成節點。
+]
+
+@hr
+
+@h(2)[Nested Parsing Example]
+
+@p[
+@bold[
+    這是粗體，
+    裡面有
+    @mark{yellow}[重要高亮]
+    與
+    @underline[底線]
+]
+]

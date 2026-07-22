@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>Kami Adapter — 視覺預覽</title>
+<style>
+  :root {
+    --kami-parchment: #F5F4ED;
+    --kami-ivory: #FAF9F5;
+    --kami-warm-sand: #E8E6DC;
+    --kami-ink-blue: #1B365D;
+    --kami-ink-light: #2D5A8A;
+    --kami-near-black: #141413;
+    --kami-dark-warm: #3D3D3A;
+    --kami-olive: #504e49;
+    --kami-stone: #6b6a64;
+    --kami-ring-warm: #E0DED2;
+    --kami-tint-08: #EEF2F7;
+    --kami-tint-14: #E4ECF5;
+    --kami-tint-18: #E4ECF5;
+    --kami-tint-22: #D0DCE9;
+    --kami-tint-30: #D6E1EE;
+
+    --kami-serif-zh: "Noto Serif TC", "TsangerJinKai02", serif;
+    --kami-serif-en: "Georgia", "Charter", serif;
+    --kami-sans: -apple-system, "PingFang TC", "Noto Sans TC", sans-serif;
+    --kami-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--kami-parchment);
+    color: var(--kami-near-black);
+    font-family: var(--kami-sans);
+    font-size: 13px;
+    line-height: 1.55;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 60px 40px 120px;
+  }
+
+  /* ---- Structural: Heading ---- */
+  [data-kami="heading"] {
+    font-family: var(--kami-serif-zh);
+    font-weight: 500;
+    color: var(--kami-near-black);
+    margin: 0 0 12px;
+  }
+  [data-kami="heading"][data-level="1"] { font-size: 30px; line-height: 1.15; margin-top: 0; }
+  [data-kami="heading"][data-level="2"] { font-size: 20px; line-height: 1.25; margin-top: 40px; color: var(--kami-ink-blue); }
+  [data-kami="heading"][data-level="3"] { font-size: 16px; line-height: 1.3; margin-top: 24px; }
+
+  /* ---- Structural: Body ---- */
+  [data-kami="body"] {
+    font-family: var(--kami-sans);
+    font-weight: 400;
+    margin: 0 0 14px;
+    color: var(--kami-dark-warm);
+  }
+
+  /* ---- Quote ---- */
+  [data-kami="quote"] {
+    margin: 20px 0;
+    padding: 6px 0 6px 16px;
+    border-left: 2px solid var(--kami-ink-blue);
+    color: var(--kami-olive);
+    font-family: var(--kami-serif-en);
+    font-style: italic;
+  }
+
+  /* ---- Dash List ---- */
+  [data-kami="dash-list"] {
+    list-style: none;
+    padding-left: 0;
+    margin: 0 0 16px;
+  }
+  [data-kami="dash-list"] li {
+    position: relative;
+    padding-left: 18px;
+    margin-bottom: 6px;
+    color: var(--kami-dark-warm);
+  }
+  [data-kami="dash-list"] li::before {
+    content: "–";
+    position: absolute;
+    left: 0;
+    color: var(--kami-ink-blue);
+  }
+
+  /* ---- Code ---- */
+  [data-kami="code"] {
+    background: var(--kami-ivory);
+    border: 0.5px solid var(--kami-ring-warm);
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-family: var(--kami-mono);
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+
+  /* ---- Card ---- */
+  [data-kami="card"] {
+    background: var(--kami-ivory);
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.05);
+    padding: 20px 24px;
+    margin: 20px 0;
+  }
+  [data-kami="card"] header {
+    font-family: var(--kami-serif-zh);
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--kami-ink-blue);
+    margin-bottom: 8px;
+  }
+
+  /* ---- Callout ---- */
+  [data-kami="callout"] {
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 16px 0;
+    background: var(--kami-tint-14);
+    border-left: 3px solid var(--kami-ink-blue);
+    font-size: 12.5px;
+    color: var(--kami-dark-warm);
+  }
+  [data-kami="callout"][data-variant="warning"] { background: #F3E9C7; border-left-color: #B5883A; }
+  [data-kami="callout"][data-variant="caution"] { background: var(--kami-tint-30); border-left-color: var(--kami-error, #B53333); }
+
+  /* ---- Mark (優先權規則 demo) ---- */
+  [data-kami="mark"] {
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  /* ---- Table ---- */
+  [data-kami="table"] {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 12.5px;
+  }
+  [data-kami="table"] th, [data-kami="table"] td {
+    padding: 8px 12px;
+    border-bottom: 0.5px dashed var(--kami-stone);
+    text-align: left;
+  }
+  [data-kami="table"] th {
+    font-family: var(--kami-serif-zh);
+    color: var(--kami-ink-blue);
+    font-weight: 500;
+  }
+
+  .label {
+    font-family: var(--kami-mono);
+    font-size: 9px;
+    color: var(--kami-stone);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin: 40px 0 6px;
+  }
+</style>
+</head>
+<body>
+<h1>@Doc Full Syntax Coverage Test</h1>
+<h2>Structural Blocks</h2>
+<h3>Heading</h3>
+<h1>Heading Level 1</h1>
+<h2>Heading Level 2</h2>
+<h3>Heading Level 3</h3>
+<h4>Heading Level 4</h4>
+<h5>Heading Level 5</h5>
+<h6>Heading Level 6</h6>
+<h3>Paragraph</h3>
+<p>
+This is a plain paragraph with <strong>bold</strong> and <em>italic</em> text mixed in.
+</p>
+<h3>Quote</h3>
+<blockquote>
+Talk is cheap.
+Show me the code.
+</blockquote>
+<h3>List</h3>
+<ul><li>Apple</li><li>Banana</li><li>Orange</li></ul>
+<h3>Code</h3>
+<pre><code class="language-ts">
+const x: number = 1;
+console.log(x);
+</code></pre>
+<h3>Image</h3>
+<img src="https://example.com/logo.png" alt="WEDC Logo" width="200" style="display:block;margin:0 auto;">
+<h3>Table</h3>
+<table><thead><tr><th>id</th><th>name</th><th>price</th></tr></thead><tbody><tr><td>1</td><td>早餐</td><td>60</td></tr><tr><td>2</td><td>午餐</td><td>80</td></tr><tr><td>3</td><td>晚餐</td><td>90</td></tr></tbody></table>
+<h3>Horizontal Rule</h3>
+<hr>
+<h2>Container Blocks</h2>
+<h3>Details</h3>
+<details><summary>展開更多資訊</summary>
+這裡是隱藏內容，讀者可以依需求展開查看。
+</details>
+<h3>Card</h3>
+<article><header>API Key</header>
+請將您的 API 金鑰存放在環境變數中，而不是寫死在程式碼裡。
+</article>
+<hr>
+<h2>Callout Blocks</h2>
+<aside class="note">
+這是一般補充資訊，非必要閱讀。
+</aside>
+<aside class="tip">
+啟用快取可以加速重複建置。
+</aside>
+<aside class="important">
+API v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。
+</aside>
+<aside class="warning"><strong>資料保留政策</strong>
+此 API 端點將於 3.0 版本移除。
+</aside>
+<aside class="caution">
+此操作為不可逆，將永久刪除使用者資料。
+</aside>
+<hr>
+<h2>Widget Blocks</h2>
+<h3>Tabs</h3>
+<div class="tabs"><div role="tablist"><button role="tab" aria-controls="tab-panel-0">JavaScript</button><button role="tab" aria-controls="tab-panel-1">Python</button><button role="tab" aria-controls="tab-panel-2">Rust</button></div><div role="tabpanel" id="tab-panel-0">
+        <pre><code class="language-js">console.log(&quot;hi&quot;);</code></pre>
+    </div><div role="tabpanel" id="tab-panel-1">
+        <pre><code class="language-py">print(&quot;hi&quot;)</code></pre>
+    </div><div role="tabpanel" id="tab-panel-2">
+        <pre><code class="language-rust">println!(&quot;hi&quot;);</code></pre>
+    </div></div>
+<h3>Mermaid</h3>
+<pre class="mermaid">
+graph TD
+A --&gt; B
+B --&gt; C
+</pre>
+<hr>
+<h2>Inline Nodes</h2>
+<h3>Text Formatting</h3>
+<p>
+<strong>粗體文字</strong>、<em>斜體文字</em>、<u>底線文字</u>、<del>刪除線文字</del>。
+</p>
+<p>
+<mark class="mark">預設高亮</mark>
+<mark class="mark mark-yellow">黃色高亮</mark>
+<mark class="mark mark-red mark-underline">紅色並加底線</mark>
+</p>
+<p>
+Raw domain 範例：這裡的 @mark[hello] 不會被解析，只會照字面輸出。
+</p>
+<h3>Semantic Inline</h3>
+<p>
+E = mc<sup>2</sup>，H<sub>2</sub>O。
+</p>
+<p>
+按下<kbd>Ctrl</kbd>+<kbd>C</kbd>複製。
+</p>
+<p>
+詳見<a href="https://example.com">官方網站</a>，或寄信至<a href="mailto:test@example.com">聯絡我們</a>。
+</p>
+<h3>Footnotes</h3>
+<p>
+Rust 的所有權系統<sup id="fnref1"><a href="#fn1">1</a></sup>從根本上消除了資料競爭。
+</p>
+<p><li id="fn1">
+See <a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html">The Rust Programming Language, Ch. 4</a>.
+ <a href="#fnref1">↩</a></li>
+
+</p>
+<h3>Special Nodes</h3>
+<p>
+第一行<br>第二行。
+</p>
+<p>
+輸出字面指令名稱本身：@mark 與 @bold[hello] 不會被解析成節點。
+</p>
+<hr>
+<h2>Nested Parsing Example</h2>
+<p>
+<strong>
+    這是粗體，
+    裡面有
+    <mark class="mark mark-yellow">重要高亮</mark>
+    與
+    <u>底線</u>
+</strong>
+</p>
+--- Route B: Universal Inline Style HTML ---
+
+<h1>@Doc Full Syntax Coverage Test</h1>
+<h2>Structural Blocks</h2>
+<h3>Heading</h3>
+<h1>Heading Level 1</h1>
+<h2>Heading Level 2</h2>
+<h3>Heading Level 3</h3>
+<h4>Heading Level 4</h4>
+<h5>Heading Level 5</h5>
+<h6>Heading Level 6</h6>
+<h3>Paragraph</h3>
+<p>
+This is a plain paragraph with <strong>bold</strong> and <em>italic</em> text mixed in.
+</p>
+<h3>Quote</h3>
+<blockquote>
+Talk is cheap.
+Show me the code.
+</blockquote>
+<h3>List</h3>
+<ul><li>Apple</li><li>Banana</li><li>Orange</li></ul>
+<h3>Code</h3>
+<pre><code class="language-ts">
+const x: number = 1;
+console.log(x);
+</code></pre>
+<h3>Image</h3>
+<img src="https://example.com/logo.png" alt="WEDC Logo" width="200" style="display:block;margin:0 auto;">
+<h3>Table</h3>
+<table><thead><tr><th>id</th><th>name</th><th>price</th></tr></thead><tbody><tr><td>1</td><td>早餐</td><td>60</td></tr><tr><td>2</td><td>午餐</td><td>80</td></tr><tr><td>3</td><td>晚餐</td><td>90</td></tr></tbody></table>
+<h3>Horizontal Rule</h3>
+<hr>
+<h2>Container Blocks</h2>
+<h3>Details</h3>
+<details><summary>展開更多資訊</summary>
+這裡是隱藏內容，讀者可以依需求展開查看。
+</details>
+<h3>Card</h3>
+<article><header>API Key</header>
+請將您的 API 金鑰存放在環境變數中，而不是寫死在程式碼裡。
+</article>
+<hr>
+<h2>Callout Blocks</h2>
+<aside class="note">
+這是一般補充資訊，非必要閱讀。
+</aside>
+<aside class="tip">
+啟用快取可以加速重複建置。
+</aside>
+<aside class="important">
+API v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。
+</aside>
+<aside class="warning"><strong>資料保留政策</strong>
+此 API 端點將於 3.0 版本移除。
+</aside>
+<aside class="caution">
+此操作為不可逆，將永久刪除使用者資料。
+</aside>
+<hr>
+<h2>Widget Blocks</h2>
+<h3>Tabs</h3>
+<div class="tabs"><div role="tablist"><button role="tab" aria-controls="tab-panel-0">JavaScript</button><button role="tab" aria-controls="tab-panel-1">Python</button><button role="tab" aria-controls="tab-panel-2">Rust</button></div><div role="tabpanel" id="tab-panel-0">
+        <pre><code class="language-js">console.log(&quot;hi&quot;);</code></pre>
+    </div><div role="tabpanel" id="tab-panel-1">
+        <pre><code class="language-py">print(&quot;hi&quot;)</code></pre>
+    </div><div role="tabpanel" id="tab-panel-2">
+        <pre><code class="language-rust">println!(&quot;hi&quot;);</code></pre>
+    </div></div>
+<h3>Mermaid</h3>
+<pre class="mermaid">
+graph TD
+A --&gt; B
+B --&gt; C
+</pre>
+<hr>
+<h2>Inline Nodes</h2>
+<h3>Text Formatting</h3>
+<p>
+<strong>粗體文字</strong>、<em>斜體文字</em>、<u>底線文字</u>、<del>刪除線文字</del>。
+</p>
+<p>
+<mark>預設高亮</mark>
+<mark style="background-color: #fff3a3;">黃色高亮</mark>
+<mark style="background-color: #ffd2d2; text-decoration: underline;">紅色並加底線</mark>
+</p>
+<p>
+Raw domain 範例：這裡的 @mark[hello] 不會被解析，只會照字面輸出。
+</p>
+<h3>Semantic Inline</h3>
+<p>
+E = mc<sup>2</sup>，H<sub>2</sub>O。
+</p>
+<p>
+按下<kbd>Ctrl</kbd>+<kbd>C</kbd>複製。
+</p>
+<p>
+詳見<a href="https://example.com">官方網站</a>，或寄信至<a href="mailto:test@example.com">聯絡我們</a>。
+</p>
+<h3>Footnotes</h3>
+<p>
+Rust 的所有權系統<sup id="fnref1"><a href="#fn1">1</a></sup>從根本上消除了資料競爭。
+</p>
+<p><li id="fn1">
+See <a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html">The Rust Programming Language, Ch. 4</a>.
+ <a href="#fnref1">↩</a></li>
+
+</p>
+<h3>Special Nodes</h3>
+<p>
+第一行<br>第二行。
+</p>
+<p>
+輸出字面指令名稱本身：@mark 與 @bold[hello] 不會被解析成節點。
+</p>
+<hr>
+<h2>Nested Parsing Example</h2>
+<p>
+<strong>
+    這是粗體，
+    裡面有
+    <mark style="background-color: #fff3a3;">重要高亮</mark>
+    與
+    <u>底線</u>
+</strong>
+</p>
+</body>
+</html>

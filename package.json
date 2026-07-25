@@ -11,7 +11,8 @@
     "./Parser": "./src/Parser.ts",
     "./Adapters": "./src/Adapters.ts",
     "./editor/monarch": "./src/editor/monarch.ts",
-    "./kami/KamiAdapter": "./src/kami/KamiAdapter.ts"
+    "./kami/KamiAdapter": "./src/kami/KamiAdapter.ts",
+    "./kami/kami.css": "./src/kami/kami.css"
   },
   "devDependencies": {
     "@types/node": "^26.1.1"

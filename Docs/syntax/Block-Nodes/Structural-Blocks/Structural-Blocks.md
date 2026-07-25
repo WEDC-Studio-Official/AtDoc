@@ -2,7 +2,7 @@
 
 *[中文版](./Structural-Blocks.zh-TW.md)*
 
-> Companion to [Block Syntax Specification](../../../Block-Syntax-Specification.md) §5 (Structural Blocks). The grammar lives there; this document covers meaning, usage, and the open edges of `@h`, `@p`, `@quote`, `@list`, `@code`, `@img`, `@table`, and `@hr`.
+> Companion to [Block Syntax Specification](../../../Block-Syntax-Specification.md) §5 (Structural Blocks). The grammar lives there; this document covers meaning, usage, and the open edges of `@h`, `@p`, `@quote`, `@list`, `@code`, `@img`, `@table`, `@hr`, and `@svg`.
 
 ## 0. Table of Contents
 
@@ -18,6 +18,7 @@
   * [Image](#image)
   * [Table](#table)
   * [Horizontal Rule](#horizontal-rule)
+  * [SVG](#svg)
 * [5. AST Representation](#5-ast-representation)
 * [6. Renderer Independence](#6-renderer-independence)
 * [7. AI Generation Stability](#7-ai-generation-stability)
@@ -56,11 +57,12 @@ The renderer still decides the actual HTML/PDF/terminal output; the source just 
 | `@h` | `(level)`, optional, `1`–`6` | `block-content` | see [Heading](#heading) for the missing default |
 | `@p` | — | `block-content` | plain text container |
 | `@quote` | — | `block-content` | no distinct citation/author field |
-| `@list` | — (see [List](#list)) | `block-content` | items are literal `- ` text, not a structured AST |
+| `@list` | — (see [List](#list)) | `block-content` | every non-empty line is an item — a structured `ListItem` AST, not re-split text |
 | `@code` | `(language)`, optional | `raw-block-content` | unparsed — same idea as `@raw` |
 | `@img` | `(image-option-list)` | `block-content` (alt text) | only node with a structured key=value option list |
 | `@table` | — | `@cols` + `@data` (not generic `block-content`) | only node with dedicated sub-node grammar |
 | `@hr` | — | none — bare `@hr`, no brackets at all | only node with zero slots |
+| `@svg` | — | `raw-block-content` | unparsed, unescaped — same idea as `@code`/`@mermaid`, but rendered as a live graphic, not text |
 
 No two rows are identical. That's intentional — see §1.
 
@@ -128,6 +130,18 @@ Like `@p`, `@quote` has no modifier — there's no dedicated field for a citatio
 
 ### List
 
+Every non-empty line inside `block-content` is an item. A leading `- ` is accepted and stripped for backward compatibility, but no longer required:
+
+```text
+@list[
+Apple
+Banana
+Orange
+]
+```
+
+is equivalent to the older, still-valid:
+
 ```text
 @list[
 - Apple
@@ -136,9 +150,9 @@ Like `@p`, `@quote` has no modifier — there's no dedicated field for a citatio
 ]
 ```
 
-Items are literal `- `-prefixed text inside `block-content` — there is currently no dedicated `ListItem` AST node, no ordered/unordered distinction, and no formal nesting syntax. (Compare [Table](#table), which has a fully structured `Columns`/`Rows` AST.)
+Each item is now a dedicated `ListItem` AST node (`node.items`) built by the Parser, not by each renderer re-splitting rendered text — so inline nodes inside an item (e.g. `@bold[Apple]`) survive as structured children instead of being flattened first. (Compare [Table](#table), which has a fully structured `Columns`/`Rows` AST — `@list` now has an equivalent, if simpler, guarantee.)
 
-A `(modifier)` array such as `@list(bullet,number)[...]` — declaring "top level is bulleted, second level is numbered" — has been proposed as a way to formalize nested list typing, but it **is not part of the current EBNF** (`list = "@list", block-content` has no modifier slot). Treat it as a design direction, not current grammar.
+There is still no ordered/unordered distinction or formal nesting syntax. A `(modifier)` array such as `@list(bullet,number)[...]` — declaring "top level is bulleted, second level is numbered" — has been proposed as a way to formalize nested list typing, but it **is not part of the current EBNF** (`list = "@list", block-content` has no modifier slot). Treat it as a design direction, not current grammar.
 
 ---
 
@@ -182,7 +196,7 @@ WEDC Logo
 ]
 ```
 
-`@img` is the only Structural Block whose parenthesized slot is a structured, extensible key=value list rather than a single modifier — see [Block Syntax Specification §5 Image](../../../Block-Syntax-Specification.md#image) for the full option table and the extensibility rule (unrecognized keys MUST be ignored, not rejected).
+`@img` is the only Structural Block whose parenthesized slot is a structured, extensible key=value list rather than a single modifier — see [Block Syntax Specification §5 Image](../../../Block-Syntax-Specification.md#image) for the full option table (now including `radius` and `border`, passed through verbatim as CSS values) and the extensibility rule (unrecognized keys MUST be ignored, not rejected).
 
 ---
 
@@ -217,6 +231,20 @@ HTML:
 ```
 
 The only node in @Doc with zero slots — no modifier, no styles, no content, no title. `@hr` is pure punctuation: it marks a break and carries no data at all.
+
+---
+
+### SVG
+
+```text
+@svg[
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+  <circle cx="5" cy="5" r="4" />
+</svg>
+]
+```
+
+`@svg`'s content is `raw-block-content` — same unparsed treatment as `@code`/`@mermaid` — but the renderer emits it **unescaped**, so the browser actually draws the vector graphic instead of printing markup as text. That crosses a trust boundary: renderer SHOULD strip `<script>` tags and `on*=` event handler attributes before emitting (see `Adapters.ts`'s `sanitizeSvg()`), but untrusted `@svg` content still deserves review upstream of rendering — sanitization here is a safety net, not a content-security guarantee.
 
 ---
 

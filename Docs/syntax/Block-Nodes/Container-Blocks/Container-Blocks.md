@@ -63,17 +63,18 @@ A parser can find every `@card` or every `@details` in a document without guessi
 
 ## 3. Syntax
 
-Both nodes accept the same shape — an optional `(title)` followed by `block-content`:
+Both nodes accept the same shape — an optional `(title)`, an optional `{styles}`, then `block-content`:
 
 ```text
 @details(title)[content]
-@card(title)[content]
+@card(title){styles}[content]
 ```
 
 ```ebnf
-details = "@details" , [ title ] , block-content ;
-card    = "@card" , [ title ] , block-content ;
+details = "@details" , [ title ] , [ styles ] , block-content ;
+card    = "@card" , [ title ] , [ styles ] , block-content ;
 title   = "(" , text , ")" ;
+styles  = "{" , { text-char - "}" } , "}" ;
 ```
 
 Examples:
@@ -85,12 +86,12 @@ Examples:
 ```
 
 ```text
-@card(API Key)[
+@card(API Key){blue,bordered}[
 這裡放說明內容。
 ]
 ```
 
-`title` is optional for both nodes (see [Block Syntax Specification §4](../../../Block-Syntax-Specification.md#4-shared-components)); when omitted, the renderer supplies its own default presentation.
+`title` is optional for both nodes (see [Block Syntax Specification §4](../../../Block-Syntax-Specification.md#4-shared-components)); when omitted, the renderer supplies its own default presentation. `styles` is likewise optional and, as of Block Syntax Specification v1.4, formally part of both nodes' EBNF — token semantics (named color tokens, hex tokens, modifier tokens) reuse [Inline Syntax Specification §7](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics) verbatim; whether/how a given renderer maps them to visual output is still a renderer decision (see §5 note below).
 
 **Omitted vs. empty title.** The EBNF marks the whole `[ title ]` group optional, but `text = { any-unicode-char }` also permits zero characters, so `@card()[content]` isn't explicitly ruled out by the grammar alone. This reference treats the two as equivalent: an omitted `(title)` and an empty or whitespace-only `()` both normalize to *no title*. Parsers MAY additionally flag `()` as a Strict Mode lint (see [Inline Syntax Specification §11](../../../Inline-Syntax-Specification.md#11-parser-recovery-strategy)), but semantically neither carries a title.
 
@@ -133,7 +134,7 @@ A bounded, always-visible grouping of related content — a discrete information
 
 Use for: grouping a title, description, and related content into one unit — a preview panel, a summary block, a labeled section. When `title` is omitted, the card has no heading, only grouped content.
 
-> **Scope note:** the [README](../../../README.md) introductory example shows `@card(featured){w-300px bg-f8f9fa text-sm}[...]`, using the full `@node(modifier){styles}[content]<action>` shape that @Doc's general node grammar allows. That four-slot form is illustrative of where the notation is headed; the `(modifier)` and `{styles}` slots for `@card` are **not yet part of the formal v1.3 EBNF** in Block Syntax Specification §6, which currently defines only `@card(title)[content]`. Treat the README example as forward-looking, not the current grammar.
+> **Scope note (updated for v1.4):** the [README](../../../README.md) introductory example shows `@card(featured){w-300px bg-f8f9fa text-sm}[...]`. The `{styles}` slot is now formal grammar (Block Syntax Specification §6, v1.4) — see §3 above. The `(title)` slot, however, is still specifically a title (`parenRole: 'title'` in `registry.ts`), not a free-form `(modifier)` slot for arbitrary Tailwind-style class strings like `featured` in that README example; `@card`'s paren always resolves to `node.title`. Treat the README's `(modifier)` reading of that slot as forward-looking, not the current grammar — only the `{styles}` half of that example is real today.
 
 ---
 

@@ -39,6 +39,11 @@ Show me the code.
 - Orange
 ]
 
+@list[
+Pear
+Peach
+]
+
 @h(3)[Code]
 
 @code(ts)[
@@ -49,9 +54,15 @@ console.log(x);
 @h(3)[Image]
 
 @img(
-https://example.com/logo.png,width=200,align=center
+https://example.com/logo.png,width=200,align=center,radius=8px,border=1px solid #ccc
 )[
 WEDC Logo
+]
+
+@h(3)[SVG]
+
+@svg[
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>
 ]
 
 @h(3)[Table]
@@ -150,6 +161,11 @@ B --> C
 @mark[預設高亮]
 @mark{yellow}[黃色高亮]
 @mark{red,underline}[紅色並加底線]
+@mark{#3366ff}[16 進位背景色]
+]
+
+@p[
+@color(#ff0000)[這段文字是紅色的]，@color(unknown)[這段沒有指定顏色，優雅地退回無色]。
 ]
 
 @p[

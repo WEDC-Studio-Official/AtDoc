@@ -2,7 +2,7 @@
 
 *[English version](./Text-Formatting.md)*
 
-> 本文件是 [Inline Syntax Specification](../../../Inline-Syntax-Specification.md) 第 4 節(完整 EBNF 語法定義)的語義說明文件——另外還有第 7 節(`@mark` Styles Semantics)、第 9 節(`@raw` Opaque Domain)、第 10 節(Nested Parsing)，各自針對這個家族中的一個節點有專屬的詳細說明。本文將 `@bold`、`@italic`、`@underline`、`@del`、`@mark`、`@raw` 視為一組整體來說明；若某節點已有自己的獨立章節，本文只做摘要並連結過去，不重複內容。在 [Block Syntax Specification 第 2 節](../../../Block-Syntax-Specification.md#2-document-ast-structure) 的 Document AST Structure 圖中，這一組被歸類為「Text Formatting」。
+> 本文件是 [Inline Syntax Specification](../../../Inline-Syntax-Specification.md) 第 4 節(完整 EBNF 語法定義)的語義說明文件——另外還有第 7 節(`@mark` / `@color` Styles Semantics)、第 9 節(`@raw` Opaque Domain)、第 10 節(Nested Parsing)，各自針對這個家族中的一個節點有專屬的詳細說明。本文將 `@bold`、`@italic`、`@underline`、`@del`、`@mark`、`@color`、`@raw` 視為一組整體來說明；若某節點已有自己的獨立章節，本文只做摘要並連結過去，不重複內容。在 [Block Syntax Specification 第 2 節](../../../Block-Syntax-Specification.md#2-document-ast-structure) 的 Document AST Structure 圖中，這一組被歸類為「Text Formatting」。
 
 ## 0. 目錄
 
@@ -15,6 +15,7 @@
   * [Underline](#underline)
   * [Strikethrough — `@del`](#strikethrough--del)
   * [Mark](#mark)
+  * [Color](#color)
   * [Raw](#raw)
 * [5. HTML 語義對應(非規範性)](#5-html-語義對應非規範性)
 * [6. AST 表示](#6-ast-表示)
@@ -26,11 +27,13 @@
 
 ## 1. 設計哲學
 
-Text Formatting 節點描述的是：一段文字片段應該如何在視覺或語義上與周圍文字區隔——強調、刪除線、高亮——但不指定具體的字重、顏色或標籤。六個成員中有五個幾乎共用同一種形狀：
+Text Formatting 節點描述的是：一段文字片段應該如何在視覺或語義上與周圍文字區隔——強調、刪除線、高亮——但不指定具體的字重、顏色或標籤。七個成員中有五個幾乎共用同一種形狀：
 
 ```text
 @bold   @italic   @underline   @del   @mark
 ```
+
+`@color` 是「不指定具體顏色」這條原則刻意的例外——它存在的目的正是讓作者在語意性預設不夠用時，能釘死一個精確的文字顏色。它仍屬於這個家族，是因為它的形狀與 `@mark` 相同(一個行內包裹器加一個額外欄位)，而不是 Structural 或 Container 節點。
 
 `@raw` 是刻意存在的例外：它命名的是「*不解析*格式」這件事，而不是一種格式化樣式。它之所以被歸在這個家族裡，是因為它在文法中佔據的位置相同(一個包裹著方括號內容的 `inline-node`)，而不是因為它與其他成員行為相似。
 
@@ -64,11 +67,13 @@ Parser 可以直接找出文件中每一個 `@mark`(用於高亮／註記索引)
 | `@italic` | 無 | `content`(可巢狀) | 純包裝 |
 | `@underline` | 無 | `content`(可巢狀) | 純包裝 |
 | `@del` | 無 | `content`(可巢狀) | 純包裝 |
-| `@mark` | `{styles}`，選填 | `content`(可巢狀) | 這個家族中唯一擁有 styles 欄位的節點——見下方 [Mark](#mark) |
+| `@mark` | `{styles}`，選填 | `content`(可巢狀) | 改變的是**背景色**——見下方 [Mark](#mark) |
+| `@color` | `(hex-color)`，必填 | `content`(可巢狀) | 改變的是**文字色**——見 [Color](#color) |
 | `@raw` | 無 | `raw-content`(不透明，**不可**巢狀) | 這個家族中唯一完全停用行內解析的節點 |
 
 ```ebnf
 mark      = "@mark" , [ styles ] , content ;
+color     = "@color" , "(" , hex-color , ")" , content ;
 bold      = "@bold" , content ;
 italic    = "@italic" , content ;
 underline = "@underline" , content ;
@@ -77,7 +82,7 @@ del       = "@del" , content ;
 raw       = "@raw" , raw-content ;
 ```
 
-六個節點中有四個——`@bold`、`@italic`、`@underline`、`@del`——結構完全相同：一個關鍵字，加上單純的 `content`。`@mark` 在同樣的形狀上多了一個選填欄位。`@raw` 是唯一一個「內容產生式在種類上、而不只是選項上」有所不同的成員——見 [Raw](#raw)。
+七個節點中有四個——`@bold`、`@italic`、`@underline`、`@del`——結構完全相同：一個關鍵字，加上單純的 `content`。`@mark` 在同樣的形狀上多了一個選填欄位；`@color` 則是多了一個**必填**欄位。`@raw` 是唯一一個「內容產生式在種類上、而不只是選項上」有所不同的成員——見 [Raw](#raw)。
 
 ---
 
@@ -131,7 +136,19 @@ raw       = "@raw" , raw-content ;
 @mark{red,underline}[紅色並加底線]
 ```
 
-Text Formatting 中唯一擁有第二個槽位的節點：一個選填的 `{styles}` token 列表(顏色、`underline`、`strikethrough`、`bordered`)。完整語意——兩類 token 的定義、Renderer 對無法識別 token 的 fallback 規則，以及為何 `styles` 只是一個詞法層級的產生式(花括號包裹的字元序列，token 切分留給語意層／Renderer 處理)——都已在 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark-styles-semantics) 詳細說明，本文不再重複。
+擁有第二個槽位的節點之一：一個選填的 `{styles}` token 列表(具名顏色、hex 顏色、`underline`、`strikethrough`、`bordered`)。完整語意——兩類 token 的定義、Renderer 對無法識別 token 的 fallback 規則，以及為何 `styles` 只是一個詞法層級的產生式(花括號包裹的字元序列，token 切分留給語意層／Renderer 處理)——都已在 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics) 詳細說明，本文不再重複。
+
+要注意 `@mark` 的顏色 token 改變的是**背景色**——這正是那組具名色階(`yellow`、`red`、`green`……)調校的用途。真正的文字改色請見下方 [Color](#color)。
+
+---
+
+### Color
+
+```text
+@color(#ff0000)[這段文字是紅色的]
+```
+
+`@mark` 改變背景色，`@color` 改變的是文字本身的顏色——這是在這個節點出現之前，語法完全沒有答案的一塊空白。它的 `(hex-color)` 槽位是**必填**，不是選填；而且與 `@mark` 的 `{styles}` 不同，`@color` 只接受字面的 `#RRGGBB` hex 值，不接受 `@mark` 的具名 color token：那七個具名色是為高亮背景調校的淺色調，直接拿來當文字顏色會對比度不足、幾乎看不清。無法識別或格式不符的值(例如 `@color(blue)[...]`、`@color(#zzz)[...]`)會優雅地退回無額外顏色，而不是拋出錯誤，呼應 [Inline Syntax Specification 第 6 節](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)「忽略而非拋錯」的精神。
 
 ---
 

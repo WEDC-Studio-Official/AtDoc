@@ -65,5 +65,17 @@
   "17-unknown-node-in-comma-list.atd": {
     "shouldThrow": true,
     "messageContains": "only accepts plain text"
+  },
+  "18-svg-node-valid.atd": {
+    "shouldThrow": false,
+    "note": "@svg is a raw pass-through node (like @mermaid) — embedded <svg> markup parses as opaque raw content, not escaped text."
+  },
+  "19-color-node-valid.atd": {
+    "shouldThrow": false,
+    "note": "@color(#ff0000)[...] — new inline node for literal text color, distinct from @mark's background highlight."
+  },
+  "20-list-no-dash-valid.atd": {
+    "shouldThrow": false,
+    "note": "@list items no longer require a leading \"- \" — any non-empty line is an item (Structural-Blocks.md §5 List)."
   }
 }

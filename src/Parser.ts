@@ -30,6 +30,41 @@ function clampLevel(raw: string | undefined): number {
   return Number.isFinite(lvl) && lvl >= 1 && lvl <= 6 ? lvl : 1;
 }
 
+/**
+ * @list item semantics (Structural-Blocks.md §5 List): every non-empty line
+ * is an item. A leading "- " is stripped when present, for backward
+ * compatibility with the old dash-prefixed style — it is no longer required.
+ * Splits on the raw content stream (not re-rendered HTML), so inline nodes
+ * (e.g. @bold) inside an item survive as structured children instead of
+ * being flattened to text.
+ */
+function buildListItems(content: (DocASTNode | string)[]): DocASTNode[] {
+  const lines: (DocASTNode | string)[][] = [[]];
+
+  for (const part of content) {
+    if (typeof part !== 'string') {
+      lines[lines.length - 1].push(part);
+      continue;
+    }
+    const segments = part.split('\n');
+    segments.forEach((seg, idx) => {
+      if (idx > 0) lines.push([]);
+      if (seg !== '') lines[lines.length - 1].push(seg);
+    });
+  }
+
+  const items: DocASTNode[] = [];
+  for (const line of lines) {
+    if (line.length && typeof line[0] === 'string') {
+      line[0] = (line[0] as string).replace(/^[ \t]*-[ \t]+/, '');
+    }
+    const isBlank = line.every(part => typeof part === 'string' && part.trim() === '');
+    if (isBlank) continue;
+    items.push({ type: 'list-item', content: line });
+  }
+  return items;
+}
+
 export class DocParser {
   private tokens: Token[];
   private cursor = 0;
@@ -144,6 +179,7 @@ export class DocParser {
       case 'uri': node.uri = node.paren; break;
       case 'id': node.id = node.paren; break;
       case 'options': node.imgOptions = parseImgOptions(node.paren ?? ''); break;
+      case 'color': node.color = node.paren; break;
     }
 
     if (this.tokens[this.cursor]?.type === 'STYLES') {
@@ -253,6 +289,9 @@ export class DocParser {
         this.expectSlotOpen(node.type);
         node.content = this.parseSlotContent(node.type);
         this.expectSlotClose(node.type);
+        if (node.type === 'list') {
+          node.items = buildListItems(node.content);
+        }
         return node;
       }
     }

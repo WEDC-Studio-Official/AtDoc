@@ -1,4 +1,4 @@
-# @Doc Inline Syntax Specification v1.3.1
+# @Doc Inline Syntax Specification v1.4
 
 ## 0. Table of Contents
 
@@ -8,7 +8,7 @@
 * [4. 完整 EBNF 語法定義](#4-完整-ebnf-語法定義)
 * [5. Escape Rule](#5-escape-rule)
 * [6. Unknown Command Fallback](#6-unknown-command-fallback)
-* [7. @mark Styles Semantics](#7-mark-styles-semantics)
+* [7. @mark / @color Styles Semantics](#7-mark--color-styles-semantics)
 * [8. @link URI Semantics](#8-link-uri-semantics)
 * [9. @raw Opaque Domain](#9-raw-opaque-domain)
 * [10. Nested Parsing](#10-nested-parsing)
@@ -134,6 +134,7 @@ inline-stream =
 
 inline-node =
       mark
+    | color
     | bold
     | italic
     | underline
@@ -153,6 +154,7 @@ inline-node =
    ========================================================================== *)
 
 mark      = "@mark" , [ styles ] , content ;
+color     = "@color" , "(" , hex-color , ")" , content ;
 bold      = "@bold" , content ;
 italic    = "@italic" , content ;
 underline = "@underline" , content ;
@@ -222,6 +224,18 @@ styles =
 
 key =
     { text-char - "]" } ;
+
+(* @color's required paren content — see §7 for the full validation rule
+   (must match /^#[0-9a-fA-F]{6}$/); the terminal itself is grammar-level
+   only, exact digit-count/case validation is semantic-level, same split as
+   `styles` below. *)
+hex-color =
+    "#" , hex-digit , hex-digit , hex-digit , hex-digit , hex-digit , hex-digit ;
+
+hex-digit =
+      digit
+    | "a" | "b" | "c" | "d" | "e" | "f"
+    | "A" | "B" | "C" | "D" | "E" | "F" ;
 
 integer =
     digit ,
@@ -392,7 +406,7 @@ test@example.com
 
 ---
 
-## 7. @mark Styles Semantics
+## 7. @mark / @color Styles Semantics
 
 `@mark` 支援可選的 `styles` 修飾語法：
 
@@ -418,11 +432,22 @@ test@example.com
 
 **1. 顏色 Token（Color Token）**
 
-代表高亮色彩，Renderer 依語意對應到實際顏色值：
+代表高亮色彩，Renderer 依語意對應到實際顏色值。支援兩種寫法，可擇一使用：
 
-```text
-yellow / red / green / blue / orange / purple / gray
-```
+* **具名 Token**（Renderer 自訂實際色值）：
+
+  ```text
+  yellow / red / green / blue / orange / purple / gray
+  ```
+
+* **16 進位 Hex Token**（`#` 開頭、6 位十六進位數字，大小寫皆可，Renderer MUST 直接使用指定值，不得再映射）：
+
+  ```text
+  #ff0000 / #3366FF / #00c896
+  ```
+
+  格式不符 `/^#[0-9a-fA-F]{6}$/` 的 token（例如 `#f00`、`#gggggg`）不視為合法 hex token，
+  依一般規則走 Unknown Command Fallback 的容錯精神（見下方 Renderer 行為）。
 
 **2. 修飾 Token（Modifier Token）**
 
@@ -443,6 +468,27 @@ bordered    (加外框)
 @mark{yellow}[黃色高亮]
 @mark{red,underline}[紅色並加底線]
 @mark{blue,bordered}[藍色並加外框]
+@mark{#3366ff}[16 進位背景色]
+```
+
+---
+
+### @color — 文字改色
+
+`@mark` 改變的是**背景**（高亮），無法改變文字本身的顏色。`@color` 補上這個能力：
+
+```text
+@color(#ff0000)[這段文字是紅色的]
+```
+
+其中 `(#ff0000)` 為**必填**括號，僅接受 16 進位 hex token（`/^#[0-9a-fA-F]{6}$/`）。
+與 `@mark` 的 `{styles}` 不同，`@color` 刻意不支援上方的具名 color token
+（`yellow`／`red`／...）——那組具名色是為淺色高亮背景調校的色階，直接當作文字前景色
+會對比度不足、難以閱讀。Renderer MUST 忽略格式不符的 hex 值並以無額外顏色
+（沿用預設文字色）作為 fallback，而非拋出錯誤：
+
+```text
+@color(not-a-color)[這段沒有指定顏色，優雅地退回無色]
 ```
 
 ---
@@ -450,9 +496,9 @@ bordered    (加外框)
 ### Renderer 行為
 
 * Renderer MUST 至少支援 `styles` 省略時的預設高亮樣式。
-* Renderer MAY 自行決定各 color token 對應的實際色值（例如深色模式與淺色模式下的 `yellow` 可不同）。
-* Renderer MUST 忽略無法識別的 token，並 SHOULD 以純高亮（無額外樣式）作為 fallback，而非拋出錯誤——此行為與 [6. Unknown Command Fallback](#6-unknown-command-fallback) 中「未知指令退回純文字」的容錯精神一致，但作用範圍限定在 `styles` 內部，`@mark[content]` 本身仍會被正常解析為 `mark` 節點。
-* Token 之間的分隔符固定為半形逗號 `,`，前後允許任意數量空白（Parser 應自動 trim）。
+* Renderer MAY 自行決定各具名 color token 對應的實際色值（例如深色模式與淺色模式下的 `yellow` 可不同）；16 進位 hex token 則 MUST 直接使用指定值，不得重新映射。
+* Renderer MUST 忽略無法識別的 token（包含格式不符的 hex token），並 SHOULD 以純高亮／無額外顏色（無額外樣式）作為 fallback，而非拋出錯誤——此行為與 [6. Unknown Command Fallback](#6-unknown-command-fallback) 中「未知指令退回純文字」的容錯精神一致，但作用範圍限定在 `styles` 或 `@color` 的括號內部，`@mark[content]`／`@color(...)[content]` 本身仍會被正常解析為對應節點。
+* Token 之間的分隔符固定為半形逗號 `,`，前後允許任意數量空白（Parser 應自動 trim）。此規則適用於 `@mark` 的 `styles`；`@color` 的括號內只允許單一 hex 值，不使用逗號分隔。
 
 ---
 

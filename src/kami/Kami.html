@@ -126,7 +126,7 @@ See <a data-kami="link" href="https://doc.rust-lang.org/book/ch04-00-understandi
 換行節點用於段落內強制斷行：第一行<br>第二行<br>第三行。
 </p>
 <p data-kami="body">
-逃逸規則讓使用者可以輸出指令關鍵字本身：輸出字面 <pre data-kami="code"><code class="language-text">@mark</code></pre> 與 <pre data-kami="code"><code class="language-text">@bold[hello]</code></pre> 不會被解析成節點，寫法是在前面多加一個 <pre data-kami="code"><code class="language-text">@</code></pre>。
+逃逸規則讓使用者可以輸出指令關鍵字本身：輸出字面 @mark 與 @bold[hello] 不會被解析成節點，寫法是用 @ 全域轉義，或整段包進 @raw[...] 讓解析器完全跳過。
 </p>
 <hr data-kami="hr">
 <h2 data-kami="heading" data-level="2">Raw Domain 示範</h2>

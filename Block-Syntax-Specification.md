@@ -1,4 +1,4 @@
-# @Doc Block Syntax Specification v1.3
+# @Doc Block Syntax Specification v1.4
 
 ## 0. Table of Contents
 
@@ -71,7 +71,8 @@ Document AST
 │   │   ├── @code
 │   │   ├── @img
 │   │   ├── @table
-│   │   └── @hr
+│   │   ├── @hr
+│   │   └── @svg
 │   │
 │   ├── Container Blocks
 │   │   ├── @details
@@ -132,6 +133,7 @@ block-node =
     | image
     | table
     | hr
+    | svg
     | details
     | card
     | note
@@ -180,39 +182,50 @@ image =
 hr =
     "@hr" ;
 
+svg =
+    "@svg" ,
+    raw-block-content ;
+
 details =
     "@details" ,
     [ title ] ,
+    [ styles ] ,
     block-content ;
 
 card =
     "@card" ,
     [ title ] ,
+    [ styles ] ,
     block-content ;
 
 note =
     "@note" ,
     [ title ] ,
+    [ styles ] ,
     block-content ;
 
 tip =
     "@tip" ,
     [ title ] ,
+    [ styles ] ,
     block-content ;
 
 important =
     "@important" ,
     [ title ] ,
+    [ styles ] ,
     block-content ;
 
 warning =
     "@warning" ,
     [ title ] ,
+    [ styles ] ,
     block-content ;
 
 caution =
     "@caution" ,
     [ title ] ,
+    [ styles ] ,
     block-content ;
 
 mermaid =
@@ -235,7 +248,9 @@ image-option =
       src-option
     | width-option
     | height-option
-    | align-option ;
+    | align-option
+    | radius-option
+    | border-option ;
 
 src-option =
     [ "src=" ] , url ;
@@ -248,6 +263,12 @@ height-option =
 
 align-option =
     "align=" , ( "left" | "center" | "right" ) ;
+
+radius-option =
+    "radius=" , text ;
+
+border-option =
+    "border=" , text ;
 
 url =
     { text-char - "," - ")" } ;
@@ -366,6 +387,15 @@ text =
 > `integer`、`text-char` 等終結符定義沿用 Inline Spec 第 4 節
 > （完整 EBNF 語法定義）中的 `integer` 與 `text-char` 產生式，
 > 兩份文件共用同一套字元集定義，此處不重複列出。
+>
+> `styles` 同樣沿用 Inline Spec 第 4 節的 `styles` 產生式（`"{" , { text-char - "}" } , "}"`），
+> 语法層仍只定義「花括號包裹的任意字元序列」；Container Blocks（`@details`、`@card`）與
+> Callout Blocks（`@note`、`@tip`、`@important`、`@warning`、`@caution`）現在正式將其
+> 列入各自的產生式中（見上方第 5–7 節），而不再只是 Parser 端未經 EBNF 明文允許的
+> 附帶行為。Token 語意（color token 與 modifier token 的辨識、hex 支援）沿用
+> Inline Spec 第 7 節 `@mark Styles Semantics` 的既有規則，Renderer 是否／如何把
+> Container／Callout 的 `styles` 映射成視覺樣式由 Renderer 自行決定
+> （例如 KamiAdapter.ts 的獨立 Renderer 分支）。
 
 ---
 
@@ -425,6 +455,18 @@ Show me the code.
 
 ### List
 
+任何非空行都是一個項目；行首的 `- ` 為**選填**的向下相容寫法，Parser 會自動去除：
+
+```text
+@list[
+Apple
+Banana
+Orange
+]
+```
+
+等同於：
+
 ```text
 @list[
 - Apple
@@ -432,6 +474,30 @@ Show me the code.
 - Orange
 ]
 ```
+
+每個項目在 AST 中是一個獨立的 `list-item` 節點（`node.items`），內容可包含行內節點（例如 `@bold`），不再只是純文字：
+
+```text
+@list[
+@bold[Apple] (今日特價)
+Banana
+]
+```
+
+AST:
+
+```text
+List
+└── items
+    ├── ListItem [ Bold("Apple"), " (今日特價)" ]
+    └── ListItem [ "Banana" ]
+```
+
+> [!TIP]
+> **TIP**：舊版語意要求「必須 `- ` 開頭才算項目」，這與「換行即分段」的直覺不一致，
+> 也導致三個 Renderer（Route A / Route B / KamiAdapter）各自用字串處理重新實作
+> 一次列表切分邏輯。新語意由 Parser 統一產生 `ListItem` AST，Renderer 只需渲染
+> 既有結構，不需要再自己切字串。
 
 ---
 
@@ -491,6 +557,8 @@ WEDC Logo
 | `width`       | 顯示寬度（單位由 Renderer 決定）     | `width=200`                |
 | `height`      | 顯示高度（單位由 Renderer 決定）     | `height=150`               |
 | `align`       | 對齊方式                            | `align=left/center/right`  |
+| `radius`      | 圓角（直接透傳給 Renderer 的 CSS 值）| `radius=8px`               |
+| `border`      | 外框（直接透傳給 Renderer 的 CSS 值）| `border=1px solid #ccc`    |
 
 > [!TIP]
 > **TIP**：這裡的擴充方式與 Inline Spec 第 7 節 `@mark Styles Semantics`
@@ -554,7 +622,40 @@ HTML:
 
 ---
 
+### SVG
+
+`@svg` 與 `@code`／`@mermaid` 同屬 `raw-block-content`——內容原樣保留，Parser 不解析、不轉義：
+
+```text
+@svg[
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+  <circle cx="5" cy="5" r="4" />
+</svg>
+]
+```
+
+> [!TIP]
+> **TIP**：`@svg` 的內容是**信任邊界**——它會被 Renderer 原樣輸出成瀏覽器實際渲染
+> 的向量圖，而不是像 `@code` 一樣顯示成文字。Renderer SHOULD 在輸出前過濾掉
+> `<script>` 與 `on*=` 事件屬性（見 Adapters.ts 的 `sanitizeSvg()`），但這是
+> Renderer 職責，不是語法層保證；來源不可信的 `@svg` 內容仍應在更早的階段
+> 做內容審核。
+
+---
+
 ## 6. Container Blocks
+
+`@details`／`@card` 現在也接受**選填**的 `{styles}`（定義與 token 語意見第 4 節與
+Inline Spec 第 7 節），置於 `(title)` 之後、`block-content` 之前：
+
+```text
+@card(API Key){blue,bordered}[
+這裡放說明內容。
+]
+```
+
+省略時維持純內容形式，兩者皆合法。Renderer MAY 忽略無法識別的 token
+（與 Inline Spec §6 Unknown Command Fallback 精神一致）。
 
 ### Details
 
@@ -587,7 +688,7 @@ HTML:
 
 ## 7. Callout Blocks
 
-`@note`、`@tip`、`@important`、`@warning`、`@caution` 皆可搭配**選填**的 `(title)`（定義見第 4 節），為內容附加一個獨立於本文的標題欄位；省略時則維持純內容形式，兩者皆合法：
+`@note`、`@tip`、`@important`、`@warning`、`@caution` 皆可搭配**選填**的 `(title)`（定義見第 4 節），為內容附加一個獨立於本文的標題欄位；亦可搭配**選填**的 `{styles}`（見第 4 節、第 6 節 Container Blocks 的同一套說明），置於 `(title)` 之後；兩者皆省略時則維持純內容形式，皆合法：
 
 ### Note
 

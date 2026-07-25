@@ -16,7 +16,7 @@
 // 不適用於 Terminal、Discord 等純文字 Renderer 目標。
 // ============================================================================
 
-import type { DocASTNode } from './types.ts';
+import type { DocASTNode } from '../types.ts';
 
 // ----------------------------------------------------------------------------
 // Phase 1: Design Tokens
@@ -134,6 +134,14 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/** Same trust-boundary stripping as Adapters.ts sanitizeSvg() — kept local to avoid a cross-Route dependency. */
+function sanitizeSvg(raw: string): string {
+  return raw
+    .replace(/<script[\s\S]*?<\/script\s*>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '');
+}
+
 function renderChildren(content: (DocASTNode | string)[]): string {
   return content.map(c => (typeof c === 'string' ? escapeHtml(c) : renderKamiNode(c))).join('');
 }
@@ -157,9 +165,10 @@ export function renderKamiNode(node: DocASTNode): string {
       // TODO: 左 2px 品牌實線 + olive 色（Kami Quote 元件）
       return `<blockquote data-kami="quote">${renderChildren(node.content)}</blockquote>`;
     case 'list': {
-      const flat = node.content.map(c => (typeof c === 'string' ? escapeHtml(c) : renderKamiNode(c))).join('');
-      const items = flat.split('\n').map(l => l.trim()).filter(l => l.startsWith('- ')).map(l => l.slice(2).trim());
-      return `<ul data-kami="dash-list">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+      // Structured 'list-item' nodes come from the shared Parser (Structural-Blocks.md
+      // §5 List) — no per-Adapter string splitting needed here anymore.
+      const items = node.items ?? [];
+      return `<ul data-kami="dash-list">${items.map(i => `<li>${renderChildren(i.content)}</li>`).join('')}</ul>`;
     }
     case 'code':
       // TODO: ivory 底 + 0.5px border + 6px 圓角 + mono 字體（Kami Code Block）
@@ -176,6 +185,11 @@ export function renderKamiNode(node: DocASTNode): string {
     }
     case 'hr':
       return `<hr data-kami="hr">`;
+    case 'svg':
+      // TODO(feat/kami-adapter, item 11): decide whether Kami recolors inline SVGs
+      // or passes them through as-is. Passing through for now — see Adapters.ts
+      // sanitizeSvg() for the same trust-boundary stripping applied here.
+      return sanitizeSvg(node.raw ?? '');
 
     // --- Container Blocks --- (TODO)
     case 'details':
@@ -222,6 +236,17 @@ export function renderKamiNode(node: DocASTNode): string {
       // 優先權規則已實作：見上方 resolveMarkTint()
       const tint = resolveMarkTint(node.styles);
       return `<mark data-kami="mark" style="background-color:${tint};">${renderChildren(node.content)}</mark>`;
+    }
+    case 'color': {
+      // Unlike @mark's named-token palette (resolveMarkTint() above, tuned
+      // for pale tint backgrounds), @color is a precise text color — the
+      // Kami tint table would be nearly unreadable as foreground text, so
+      // only literal hex resolves here; anything else falls back to no
+      // explicit color rather than throwing (Inline Spec §6).
+      const colorToken = node.color;
+      const isHex = !!colorToken && /^#[0-9a-fA-F]{6}$/.test(colorToken);
+      const style = isHex ? ` style="color:${colorToken};"` : '';
+      return `<span data-kami="color"${style}>${renderChildren(node.content)}</span>`;
     }
     case 'raw':
       return escapeHtml(node.raw ?? '');

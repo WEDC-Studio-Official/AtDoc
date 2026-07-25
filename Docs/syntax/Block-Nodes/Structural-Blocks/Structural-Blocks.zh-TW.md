@@ -2,7 +2,7 @@
 
 *[English version](./Structural-Blocks.md)*
 
-> 本文件是 [Block Syntax Specification](../../../Block-Syntax-Specification.md) 第 5 節（Structural Blocks）的語義說明文件。語法定義請參閱該節，本文聚焦於 `@h`、`@p`、`@quote`、`@list`、`@code`、`@img`、`@table`、`@hr` 的意義、使用時機，以及目前尚未完全定案的部分。
+> 本文件是 [Block Syntax Specification](../../../Block-Syntax-Specification.md) 第 5 節（Structural Blocks）的語義說明文件。語法定義請參閱該節，本文聚焦於 `@h`、`@p`、`@quote`、`@list`、`@code`、`@img`、`@table`、`@hr`、`@svg` 的意義、使用時機，以及目前尚未完全定案的部分。
 
 ## 0. 目錄
 
@@ -18,6 +18,7 @@
   * [Image](#image)
   * [Table](#table)
   * [Horizontal Rule](#horizontal-rule)
+  * [SVG](#svg)
 * [5. AST 表示](#5-ast-表示)
 * [6. Renderer 獨立性](#6-renderer-獨立性)
 * [7. AI 生成穩定性](#7-ai-生成穩定性)
@@ -56,11 +57,12 @@ Markdown           @Doc
 | `@h` | `(level)`，選填，`1`–`6` | `block-content` | 省略時的預設值見 [Heading](#heading) |
 | `@p` | 無 | `block-content` | 最單純的純文字容器 |
 | `@quote` | 無 | `block-content` | 沒有獨立的引用來源／作者欄位 |
-| `@list` | 無（見 [List](#list)） | `block-content` | 項目是字面上的 `- ` 文字，不是結構化 AST |
+| `@list` | 無（見 [List](#list)） | `block-content` | 任何非空行都是項目——結構化 `ListItem` AST，不再是重新切分的文字 |
 | `@code` | `(language)`，選填 | `raw-block-content` | 不解析——概念上與 `@raw` 相同 |
 | `@img` | `(image-option-list)` | `block-content`（替代文字） | 唯一擁有結構化 key=value 選項列表的節點 |
 | `@table` | 無 | `@cols` + `@data`（非通用 `block-content`） | 唯一擁有專屬子節點文法的節點 |
 | `@hr` | 無 | 無——裸 `@hr`，完全不帶任何括號 | 唯一零槽位的節點 |
+| `@svg` | 無 | `raw-block-content` | 不解析、不轉義——概念上與 `@code`／`@mermaid` 相同，但輸出為即時繪製的圖形而非文字 |
 
 沒有任何兩列是一樣的，這是刻意的設計——見第 1 節。
 
@@ -128,6 +130,18 @@ Show me the code.
 
 ### List
 
+`block-content` 內任何非空行都是一個項目。行首的 `- ` 為選填、向下相容的寫法，Parser 會自動去除，不再是必要條件：
+
+```text
+@list[
+Apple
+Banana
+Orange
+]
+```
+
+等同於仍然合法的舊寫法：
+
 ```text
 @list[
 - Apple
@@ -136,9 +150,9 @@ Show me the code.
 ]
 ```
 
-項目是 `block-content` 內以 `- ` 開頭的字面文字——目前沒有專屬的 `ListItem` AST 節點、沒有有序／無序的區分，也沒有正式的巢狀語法。（相較之下，[Table](#table) 擁有完全結構化的 `Columns`／`Rows` AST。）
+每個項目現在是 Parser 產生的獨立 `ListItem` AST 節點（`node.items`），不再由各個 Renderer 各自把已渲染的文字重新切分一次——因此項目內的行內節點（例如 `@bold[Apple]`）會以結構化子節點保留下來，而不是先被壓平成純文字。（相較之下，[Table](#table) 擁有完全結構化的 `Columns`／`Rows` AST——`@list` 現在也有對應、只是較簡單的保證。）
 
-曾有人提出用 `(modifier)` 陣列，例如 `@list(bullet,number)[...]`——宣告「第一層是圓點，第二層是數字」——作為正式化巢狀列表型態的方式，但這**並不屬於目前的 EBNF**（`list = "@list", block-content` 沒有 modifier 欄位）。請將它視為一個設計方向，而非現行文法。
+目前仍沒有有序／無序的區分，也沒有正式的巢狀語法。曾有人提出用 `(modifier)` 陣列，例如 `@list(bullet,number)[...]`——宣告「第一層是圓點，第二層是數字」——作為正式化巢狀列表型態的方式，但這**並不屬於目前的 EBNF**（`list = "@list", block-content` 沒有 modifier 欄位）。請將它視為一個設計方向，而非現行文法。
 
 ---
 
@@ -182,7 +196,7 @@ WEDC Logo
 ]
 ```
 
-`@img` 是唯一一個括號槽位為結構化、可擴充 key=value 列表（而非單一 modifier）的 Structural Block——完整選項表與可擴充規則（無法識別的 key MUST 被忽略，而非拋出錯誤）請見 [Block Syntax Specification 第 5 節 Image](../../../Block-Syntax-Specification.md#image)。
+`@img` 是唯一一個括號槽位為結構化、可擴充 key=value 列表（而非單一 modifier）的 Structural Block——完整選項表（現已包含 `radius` 與 `border`，直接原樣透傳為 CSS 值）與可擴充規則（無法識別的 key MUST 被忽略，而非拋出錯誤）請見 [Block Syntax Specification 第 5 節 Image](../../../Block-Syntax-Specification.md#image)。
 
 ---
 
@@ -217,6 +231,20 @@ HTML：
 ```
 
 @Doc 中唯一零槽位的節點——沒有 modifier、沒有 styles、沒有 content、沒有 title。`@hr` 純粹是標點符號：它只標示一個段落中斷，不攜帶任何資料。
+
+---
+
+### SVG
+
+```text
+@svg[
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+  <circle cx="5" cy="5" r="4" />
+</svg>
+]
+```
+
+`@svg` 的內容是 `raw-block-content`——與 `@code`／`@mermaid` 同樣不解析——但 Renderer 會**不轉義**地原樣輸出，讓瀏覽器實際繪製出向量圖，而不是把標記印成文字。這跨越了一道信任邊界：Renderer SHOULD 在輸出前過濾掉 `<script>` 標籤與 `on*=` 事件屬性（見 `Adapters.ts` 的 `sanitizeSvg()`），但不可信來源的 `@svg` 內容仍應在渲染之前的階段做內容審核——這裡的過濾是安全網，不是內容安全的保證。
 
 ---
 

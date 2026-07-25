@@ -31,6 +31,9 @@ node tests/run-tests.ts
 | `15-refn-non-integer.atd` | `@refn[one]`——內容不是數字 | **拋錯**：must contain only digits |
 | `16-unclosed-raw-domain-silent-swallow.atd` | `@mermaid[...` 沒有結尾 `]` | **不拋錯，但是已知限制**：見下方說明 |
 | `17-unknown-node-in-comma-list.atd` | `@cols[id,@bold[name],price]`——逗號列表裡混入了節點 | **拋錯**：only accepts plain text |
+| `18-svg-node-valid.atd` | `@svg[...]`——內嵌原始 `<svg>` 標記 | **不拋錯**：與 `@mermaid` 同樣走 raw pass-through，不經過 escape |
+| `19-color-node-valid.atd` | `@color(#ff0000)[...]`——新的文字改色節點 | **不拋錯**：`(#hex)` 為必填括號 |
+| `20-list-no-dash-valid.atd` | `@list[...]`——項目沒有 `- ` 前綴，只用換行分隔 | **不拋錯**：新語義下任何非空行都是項目 |
 
 ## 已知限制：`16-unclosed-raw-domain-silent-swallow.atd`
 

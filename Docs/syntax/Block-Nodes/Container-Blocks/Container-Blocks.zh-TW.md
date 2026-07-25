@@ -63,17 +63,18 @@ Parser 可以直接找出文件中每一個 `@card` 或 `@details`，不需要�
 
 ## 3. 語法
 
-兩個節點共用同一種結構——可省略的 `(title)` 加上 `block-content`：
+兩個節點共用同一種結構——可省略的 `(title)`、可省略的 `{styles}`，加上 `block-content`：
 
 ```text
 @details(title)[content]
-@card(title)[content]
+@card(title){styles}[content]
 ```
 
 ```ebnf
-details = "@details" , [ title ] , block-content ;
-card    = "@card" , [ title ] , block-content ;
+details = "@details" , [ title ] , [ styles ] , block-content ;
+card    = "@card" , [ title ] , [ styles ] , block-content ;
 title   = "(" , text , ")" ;
+styles  = "{" , { text-char - "}" } , "}" ;
 ```
 
 範例：
@@ -85,12 +86,12 @@ title   = "(" , text , ")" ;
 ```
 
 ```text
-@card(API Key)[
+@card(API Key){blue,bordered}[
 這裡放說明內容。
 ]
 ```
 
-`title` 對兩個節點都是選填欄位(參見 [Block Syntax Specification 第 4 節](../../../Block-Syntax-Specification.md#4-shared-components))；省略時，由 Renderer 決定預設呈現方式。
+`title` 對兩個節點都是選填欄位(參見 [Block Syntax Specification 第 4 節](../../../Block-Syntax-Specification.md#4-shared-components))；省略時，由 Renderer 決定預設呈現方式。`styles` 同樣是選填欄位，自 Block Syntax Specification v1.4 起已正式納入兩個節點的 EBNF——token 語意(具名色彩 token、hex token、修飾 token)完全沿用 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics)；個別 Renderer 是否／如何把它們映射成視覺樣式，仍是 Renderer 自行決定(見下方第 5 節說明)。
 
 **完全省略 vs. 空括號。** EBNF 將整個 `[ title ]` 標示為可省略，但 `text = { any-unicode-char }` 本身也允許零個字元——因此單就文法而言，`@card()[content]`(空括號)並未被明確排除。本文件將兩者視為等價：完全省略 `(title)`，與括號內為空白或空字串的 `()`，都應正規化為「沒有標題」。Parser 可以選擇在 Strict Mode 下將 `()` 標示為需要提示的寫法(參見 [Inline Syntax Specification 第 11 節](../../../Inline-Syntax-Specification.md#11-parser-recovery-strategy))，但就語義而言，兩者都不帶標題。
 
@@ -133,7 +134,7 @@ HTML：
 
 適用於：將標題、說明與相關內容組合成一個單元——預覽面板、摘要區塊、帶標籤的段落。當 `title` 省略時，卡片沒有標題，只保留分組後的內容。
 
-> **範圍說明：**[README](../../../README.md) 開頭的範例展示了 `@card(featured){w-300px bg-f8f9fa text-sm}[...]`，使用的是 @Doc 通用節點文法 `@node(modifier){styles}[content]<action>` 的完整四槽形式。這個四槽結構代表 notation 未來的發展方向；但 `@card` 的 `(modifier)` 與 `{styles}` 槽位**尚未納入正式的 v1.3 EBNF**(見 Block Syntax Specification 第 6 節)，該節目前僅定義 `@card(title)[content]`。請將 README 的範例視為前瞻性示意，而非現行文法。
+> **範圍說明(v1.4 更新)：**[README](../../../README.md) 開頭的範例展示了 `@card(featured){w-300px bg-f8f9fa text-sm}[...]`。`{styles}` 槽位現在已是正式文法(Block Syntax Specification 第 6 節，v1.4)——見上方第 3 節。不過 `(title)` 槽位仍然specifically 是標題欄位(`registry.ts` 中的 `parenRole: 'title'`)，並不是可以隨意塞入 Tailwind 樣式字串(像該 README 範例裡的 `featured`)的通用 `(modifier)` 槽位；`@card` 的括號內容一律解析為 `node.title`。請將 README 範例中把該槽位當成 `(modifier)` 的讀法視為前瞻性示意，而非現行文法——該範例只有 `{styles}` 那一半是真實的。
 
 ---
 

@@ -154,7 +154,7 @@ Each item is now a dedicated `ListItem` AST node (`node.items`) built by the Par
 
 #### Ordered lists
 
-`@list(ordered)[...]` renders as `<ol>` instead of the default `<ul>`. An item can additionally start with `N. ` / `N)` to give it an explicit number — the Parser stores it as that `ListItem`'s `marker`, and the Renderer only turns it into `<li value="N">` when the list is `ordered`, letting the browser's native `<ol>` counter handle "jump then auto-resume":
+`@list(ordered)[...]` renders as `<ol>` instead of the default `<ul>`. Like plain `@list`, a leading `- ` is optional — a bare text line is still a valid item. An item can additionally start with `N. ` / `N)` to give it an explicit number — the Parser stores it as that `ListItem`'s `marker`, and the Renderer only turns it into `<li value="N">` when the list is `ordered`, letting the browser's native `<ol>` counter handle "jump then auto-resume":
 
 ```text
 @list(ordered)[

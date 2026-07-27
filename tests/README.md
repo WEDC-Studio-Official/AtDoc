@@ -37,6 +37,7 @@ node tests/run-tests.ts
 | `21-list-ordered-valid.atd` | `@list(ordered)[...]`——有序清單 | **不拋錯**：渲染成 `<ol>` 而非預設的 `<ul>` |
 | `22-list-ordered-manual-marker-valid.atd` | 有序清單裡某個項目行首寫 `3. ` 明確指定編號 | **不拋錯**：該項目的 `marker` 被擷取，之後項目自動接續編號 |
 | `23-list-nested-valid.atd` | 巢狀 `@list[...]`——單獨佔一行放在上一個項目底下 | **不拋錯**：併入前一個項目的內容，形成結構化的巢狀清單 |
+| `24-list-ordered-no-dash-valid.atd` | `@list(ordered)[...]`——項目沒有 `- ` 前綴，只用換行分隔 | **不拋錯**：`ordered` 跟一般 `@list` 一樣，`-` 是選填，不是必要條件 |
 
 ## 已知限制：`16-unclosed-raw-domain-silent-swallow.atd`
 

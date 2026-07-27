@@ -89,5 +89,9 @@
   "23-list-nested-valid.atd": {
     "shouldThrow": false,
     "note": "A line holding only a nested @list[...] is folded into the previous item instead of becoming a sibling item, producing a real nested <ul>/<ol>."
+  },
+  "24-list-ordered-no-dash-valid.atd": {
+    "shouldThrow": false,
+    "note": "@list(ordered) doesn't require a leading \"- \" either — same dash-optional rule as plain @list (20-list-no-dash-valid.atd), just rendered as <ol>."
   }
 }

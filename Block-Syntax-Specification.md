@@ -503,7 +503,7 @@ List
 
 #### 有序清單
 
-`@list(ordered)[...]` 會渲染成 `<ol>` 而不是預設的 `<ul>`。項目行首可以額外寫 `N. `／`N)` 明確指定編號，Parser 會把這個數字存進該 `ListItem` 的 `marker` 欄位；Renderer 只在 `ordered` 為真時才會把 `marker` 轉成 `<li value="N">`，交給瀏覽器原生的 `<ol>` 計數器處理「跳號後自動接續」：
+`@list(ordered)[...]` 會渲染成 `<ol>` 而不是預設的 `<ul>`。跟一般 `@list` 一樣，行首的 `- ` 是選填、非必要——純文字行也算一個項目；額外寫 `N. `／`N)` 則是明確指定編號，Parser 會把這個數字存進該 `ListItem` 的 `marker` 欄位；Renderer 只在 `ordered` 為真時才會把 `marker` 轉成 `<li value="N">`，交給瀏覽器原生的 `<ol>` 計數器處理「跳號後自動接續」：
 
 ```text
 @list(ordered)[

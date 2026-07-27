@@ -143,7 +143,7 @@ inline-node =
     | sup
     | sub
     | fn
-    | refn
+    | defn
     | kbd
     | link
     | br
@@ -166,11 +166,11 @@ sup       = "@sup" , content ;
 sub       = "@sub" , content ;
 
 (* Footnotes:
-   refn = 正文中的引用點（角標），只帶編號
-   fn   = 腳注定義本體，帶編號與實際內容
+   fn   = 正文中的引用點（角標），只帶編號
+   defn = 腳注定義本體，帶編號與實際內容
 *)
-refn      = "@refn" , "[" , integer , "]" ;
-fn        = "@fn" , modifier , content ;
+fn        = "@fn" , "[" , integer , "]" ;
+defn      = "@defn" , modifier , content ;
 
 kbd       = "@kbd" , "[" , key , "]" ;
 

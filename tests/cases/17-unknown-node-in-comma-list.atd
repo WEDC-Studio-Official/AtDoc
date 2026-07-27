@@ -1,5 +1,5 @@
 @table[
-    @cols[id,@bold[name],price]
+    @cols[id,@card[name],price]
 
     @data[
         [1,Alice,100]

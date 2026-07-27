@@ -187,8 +187,11 @@ export function renderKamiNode(node: DocASTNode): string {
       return `<img data-kami="image" src="${escapeHtml(opts.src ?? '')}">`;
     }
     case 'table': {
-      const thead = `<thead><tr>${(node.columns ?? []).map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>`;
-      const tbody = `<tbody>${(node.rows ?? []).map(r => `<tr>${r.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+      // columns/rows hold inline content (text + a curated set of formatting
+      // nodes, see registry.ts's isCellAllowedNode), same shape as `content`
+      // elsewhere — render it the same way, then turn @n's "\n" marker into <br>.
+      const thead = `<thead><tr>${(node.columns ?? []).map(c => `<th>${renderChildren(c).replace(/\n/g, '<br>')}</th>`).join('')}</tr></thead>`;
+      const tbody = `<tbody>${(node.rows ?? []).map(r => `<tr>${r.map(cell => `<td>${renderChildren(cell).replace(/\n/g, '<br>')}</td>`).join('')}</tr>`).join('')}</tbody>`;
       return `<table data-kami="table">${thead}${tbody}</table>`;
     }
     case 'hr':
@@ -270,9 +273,9 @@ export function renderKamiNode(node: DocASTNode): string {
       return `<a data-kami="link" href="${escapeHtml(node.uri ?? '')}">${renderChildren(node.content)}</a>`;
 
     // --- Footnotes ---
-    case 'fn':
+    case 'defn':
       return `<li data-kami="footnote" id="fn${escapeHtml(node.id ?? '')}">${renderChildren(node.content)} <a data-kami="footnote-back" href="#fnref${escapeHtml(node.id ?? '')}">↩</a></li>`;
-    case 'refn':
+    case 'fn':
       return `<sup data-kami="footnote-ref" id="fnref${node.number}"><a href="#fn${node.number}">${node.number}</a></sup>`;
 
     // --- Special Nodes ---

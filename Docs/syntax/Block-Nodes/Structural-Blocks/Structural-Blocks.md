@@ -248,6 +248,8 @@ WEDC Logo
 
 The only Structural Block with dedicated sub-node grammar instead of generic `block-content` — `@cols` and `@data` are required, in that order (see [Block Syntax Specification §5 Table](../../../Block-Syntax-Specification.md#table)). This gives `@table` the strongest AST guarantees in the family: columns and rows are structured data, not text a renderer has to re-parse.
 
+Each column/cell isn't plain text only — it also accepts a curated set of inline formatting nodes (`@bold`, `@link`, `@mark`, etc. — full list in `registry.ts`'s `isCellAllowedNode`), since those only change how the text is presented without touching the table's own "columns line up with rows" structural guarantee. Anything outside that list (`@card`, `@table`, and other nodes that bring their own layout structure) still throws rather than being silently dropped.
+
 ---
 
 ### Horizontal Rule
@@ -310,7 +312,7 @@ Document
                     └── "60"
 ```
 
-Unlike `@list` (still just text inside `block-content`), `@table`'s rows and columns are separate AST branches a tool can query directly — e.g. "find all rows where price > 70" — without re-parsing a string.
+`@table`'s rows and columns are separate AST branches a tool can query directly — e.g. "find all rows where price > 70" — without re-parsing a string ([List](#list) now has an equivalent, if simpler, `ListItem` guarantee — see the List section above).
 
 ---
 

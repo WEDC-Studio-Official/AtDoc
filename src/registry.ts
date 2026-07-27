@@ -16,7 +16,7 @@ export type ContentMode =
   | 'raw'         // raw-block-content — unparsed, no escapes (@code, @mermaid)
   | 'raw-escaped' // raw-content — unparsed, local @] / @@] exceptions (@raw)
   | 'key'         // "[" key "]" — raw text excluding "]", no nesting (@kbd)
-  | 'integer'     // "[" integer "]" — digits only (@refn)
+  | 'integer'     // "[" integer "]" — digits only (@fn)
   | 'comma-list'  // "[" identifier list "]" (@cols)
   | 'rows'        // "[" { row } "]" (@data)
   | 'table'       // "[" @cols @data "]" — fixed two-child structure (@table)
@@ -31,7 +31,7 @@ export type ParenRole =
   | 'language' // @code
   | 'options'  // @img
   | 'uri'      // @link
-  | 'id'       // @fn
+  | 'id'       // @defn
   | 'color'    // @color
   | 'ordered'; // @list
 
@@ -98,8 +98,8 @@ const REGISTRY: NodeDef[] = [
   def({ name: 'link', kind: 'inline', content: 'generic', paren: 'required', parenRole: 'uri' }),
 
   // Footnotes — Inline §4
-  def({ name: 'fn', kind: 'inline', content: 'generic', paren: 'required', parenRole: 'id' }),
-  def({ name: 'refn', kind: 'inline', content: 'integer', paren: 'none' }),
+  def({ name: 'defn', kind: 'inline', content: 'generic', paren: 'required', parenRole: 'id' }),
+  def({ name: 'fn', kind: 'inline', content: 'integer', paren: 'none' }),
 
   // Special Nodes — Inline §4
   // Note: "@@" (escape) is deliberately NOT registered here. Per Inline Spec §2,
@@ -127,4 +127,27 @@ export function isKnownCommand(name: string): boolean {
  */
 export function getAllNodeDefs(): readonly NodeDef[] {
   return REGISTRY;
+}
+
+/**
+ * Nodes let through inside @cols/@data cells (Structural-Blocks.md §5 Table
+ * only promises plain text there, but most of these just restyle text —
+ * bold/color/etc — without affecting the table's own structure, so authors
+ * can still use them for cell formatting). New nodes must opt in here
+ * explicitly; anything not listed (e.g. @card, @details) is Strict Mode's
+ * concern — Parser.ts's parseInlineCellList() throws for it rather than
+ * silently dropping it.
+ *
+ * @defn is deliberately excluded: it renders as `<li data-kami="footnote">`,
+ * meant to live inside a collected footnotes list, not loose inside a `<td>`.
+ * @fn (the footnote *reference*, a self-contained `<sup><a>` back-link) is
+ * fine and included — Parser.ts checks this set before its raw-family
+ * carve-out so @fn gets parsed as a real node instead of dumped as bare digits.
+ */
+const CELL_ALLOWED_INLINE: ReadonlySet<string> = new Set([
+  'bold', 'italic', 'underline', 'del', 'mark', 'color', 'sup', 'sub', 'link', 'fn',
+]);
+
+export function isCellAllowedNode(name: string): boolean {
+  return CELL_ALLOWED_INLINE.has(name);
 }

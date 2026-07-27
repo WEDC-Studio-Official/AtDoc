@@ -1,4 +1,3 @@
-F:\program\node\node.exe .\main.ts
 --- Tokens --- 519 tokens
 --- AST ---
 [
@@ -95,7 +94,7 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "p",
     "content": [
-      "\nThis is a plain paragraph with ",
+      "\r\nThis is a plain paragraph with ",
       {
         "type": "bold",
         "content": [
@@ -109,7 +108,7 @@ F:\program\node\node.exe .\main.ts
           "italic"
         ]
       },
-      " text mixed in.\n"
+      " text mixed in.\r\n"
     ]
   },
   {
@@ -123,7 +122,7 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "quote",
     "content": [
-      "\nTalk is cheap.\nShow me the code.\n"
+      "\r\nTalk is cheap.\r\nShow me the code.\r\n"
     ]
   },
   {
@@ -137,25 +136,26 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "list",
     "content": [
-      "\n- Apple\n- Banana\n- Orange\n"
+      "\r\n- Apple\r\n- Banana\r\n- Orange\r\n"
     ],
+    "ordered": false,
     "items": [
       {
         "type": "list-item",
         "content": [
-          "Apple"
+          "Apple\r"
         ]
       },
       {
         "type": "list-item",
         "content": [
-          "Banana"
+          "Banana\r"
         ]
       },
       {
         "type": "list-item",
         "content": [
-          "Orange"
+          "Orange\r"
         ]
       }
     ]
@@ -163,19 +163,20 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "list",
     "content": [
-      "\nPear\nPeach\n"
+      "\r\nPear\r\nPeach\r\n"
     ],
+    "ordered": false,
     "items": [
       {
         "type": "list-item",
         "content": [
-          "Pear"
+          "Pear\r"
         ]
       },
       {
         "type": "list-item",
         "content": [
-          "Peach"
+          "Peach\r"
         ]
       }
     ]
@@ -193,7 +194,7 @@ F:\program\node\node.exe .\main.ts
     "content": [],
     "paren": "ts",
     "language": "ts",
-    "raw": "\nconst x: number = 1;\nconsole.log(x);\n"
+    "raw": "\r\nconst x: number = 1;\r\nconsole.log(x);\r\n"
   },
   {
     "type": "h",
@@ -206,9 +207,9 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "img",
     "content": [
-      "\nWEDC Logo\n"
+      "\r\nWEDC Logo\r\n"
     ],
-    "paren": "\nhttps://example.com/logo.png,width=200,align=center,radius=8px,border=1px solid #ccc\n",
+    "paren": "\r\nhttps://example.com/logo.png,width=200,align=center,radius=8px,border=1px solid #ccc\r\n",
     "imgOptions": {
       "src": "https://example.com/logo.png",
       "width": "200",
@@ -228,7 +229,7 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "svg",
     "content": [],
-    "raw": "\n<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n"
+    "raw": "\r\n<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\r\n"
   },
   {
     "type": "h",
@@ -242,25 +243,49 @@ F:\program\node\node.exe .\main.ts
     "type": "table",
     "content": [],
     "columns": [
-      "id",
-      "name",
-      "price"
+      [
+        "id"
+      ],
+      [
+        "name"
+      ],
+      [
+        "price"
+      ]
     ],
     "rows": [
       [
-        "1",
-        "早餐",
-        "60"
+        [
+          "1"
+        ],
+        [
+          "早餐"
+        ],
+        [
+          "60"
+        ]
       ],
       [
-        "2",
-        "午餐",
-        "80"
+        [
+          "2"
+        ],
+        [
+          "午餐"
+        ],
+        [
+          "80"
+        ]
       ],
       [
-        "3",
-        "晚餐",
-        "90"
+        [
+          "3"
+        ],
+        [
+          "晚餐"
+        ],
+        [
+          "90"
+        ]
       ]
     ]
   },
@@ -295,7 +320,7 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "details",
     "content": [
-      "\n這裡是隱藏內容，讀者可以依需求展開查看。\n"
+      "\r\n這裡是隱藏內容，讀者可以依需求展開查看。\r\n"
     ],
     "paren": "展開更多資訊",
     "title": "展開更多資訊"
@@ -311,7 +336,7 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "card",
     "content": [
-      "\n請將您的 API 金鑰存放在環境變數中，而不是寫死在程式碼裡。\n"
+      "\r\n請將您的 API 金鑰存放在環境變數中，而不是寫死在程式碼裡。\r\n"
     ],
     "paren": "API Key",
     "title": "API Key"
@@ -331,25 +356,25 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "note",
     "content": [
-      "\n這是一般補充資訊，非必要閱讀。\n"
+      "\r\n這是一般補充資訊，非必要閱讀。\r\n"
     ]
   },
   {
     "type": "tip",
     "content": [
-      "\n啟用快取可以加速重複建置。\n"
+      "\r\n啟用快取可以加速重複建置。\r\n"
     ]
   },
   {
     "type": "important",
     "content": [
-      "\nAPI v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。\n"
+      "\r\nAPI v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。\r\n"
     ]
   },
   {
     "type": "warning",
     "content": [
-      "\n此 API 端點將於 3.0 版本移除。\n"
+      "\r\n此 API 端點將於 3.0 版本移除。\r\n"
     ],
     "paren": "資料保留政策",
     "title": "資料保留政策"
@@ -357,7 +382,7 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "caution",
     "content": [
-      "\n此操作為不可逆，將永久刪除使用者資料。\n"
+      "\r\n此操作為不可逆，將永久刪除使用者資料。\r\n"
     ]
   },
   {
@@ -387,7 +412,7 @@ F:\program\node\node.exe .\main.ts
       {
         "type": "tab",
         "content": [
-          "\n        ",
+          "\r\n        ",
           {
             "type": "code",
             "content": [],
@@ -395,7 +420,7 @@ F:\program\node\node.exe .\main.ts
             "language": "js",
             "raw": "console.log(\"hi\");"
           },
-          "\n    "
+          "\r\n    "
         ],
         "paren": "JavaScript",
         "title": "JavaScript"
@@ -403,7 +428,7 @@ F:\program\node\node.exe .\main.ts
       {
         "type": "tab",
         "content": [
-          "\n        ",
+          "\r\n        ",
           {
             "type": "code",
             "content": [],
@@ -411,7 +436,7 @@ F:\program\node\node.exe .\main.ts
             "language": "py",
             "raw": "print(\"hi\")"
           },
-          "\n    "
+          "\r\n    "
         ],
         "paren": "Python",
         "title": "Python"
@@ -419,7 +444,7 @@ F:\program\node\node.exe .\main.ts
       {
         "type": "tab",
         "content": [
-          "\n        ",
+          "\r\n        ",
           {
             "type": "code",
             "content": [],
@@ -427,7 +452,7 @@ F:\program\node\node.exe .\main.ts
             "language": "rust",
             "raw": "println!(\"hi\");"
           },
-          "\n    "
+          "\r\n    "
         ],
         "paren": "Rust",
         "title": "Rust"
@@ -445,7 +470,7 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "mermaid",
     "content": [],
-    "raw": "\ngraph TD\nA --> B\nB --> C\n"
+    "raw": "\r\ngraph TD\r\nA --> B\r\nB --> C\r\n"
   },
   {
     "type": "hr",
@@ -470,7 +495,7 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "p",
     "content": [
-      "\n",
+      "\r\n",
       {
         "type": "bold",
         "content": [
@@ -498,20 +523,20 @@ F:\program\node\node.exe .\main.ts
           "刪除線文字"
         ]
       },
-      "。\n"
+      "。\r\n"
     ]
   },
   {
     "type": "p",
     "content": [
-      "\n",
+      "\r\n",
       {
         "type": "mark",
         "content": [
           "預設高亮"
         ]
       },
-      "\n",
+      "\r\n",
       {
         "type": "mark",
         "content": [
@@ -521,7 +546,7 @@ F:\program\node\node.exe .\main.ts
           "yellow"
         ]
       },
-      "\n",
+      "\r\n",
       {
         "type": "mark",
         "content": [
@@ -532,7 +557,7 @@ F:\program\node\node.exe .\main.ts
           "underline"
         ]
       },
-      "\n",
+      "\r\n",
       {
         "type": "mark",
         "content": [
@@ -542,13 +567,13 @@ F:\program\node\node.exe .\main.ts
           "#3366ff"
         ]
       },
-      "\n"
+      "\r\n"
     ]
   },
   {
     "type": "p",
     "content": [
-      "\n",
+      "\r\n",
       {
         "type": "color",
         "content": [
@@ -566,19 +591,19 @@ F:\program\node\node.exe .\main.ts
         "paren": "unknown",
         "color": "unknown"
       },
-      "。\n"
+      "。\r\n"
     ]
   },
   {
     "type": "p",
     "content": [
-      "\nRaw domain 範例：",
+      "\r\nRaw domain 範例：",
       {
         "type": "raw",
         "content": [],
         "raw": "這裡的 @mark[hello] 不會被解析，只會照字面輸出。"
       },
-      "\n"
+      "\r\n"
     ]
   },
   {
@@ -592,7 +617,7 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "p",
     "content": [
-      "\nE = mc",
+      "\r\nE = mc",
       {
         "type": "sup",
         "content": [
@@ -606,13 +631,13 @@ F:\program\node\node.exe .\main.ts
           "2"
         ]
       },
-      "O。\n"
+      "O。\r\n"
     ]
   },
   {
     "type": "p",
     "content": [
-      "\n按下",
+      "\r\n按下",
       {
         "type": "kbd",
         "content": [],
@@ -624,13 +649,13 @@ F:\program\node\node.exe .\main.ts
         "content": [],
         "raw": "C"
       },
-      "複製。\n"
+      "複製。\r\n"
     ]
   },
   {
     "type": "p",
     "content": [
-      "\n詳見",
+      "\r\n詳見",
       {
         "type": "link",
         "content": [
@@ -648,7 +673,7 @@ F:\program\node\node.exe .\main.ts
         "paren": "test@example.com",
         "uri": "test@example.com"
       },
-      "。\n"
+      "。\r\n"
     ]
   },
   {
@@ -662,23 +687,23 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "p",
     "content": [
-      "\nRust 的所有權系統",
+      "\r\nRust 的所有權系統",
       {
-        "type": "refn",
+        "type": "fn",
         "content": [],
         "raw": "1",
         "number": 1
       },
-      "從根本上消除了資料競爭。\n"
+      "從根本上消除了資料競爭。\r\n"
     ]
   },
   {
     "type": "p",
     "content": [
       {
-        "type": "fn",
+        "type": "defn",
         "content": [
-          "\nSee ",
+          "\r\nSee ",
           {
             "type": "link",
             "content": [
@@ -687,12 +712,12 @@ F:\program\node\node.exe .\main.ts
             "paren": "https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html",
             "uri": "https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html"
           },
-          ".\n"
+          ".\r\n"
         ],
         "paren": "1",
         "id": "1"
       },
-      "\n\n"
+      "\r\n\r\n"
     ]
   },
   {
@@ -706,22 +731,22 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "p",
     "content": [
-      "\n第一行",
+      "\r\n第一行",
       {
         "type": "n",
         "content": []
       },
-      "第二行。\n"
+      "第二行。\r\n"
     ]
   },
   {
     "type": "p",
     "content": [
-      "\n輸出字面指令名稱本身：@mark 與 @bold",
+      "\r\n輸出字面指令名稱本身：@mark 與 @bold",
       "[",
       "hello",
       "]",
-      " 不會被解析成節點。\n"
+      " 不會被解析成節點。\r\n"
     ]
   },
   {
@@ -739,11 +764,11 @@ F:\program\node\node.exe .\main.ts
   {
     "type": "p",
     "content": [
-      "\n",
+      "\r\n",
       {
         "type": "bold",
         "content": [
-          "\n    這是粗體，\n    裡面有\n    ",
+          "\r\n    這是粗體，\r\n    裡面有\r\n    ",
           {
             "type": "mark",
             "content": [
@@ -753,17 +778,17 @@ F:\program\node\node.exe .\main.ts
               "yellow"
             ]
           },
-          "\n    與\n    ",
+          "\r\n    與\r\n    ",
           {
             "type": "underline",
             "content": [
               "底線"
             ]
           },
-          "\n"
+          "\r\n"
         ]
       },
-      "\n"
+      "\r\n"
     ]
   }
 ]
@@ -788,8 +813,8 @@ Talk is cheap.
 Show me the code.
 </blockquote>
 <h3>List</h3>
-<ul><li>Apple</li><li>Banana</li><li>Orange</li></ul>
-<ul><li>Pear</li><li>Peach</li></ul>
+<ul><li>Apple</li><li>Banana</li><li>Orange</li></ul>
+<ul><li>Pear</li><li>Peach</li></ul>
 <h3>Code</h3>
 <pre><code class="language-ts">
 const x: number = 1;
@@ -923,8 +948,8 @@ Talk is cheap.
 Show me the code.
 </blockquote>
 <h3>List</h3>
-<ul><li>Apple</li><li>Banana</li><li>Orange</li></ul>
-<ul><li>Pear</li><li>Peach</li></ul>
+<ul><li>Apple</li><li>Banana</li><li>Orange</li></ul>
+<ul><li>Pear</li><li>Peach</li></ul>
 <h3>Code</h3>
 <pre><code class="language-ts">
 const x: number = 1;

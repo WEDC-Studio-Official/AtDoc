@@ -22,9 +22,9 @@ author = QA
 ]
 
 @note[
-A footnote follows@refn[1].
+A footnote follows@fn[1].
 ]
 
-@fn(1)[
+@defn(1)[
 Footnote content.
 ]

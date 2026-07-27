@@ -18,7 +18,7 @@
 //     of a hand-maintained array (item 3) — new registry entries flow in
 //     automatically as long as their `content`/`paren` fields are accurate.
 //
-// Raw-family nodes (@code, @mermaid, @svg, @kbd, @refn, @raw) push an opaque
+// Raw-family nodes (@code, @mermaid, @svg, @kbd, @fn, @raw) push an opaque
 // scanning state that never recognizes "@node" syntax inside it, matching
 // Lexer.ts's `isRawFamily` / `scanRawContent` behavior — this is what makes
 // `@code[@mark[not parsed]]` render its contents as inert code, not markup.
@@ -136,7 +136,7 @@ const styles: MonarchRule[] = [
   [/\}/, { token: 'punctuation.definition.doc', next: '@pop' }],
 ];
 
-// Opaque scan for @code / @mermaid / @svg / @kbd / @refn content — never
+// Opaque scan for @code / @mermaid / @svg / @kbd / @fn content — never
 // recognizes "@node" syntax inside, matching Lexer.ts's scanRawContent()
 // depth tracking for nested literal brackets (e.g. inside code samples).
 const rawPlain: MonarchRule[] = [

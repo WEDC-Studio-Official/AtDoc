@@ -63,7 +63,7 @@ A parser can find every `@kbd` (for a shortcuts index), every `@link` (for a lin
 | `@kbd` | `"[" key "]"` | `key = { text-char - "]" }` — **not** generic `content` | cannot contain nested inline nodes |
 | `@link` | `uri` then `content` | `uri` is a restricted parenthetical; `content` is generic | only node in this group with two slots |
 
-`@kbd`'s bracket looks identical to `@sup[...]` or `@sub[...]` on the page, but it is grammatically a different production — `key`, not `content` (see [Inline Syntax Specification §4](../../../Inline-Syntax-Specification.md#4-完整-ebnf-語法定義)). That means `@kbd[@bold[Ctrl]]` is not a nested bold key — the grammar doesn't route through `inline-node` at all inside `@kbd`'s brackets, the same restriction pattern `@refn[integer]` has among [Footnotes](../Footnotes/Footnotes.md#3-syntax).
+`@kbd`'s bracket looks identical to `@sup[...]` or `@sub[...]` on the page, but it is grammatically a different production — `key`, not `content` (see [Inline Syntax Specification §4](../../../Inline-Syntax-Specification.md#4-完整-ebnf-語法定義)). That means `@kbd[@bold[Ctrl]]` is not a nested bold key — the grammar doesn't route through `inline-node` at all inside `@kbd`'s brackets, the same restriction pattern `@fn[integer]` has among [Footnotes](../Footnotes/Footnotes.md#3-syntax).
 
 ---
 
@@ -100,7 +100,7 @@ kbd = "@kbd" , "[" , key , "]" ;
 key = { text-char - "]" } ;
 ```
 
-`@kbd`'s content is `key`, not `content` — a raw character sequence excluding `]`, with no nested-node parsing. This is the same "restricted bracket" shape [Footnotes §3](../Footnotes/Footnotes.md#3-syntax) documents for `@refn[integer]`: the bracket exists, but it isn't the general-purpose inline `content` production used almost everywhere else in the grammar.
+`@kbd`'s content is `key`, not `content` — a raw character sequence excluding `]`, with no nested-node parsing. This is the same "restricted bracket" shape [Footnotes §3](../Footnotes/Footnotes.md#3-syntax) documents for `@fn[integer]`: the bracket exists, but it isn't the general-purpose inline `content` production used almost everywhere else in the grammar.
 
 Use for: a single key or key combination shown as a UI-style key cap (`Ctrl`, `⌘`, `Enter`, `F5`). Not for arbitrary inline code — that remains a renderer/ecosystem gap in the current spec (@Doc has no `@code`-equivalent inline node; `@code` per [Block Syntax Specification §5](../../../Block-Syntax-Specification.md#code) is block-level only).
 

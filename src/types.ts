@@ -9,7 +9,7 @@ export interface DocASTNode {
   /** Generic nestable content — used by every node whose registry `content` mode is 'generic'. */
   content: (DocASTNode | string)[];
 
-  /** Resolved raw text — used by raw-family nodes (@code, @mermaid, @svg, @raw, @kbd, @refn). */
+  /** Resolved raw text — used by raw-family nodes (@code, @mermaid, @svg, @raw, @kbd, @fn). */
   raw?: string;
 
   // Convenience fields derived from `paren`, populated per `parenRole`:
@@ -17,18 +17,20 @@ export interface DocASTNode {
   title?: string;                    // @details, @card, callouts, @tab
   language?: string;                 // @code
   uri?: string;                      // @link
-  id?: string;                       // @fn
+  id?: string;                       // @defn
   imgOptions?: Record<string, string>; // @img
   color?: string;                    // @color
   /** @list only — true when `@list(ordered)`; unset/false renders as a bullet list. */
   ordered?: boolean;
 
-  /** @refn only — parsed integer form of `raw`. */
+  /** @fn only — parsed integer form of `raw`. */
   number?: number;
 
   // Structured extras for nodes with dedicated sub-grammar:
-  columns?: string[];        // @table (from its @cols child)
-  rows?: string[][];         // @table (from its @data child)
+  /** @table (from its @cols child) — each column is inline content (text + a curated set of formatting nodes, see registry.ts's isCellAllowedNode). */
+  columns?: (DocASTNode | string)[][];
+  /** @table (from its @data child) — each row is a list of cells, each cell inline content like `columns`. */
+  rows?: (DocASTNode | string)[][][];
   tabs?: DocASTNode[];       // @tabs (its @tab children)
   meta?: Record<string, string>; // @meta
   /** @list only — one entry per non-empty line (Structural-Blocks.md §4 List), each a 'list-item' node. */

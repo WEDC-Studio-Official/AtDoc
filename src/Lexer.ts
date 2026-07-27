@@ -5,7 +5,7 @@
 //   3. "@" + anything else        → literal text
 //
 // It is registry-aware (see registry.ts) rather than a context-free tokenizer,
-// because raw-content nodes (@code, @mermaid, @raw, @kbd, @refn) require the
+// because raw-content nodes (@code, @mermaid, @raw, @kbd, @fn) require the
 // Lexer to switch into an opaque scan mode for their bracket content — see
 // Inline Syntax Specification §9 (@raw Opaque Domain) and Special-Nodes.md §6.
 
@@ -75,7 +75,7 @@ function scanDepthRaw(source: string, start: number, localEscape: boolean): { te
   return { text: buf, endPos: i };
 }
 
-/** Flat scan for @kbd's `key` and @refn's `integer` — no nesting, no escapes. */
+/** Flat scan for @kbd's `key` and @fn's `integer` — no nesting, no escapes. */
 function scanFlatRaw(source: string, start: number): { text: string; endPos: number } {
   let i = start;
   const n = source.length;

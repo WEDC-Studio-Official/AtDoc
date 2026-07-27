@@ -63,7 +63,7 @@ Parser 可以直接找出文件中每一個 `@kbd`(用於製作快捷鍵索引)�
 | `@kbd` | `"[" key "]"` | `key = { text-char - "]" }`——**非**通用 `content` | 無法包含巢狀行內節點 |
 | `@link` | `uri` 接 `content` | `uri` 為受限的括號欄位；`content` 為通用 | 這組節點中唯一擁有兩個槽位的節點 |
 
-`@kbd` 的括號在版面上看起來與 `@sup[...]` 或 `@sub[...]` 一模一樣，但在文法上它是不同的產生式——是 `key`，不是 `content`(見 [Inline Syntax Specification 第 4 節](../../../Inline-Syntax-Specification.md#4-完整-ebnf-語法定義))。這代表 `@kbd[@bold[Ctrl]]` 並不是一個巢狀了粗體的按鍵——`@kbd` 括號內根本不會走 `inline-node` 這條路徑，這與 [Footnotes](../Footnotes/Footnotes.zh-TW.md#3-語法) 中 `@refn[integer]` 的限制模式相同。
+`@kbd` 的括號在版面上看起來與 `@sup[...]` 或 `@sub[...]` 一模一樣，但在文法上它是不同的產生式——是 `key`，不是 `content`(見 [Inline Syntax Specification 第 4 節](../../../Inline-Syntax-Specification.md#4-完整-ebnf-語法定義))。這代表 `@kbd[@bold[Ctrl]]` 並不是一個巢狀了粗體的按鍵——`@kbd` 括號內根本不會走 `inline-node` 這條路徑，這與 [Footnotes](../Footnotes/Footnotes.zh-TW.md#3-語法) 中 `@fn[integer]` 的限制模式相同。
 
 ---
 
@@ -100,7 +100,7 @@ kbd = "@kbd" , "[" , key , "]" ;
 key = { text-char - "]" } ;
 ```
 
-`@kbd` 的內容是 `key`，不是 `content`——一段排除 `]` 的原始字元序列，不會解析任何巢狀節點。這與 [Footnotes 第 3 節](../Footnotes/Footnotes.zh-TW.md#3-語法) 對 `@refn[integer]` 所描述的「受限括號」形狀相同：括號確實存在，但它不是文法中幾乎到處通用的行內 `content` 產生式。
+`@kbd` 的內容是 `key`，不是 `content`——一段排除 `]` 的原始字元序列，不會解析任何巢狀節點。這與 [Footnotes 第 3 節](../Footnotes/Footnotes.zh-TW.md#3-語法) 對 `@fn[integer]` 所描述的「受限括號」形狀相同：括號確實存在，但它不是文法中幾乎到處通用的行內 `content` 產生式。
 
 適用於：單一按鍵或以 UI 風格按鍵帽呈現的組合鍵(`Ctrl`、`⌘`、`Enter`、`F5`)。不適用於任意行內程式碼——這在目前的規格中仍是一塊 Renderer／生態系尚未補上的空缺(@Doc 目前沒有對應 `@code` 的行內節點；根據 [Block Syntax Specification 第 5 節](../../../Block-Syntax-Specification.md#code)，`@code` 僅存在於區塊層級)。
 

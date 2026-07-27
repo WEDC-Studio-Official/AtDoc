@@ -108,7 +108,7 @@ Document AST
     │
     ├── Footnotes
     │   ├── @fn
-    │   └── @refn
+    │   └── @defn
     │
     └── Special Nodes
         ├── @n
@@ -298,8 +298,8 @@ cols =
     "]" ;
 
 column-list =
-    identifier ,
-    { "," , identifier } ;
+    cell ,
+    { "," , cell } ;
 
 data =
     "@data" ,
@@ -313,12 +313,14 @@ row =
         { "," , cell } ,
     "]" ;
 
+(* A cell isn't plain text only — it also allows a curated subset of
+   inline-node (cell-inline-node), the same shape @cols columns and @data
+   cells share. The authoritative allowlist lives in registry.ts's
+   isCellAllowedNode(), not this grammar — a node outside that set (e.g.
+   @card, @table, @details) MUST throw rather than being silently dropped,
+   per Strict Mode (Inline Syntax Specification §11). *)
 cell =
-    { any-unicode-char - "," - "]" } ;
-
-identifier =
-    letter ,
-    { letter | digit | "_" } ;
+    { cell-inline-node | any-unicode-char - "," - "]" } ;
 
 (* ==========================================================================
    Widget-Specific Grammar: @tabs / @tab
@@ -620,12 +622,24 @@ WEDC Logo
 ]
 ```
 
-* `@cols[...]`：以逗號分隔的欄位識別符（identifier）列表，定義欄位順序與數量。
+* `@cols[...]`：以逗號分隔的欄位標題列表，定義欄位順序與數量；每個欄位跟 `@data` 的儲存格一樣是 `cell`（見下方），不限於純文字識別符。
 * `@data[...]`：每一列包裝在 `[...]` 中，`cell` 數量 SHOULD 與 `@cols` 定義的欄位數量一致；Parser MAY 對數量不符的列拋出警告或錯誤（由 Strict / Editor Mode 決定，參見 Inline Spec 第 11 節 Parser Recovery Strategy）。
 
 > [!TIP]
 > **TIP**：`@cols` 與 `@data` 順序固定且皆為必填，這是刻意的設計取捨——
 > 犧牲一點靈活性，換取 Parser 與 AI 生成內容時的高度可預測性。
+
+每個 `cell` 不是單純的純文字——除了文字本身，還允許一組經過篩選的行內格式節點（`@bold`、`@italic`、`@underline`、`@del`、`@mark`、`@color`、`@sup`、`@sub`、`@link`、`@fn`，以及會被轉成換行的 `@n`），因為這些節點只改變文字的呈現方式，不會影響表格本身「欄位對齊資料列」的結構。這份清單由 Renderer 端維護（`registry.ts` 的 `isCellAllowedNode`），語法層本身不限制清單內容，未來可以擴充。不在清單上的節點（例如 `@card`、`@table`、`@details` 這類會帶來自己版面結構的區塊節點）MUST 拋出語法錯誤，而不是被靜默捨棄——這與 Strict Mode（Inline Syntax Specification 第 11 節）「寧可拋錯，也不要吞掉錯誤內容」的精神一致。
+
+```text
+@table[
+    @cols[id,name,note]
+
+    @data[
+        [1,@bold[Alice],See @link(https://example.com)[profile]@n more info]
+    ]
+]
+```
 
 AST:
 
@@ -639,6 +653,22 @@ Table
     ├── Row [1, 早餐, 60]
     ├── Row [2, 午餐, 80]
     └── Row [3, 晚餐, 90]
+```
+
+或是帶行內格式的儲存格：
+
+```text
+Table
+├── Columns
+│   ├── id
+│   ├── name
+│   └── note
+└── Rows
+    └── Row [
+          "1",
+          [ Bold("Alice") ],
+          [ "See ", Link("https://example.com", "profile"), "\n", " more info" ]
+        ]
 ```
 
 ---

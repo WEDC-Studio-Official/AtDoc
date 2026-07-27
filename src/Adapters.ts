@@ -177,9 +177,12 @@ function renderNode(node: DocASTNode, route: Route): string {
       return `<img ${attrs.join(' ')}>`;
     }
     case 'table': {
-      const thead = `<thead><tr>${(node.columns ?? []).map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>`;
+      // columns/rows hold inline content (text + a curated set of formatting
+      // nodes, see registry.ts's isCellAllowedNode), same shape as `content`
+      // elsewhere — render it the same way, then turn @n's "\n" marker into <br>.
+      const thead = `<thead><tr>${(node.columns ?? []).map(c => `<th>${renderChildren(c, route).replace(/\n/g, '<br>')}</th>`).join('')}</tr></thead>`;
       const tbody = `<tbody>${(node.rows ?? [])
-        .map(r => `<tr>${r.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
+        .map(r => `<tr>${r.map(cell => `<td>${renderChildren(cell, route).replace(/\n/g, '<br>')}</td>`).join('')}</tr>`)
         .join('')}</tbody>`;
       return `<table>${thead}${tbody}</table>`;
     }
@@ -238,9 +241,9 @@ function renderNode(node: DocASTNode, route: Route): string {
       return `<a href="${escapeHtml(resolveUri(node.uri ?? ''))}">${renderChildren(node.content, route)}</a>`;
 
     // Footnotes
-    case 'fn':
+    case 'defn':
       return `<li id="fn${escapeHtml(node.id ?? '')}">${renderChildren(node.content, route)} <a href="#fnref${escapeHtml(node.id ?? '')}">↩</a></li>`;
-    case 'refn':
+    case 'fn':
       return `<sup id="fnref${node.number}"><a href="#fn${node.number}">${node.number}</a></sup>`;
 
     // Special Nodes

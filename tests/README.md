@@ -21,16 +21,16 @@ node tests/run-tests.ts
 | `05-stray-closing-bracket-fallback.atd` | 文件頂層出現一個沒有對應開頭的多餘 `]` | **不拋錯**：頂層的隱式段落聚合器對孤立的 `]`採取寬容態度，直接當作字面字元 |
 | `06-missing-required-paren-tab.atd` | `@tab[...]` 沒有 `(title)`——`@tab` 的括號是必填，不像 `@details`／`@card` | **拋錯**：requires a parenthesized title |
 | `07-missing-required-paren-link.atd` | `@link[...]` 沒有 `(uri)` | **拋錯**：requires a parenthesized uri |
-| `08-missing-required-paren-fn.atd` | `@fn[...]` 沒有 `(id)` | **拋錯**：requires a parenthesized id |
+| `08-missing-required-paren-defn.atd` | `@defn[...]` 沒有 `(id)` | **拋錯**：requires a parenthesized id |
 | `09-missing-required-paren-img.atd` | `@img[...]` 沒有 `(options)` | **拋錯**：requires a parenthesized options |
 | `10-restricted-context-tab-outside-tabs.atd` | `@tab` 出現在 `@card` 內，而不是 `@tabs` 內 | **拋錯**：may only appear directly inside `@tabs` |
 | `11-restricted-context-cols-outside-table.atd` | `@cols` 出現在 `@p` 內，而不是 `@table` 內 | **拋錯**：may only appear directly inside `@table` |
 | `12-table-missing-data.atd` | `@table` 只有 `@cols`，缺少必填的 `@data` | **拋錯**：requires `@data` |
 | `13-table-wrong-child-order.atd` | `@table` 內 `@data` 寫在 `@cols` 前面（順序錯誤） | **拋錯**：requires `@cols` as its first child |
 | `14-tabs-invalid-child.atd` | `@tabs` 內放了 `@p` 而不是 `@tab` | **拋錯**：only accepts `@tab` children |
-| `15-refn-non-integer.atd` | `@refn[one]`——內容不是數字 | **拋錯**：must contain only digits |
+| `15-fn-non-integer.atd` | `@fn[one]`——內容不是數字 | **拋錯**：must contain only digits |
 | `16-unclosed-raw-domain-silent-swallow.atd` | `@mermaid[...` 沒有結尾 `]` | **不拋錯，但是已知限制**：見下方說明 |
-| `17-unknown-node-in-comma-list.atd` | `@cols[id,@bold[name],price]`——逗號列表裡混入了節點 | **拋錯**：only accepts plain text |
+| `17-unknown-node-in-comma-list.atd` | `@cols[id,@card[name],price]`——逗號列表裡混入了不在儲存格白名單裡的節點 | **拋錯**：only accepts plain text and inline formatting（`@bold`／`@link` 等格式節點現在合法，`@card` 這類結構節點仍會拋錯） |
 | `18-svg-node-valid.atd` | `@svg[...]`——內嵌原始 `<svg>` 標記 | **不拋錯**：與 `@mermaid` 同樣走 raw pass-through，不經過 escape |
 | `19-color-node-valid.atd` | `@color(#ff0000)[...]`——新的文字改色節點 | **不拋錯**：`(#hex)` 為必填括號 |
 | `20-list-no-dash-valid.atd` | `@list[...]`——項目沒有 `- ` 前綴，只用換行分隔 | **不拋錯**：新語義下任何非空行都是項目 |
@@ -38,6 +38,7 @@ node tests/run-tests.ts
 | `22-list-ordered-manual-marker-valid.atd` | 有序清單裡某個項目行首寫 `3. ` 明確指定編號 | **不拋錯**：該項目的 `marker` 被擷取，之後項目自動接續編號 |
 | `23-list-nested-valid.atd` | 巢狀 `@list[...]`——單獨佔一行放在上一個項目底下 | **不拋錯**：併入前一個項目的內容，形成結構化的巢狀清單 |
 | `24-list-ordered-no-dash-valid.atd` | `@list(ordered)[...]`——項目沒有 `- ` 前綴，只用換行分隔 | **不拋錯**：`ordered` 跟一般 `@list` 一樣，`-` 是選填，不是必要條件 |
+| `25-table-cell-inline-formatting-valid.atd` | `@table` 儲存格裡放 `@bold`／`@link`／`@n` | **不拋錯**：這些都在 `registry.ts` 的儲存格白名單（`isCellAllowedNode`）裡，會解析成真正的節點而不是純文字 |
 
 ## 已知限制：`16-unclosed-raw-domain-silent-swallow.atd`
 

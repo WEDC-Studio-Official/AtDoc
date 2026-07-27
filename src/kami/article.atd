@@ -179,17 +179,17 @@ E --> F[Renderer]
 @h(3)[腳注系統]
 
 @p[
-Rust 的所有權系統@refn[1]從根本上消除了資料競爭問題，這也是它區別於 C++ 手動記憶體管理的核心賣點@refn[2]。
+Rust 的所有權系統@fn[1]從根本上消除了資料競爭問題，這也是它區別於 C++ 手動記憶體管理的核心賣點@fn[2]。
 ]
 
 @p[
-@fn(1)[
+@defn(1)[
 See @link(https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html)[The Rust Programming Language, Ch. 4].
 ]
 ]
 
 @p[
-@fn(2)[
+@defn(2)[
 比較討論可參見 Herb Sutter 的相關演講與著作，此處不展開列舉。
 ]
 ]

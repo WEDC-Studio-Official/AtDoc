@@ -26,7 +26,7 @@
     "shouldThrow": true,
     "messageContains": "requires a parenthesized"
   },
-  "08-missing-required-paren-fn.atd": {
+  "08-missing-required-paren-defn.atd": {
     "shouldThrow": true,
     "messageContains": "requires a parenthesized"
   },
@@ -54,7 +54,7 @@
     "shouldThrow": true,
     "messageContains": "only accepts `@tab` children"
   },
-  "15-refn-non-integer.atd": {
+  "15-fn-non-integer.atd": {
     "shouldThrow": true,
     "messageContains": "must contain only digits"
   },
@@ -64,7 +64,8 @@
   },
   "17-unknown-node-in-comma-list.atd": {
     "shouldThrow": true,
-    "messageContains": "only accepts plain text"
+    "messageContains": "only accepts plain text and inline formatting",
+    "note": "@card isn't in registry.ts's cell-formatting allowlist (unlike @bold/@link/etc.) — Strict Mode throws rather than silently dropping it."
   },
   "18-svg-node-valid.atd": {
     "shouldThrow": false,
@@ -93,5 +94,9 @@
   "24-list-ordered-no-dash-valid.atd": {
     "shouldThrow": false,
     "note": "@list(ordered) doesn't require a leading \"- \" either — same dash-optional rule as plain @list (20-list-no-dash-valid.atd), just rendered as <ol>."
+  },
+  "25-table-cell-inline-formatting-valid.atd": {
+    "shouldThrow": false,
+    "note": "@table cells now accept a curated set of inline formatting nodes (registry.ts's isCellAllowedNode) — @bold, @link, @n all parse as real nodes instead of throwing."
   }
 }

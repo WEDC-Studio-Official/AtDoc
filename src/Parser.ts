@@ -6,8 +6,13 @@
 import type { Token } from './Lexer.ts';
 import { DocSyntaxError } from './types.ts';
 import type { DocASTNode } from './types.ts';
-import { getNodeDef } from './registry.ts';
+import { getNodeDef, isCellAllowedNode } from './registry.ts';
 import type { NodeDef } from './registry.ts';
+
+/** Content modes the Lexer scans opaquely into a single RAW token (@raw, @code, @mermaid, @kbd, @fn). */
+function isRawFamilyContent(content: NodeDef['content'] | undefined): boolean {
+  return content === 'raw' || content === 'raw-escaped' || content === 'key' || content === 'integer';
+}
 
 function parseImgOptions(raw: string): Record<string, string> {
   const options: Record<string, string> = {};
@@ -239,7 +244,7 @@ export class DocParser {
         this.cursor++;
         if (nodeDef.content === 'integer') {
           if (!/^[0-9]+$/.test(node.raw)) {
-            throw new DocSyntaxError(`\`@${node.type}[...]\` must contain only digits — got \`${node.raw}\` (Inline Syntax Specification §4: refn = "@refn", "[", integer, "]").`);
+            throw new DocSyntaxError(`\`@${node.type}[...]\` must contain only digits — got \`${node.raw}\` (Inline Syntax Specification §4: fn = "@fn", "[", integer, "]").`);
           }
           node.number = parseInt(node.raw, 10);
         }
@@ -248,9 +253,11 @@ export class DocParser {
 
       case 'comma-list': {
         this.expectSlotOpen(node.type);
-        const raw = this.collectRawText(node.type);
+        const cells = this.parseInlineCellList(node.type);
         this.expectSlotClose(node.type);
-        node.columns = raw.split(',').map(s => s.trim()).filter(Boolean);
+        // Unlike @data rows, empty columns (trailing comma, "@cols[]") are dropped
+        // rather than kept — there's no fixed column count to stay aligned with.
+        node.columns = cells.filter(cell => cell.length > 0);
         return node;
       }
 
@@ -369,7 +376,7 @@ export class DocParser {
     return content;
   }
 
-  /** Like parseSlotContent, but for content modes that only ever hold plain text (comma-list, meta, table rows). */
+  /** Like parseSlotContent, but for content modes that only ever hold plain text (currently just @meta's key=value lines). */
   private collectRawText(ownerName: string): string {
     let buf = '';
     let depth = 0;
@@ -391,8 +398,108 @@ export class DocParser {
     return buf;
   }
 
-  private parseDataRows(): string[][] {
-    const rows: string[][] = [];
+  /**
+   * Trims leading/trailing whitespace-only string chunks off a cell's inline
+   * content array — the array equivalent of `str.trim()` for a mixed text/node list.
+   */
+  private trimCellEdges(cell: (DocASTNode | string)[]): (DocASTNode | string)[] {
+    const out = cell.slice();
+    while (out.length && typeof out[0] === 'string') {
+      const t = (out[0] as string).replace(/^\s+/, '');
+      if (t === '') { out.shift(); continue; }
+      out[0] = t;
+      break;
+    }
+    while (out.length && typeof out[out.length - 1] === 'string') {
+      const t = (out[out.length - 1] as string).replace(/\s+$/, '');
+      if (t === '') { out.pop(); continue; }
+      out[out.length - 1] = t;
+      break;
+    }
+    return out;
+  }
+
+  /**
+   * Parses @cols/@data content as comma-separated cells, each cell holding inline
+   * content (text plus a curated set of formatting nodes — @n, @raw/@code/@kbd/...,
+   * and whatever registry.ts's isCellAllowedNode() lets through, e.g. @bold/@mark/
+   * @link). Anything else is unsupported here and throws (Strict Mode, Inline
+   * Syntax Specification §11) rather than being silently dropped.
+   *
+   * Commas only split cells at this slot's own depth — a comma inside a nested
+   * node's own "[...]" (e.g. `@bold[a,b]`) stays literal, since that TEXT token
+   * is emitted while `depth > 0`.
+   */
+  private parseInlineCellList(ownerName: string): (DocASTNode | string)[][] {
+    const cells: (DocASTNode | string)[][] = [[]];
+    let depth = 0;
+
+    const currentCell = () => cells[cells.length - 1];
+    const pushText = (s: string) => { if (s !== '') currentCell().push(s); };
+
+    while (this.cursor < this.tokens.length) {
+      const cur = this.tokens[this.cursor];
+      if (cur.type === 'SLOT_CLOSE' && depth === 0) break;
+
+      if (cur.type === 'TEXT') {
+        if (depth === 0 && cur.value.includes(',')) {
+          const parts = cur.value.split(',');
+          pushText(parts[0]);
+          for (let k = 1; k < parts.length; k++) {
+            cells.push([]);
+            pushText(parts[k]);
+          }
+        } else {
+          pushText(cur.value);
+        }
+        this.cursor++;
+        continue;
+      }
+
+      if (cur.type === 'SLOT_OPEN') { depth++; pushText('['); this.cursor++; continue; }
+      if (cur.type === 'SLOT_CLOSE') { depth--; pushText(']'); this.cursor++; continue; }
+
+      if (cur.type === 'NODE') {
+        const nodeDef = getNodeDef(cur.value);
+        if (nodeDef?.content === 'none') {
+          pushText('\n'); // @n — line break marker; renderer turns it into <br>
+          this.cursor++;
+          continue;
+        }
+        // Checked before the raw-family carve-out below: @fn is content:'integer'
+        // (raw-family) but needs the real-node path so it renders as its actual
+        // `<sup><a>` back-link instead of being dumped as bare digit text.
+        if (nodeDef && isCellAllowedNode(cur.value)) {
+          const child = this.parseNode(ownerName);
+          if (child) currentCell().push(child);
+          continue;
+        }
+        if (isRawFamilyContent(nodeDef?.content)) {
+          this.cursor++; // consume NODE
+          const rawTok = this.tokens[this.cursor];
+          if (!rawTok || rawTok.type !== 'RAW') {
+            throw new DocSyntaxError(`\`@${cur.value}\` expects a content slot \`[...]\` immediately after it.`);
+          }
+          pushText(rawTok.value);
+          this.cursor++;
+          continue;
+        }
+        // Structural/disallowed node (e.g. @card, @table, @details) isn't part
+        // of this slot's grammar — Strict Mode throws rather than silently
+        // dropping it.
+        throw new DocSyntaxError(`\`@${ownerName}\` only accepts plain text and inline formatting (@bold, @italic, @mark, @n, @raw, ...) in its content slot — found an unexpected \`@${cur.value}\` node.`);
+      }
+
+      // PAREN / STYLES / RAW should never surface loose here — always consumed
+      // inline by parseNode/the raw-family branch right after their own NODE token.
+      this.cursor++;
+    }
+
+    return cells.map((cell) => this.trimCellEdges(cell));
+  }
+
+  private parseDataRows(): (DocASTNode | string)[][][] {
+    const rows: (DocASTNode | string)[][][] = [];
     // eslint-disable-next-line no-constant-condition
     while (true) {
       this.skipWhitespaceText();
@@ -404,9 +511,11 @@ export class DocParser {
         throw new DocSyntaxError('Each row inside `@data[...]` must start with `[` (Block Syntax Specification §5 Table).');
       }
       this.cursor++; // consume the row's own "["
-      const raw = this.collectRawText('data row');
+      // Unlike @cols, empty cells are kept (not filtered) — a row's cell count
+      // must stay aligned with the table's column count.
+      const cells = this.parseInlineCellList('data row');
       this.expectSlotClose('data row');
-      rows.push(raw.split(',').map(s => s.trim()));
+      rows.push(cells);
     }
     return rows;
   }

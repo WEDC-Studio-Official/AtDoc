@@ -173,10 +173,10 @@ E = mc@sup[2]，H@sub[2]O。
 @h(3)[Footnotes]
 
 @p[
-Rust 的所有權系統@refn[1]從根本上消除了資料競爭。
+Rust 的所有權系統@fn[1]從根本上消除了資料競爭。
 ]
 
-@fn(1)[
+@defn(1)[
 See @link(https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html)[The Rust Programming Language, Ch. 4].
 ]
 

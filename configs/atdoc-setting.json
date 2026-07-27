@@ -19,7 +19,7 @@
     "Inline": {
       "formatKeywords":   ["mark", "color", "bold", "italic", "underline", "del", "raw"],
       "semanticKeywords": ["sup", "sub", "kbd", "link"],
-      "footnoteKeywords": ["fn", "refn"],
+      "footnoteKeywords": ["fn", "defn"],
       "specialKeywords":  ["n"]
     }
   }

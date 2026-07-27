@@ -57,7 +57,7 @@ Markdown           @Doc
 | `@h` | `(level)`，選填，`1`–`6` | `block-content` | 省略時的預設值見 [Heading](#heading) |
 | `@p` | 無 | `block-content` | 最單純的純文字容器 |
 | `@quote` | 無 | `block-content` | 沒有獨立的引用來源／作者欄位 |
-| `@list` | 無（見 [List](#list)） | `block-content` | 任何非空行都是項目——結構化 `ListItem` AST，不再是重新切分的文字 |
+| `@list` | `(ordered)`，選填（見 [List](#list)） | `block-content` | 任何非空行都是項目——結構化 `ListItem` AST，不再是重新切分的文字 |
 | `@code` | `(language)`，選填 | `raw-block-content` | 不解析——概念上與 `@raw` 相同 |
 | `@img` | `(image-option-list)` | `block-content`（替代文字） | 唯一擁有結構化 key=value 選項列表的節點 |
 | `@table` | 無 | `@cols` + `@data`（非通用 `block-content`） | 唯一擁有專屬子節點文法的節點 |
@@ -152,7 +152,39 @@ Orange
 
 每個項目現在是 Parser 產生的獨立 `ListItem` AST 節點（`node.items`），不再由各個 Renderer 各自把已渲染的文字重新切分一次——因此項目內的行內節點（例如 `@bold[Apple]`）會以結構化子節點保留下來，而不是先被壓平成純文字。（相較之下，[Table](#table) 擁有完全結構化的 `Columns`／`Rows` AST——`@list` 現在也有對應、只是較簡單的保證。）
 
-目前仍沒有有序／無序的區分，也沒有正式的巢狀語法。曾有人提出用 `(modifier)` 陣列，例如 `@list(bullet,number)[...]`——宣告「第一層是圓點，第二層是數字」——作為正式化巢狀列表型態的方式，但這**並不屬於目前的 EBNF**（`list = "@list", block-content` 沒有 modifier 欄位）。請將它視為一個設計方向，而非現行文法。
+#### 有序清單
+
+`@list(ordered)[...]` 會渲染成 `<ol>` 而不是預設的 `<ul>`。項目行首可以額外寫 `N. `／`N)` 明確指定編號，Parser 會把這個數字存進該 `ListItem` 的 `marker` 欄位；Renderer 只在清單是 `ordered` 時才會把 `marker` 轉成 `<li value="N">`，交給瀏覽器原生 `<ol>` 計數器處理「跳號後自動接續」：
+
+```text
+@list(ordered)[
+- Apple
+- Banana
+3. Cherry
+- Date
+]
+```
+
+渲染結果為 `1. Apple`、`2. Banana`、`3. Cherry`（明確指定）、`4. Date`（自動接續）。
+
+#### 巢狀清單
+
+沒有新增語法——`@list` 的內容本來就是 `block-content`，巢狀 `@list[...]` 本來就是合法子節點。單獨佔一行的巢狀 `@list[...]`（前後只有空白）會被 Parser 併入**前一個** item 的內容，而不是另開一個新 item：
+
+```text
+@list[
+- Fruits
+  @list[
+  - Apple
+  - Banana
+  ]
+- Vegetables
+]
+```
+
+AST 上，內層 `@list` 節點會出現在 `Fruits` 這個 `ListItem` 的 `content` 陣列裡；Renderer 不需要任何額外邏輯，遞迴渲染 `content` 時自然會產生巢狀的 `<ul>`/`<ol>`。
+
+> 這份文件先前提過用 `(modifier)` 陣列（例如 `@list(bullet,number)[...]`）逐層宣告清單型態的方案。實際採用的設計——`@list(ordered)` 加上每個巢狀 `@list` 各自宣告型態——比該提案更簡單。
 
 ---
 

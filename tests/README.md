@@ -34,6 +34,9 @@ node tests/run-tests.ts
 | `18-svg-node-valid.atd` | `@svg[...]`——內嵌原始 `<svg>` 標記 | **不拋錯**：與 `@mermaid` 同樣走 raw pass-through，不經過 escape |
 | `19-color-node-valid.atd` | `@color(#ff0000)[...]`——新的文字改色節點 | **不拋錯**：`(#hex)` 為必填括號 |
 | `20-list-no-dash-valid.atd` | `@list[...]`——項目沒有 `- ` 前綴，只用換行分隔 | **不拋錯**：新語義下任何非空行都是項目 |
+| `21-list-ordered-valid.atd` | `@list(ordered)[...]`——有序清單 | **不拋錯**：渲染成 `<ol>` 而非預設的 `<ul>` |
+| `22-list-ordered-manual-marker-valid.atd` | 有序清單裡某個項目行首寫 `3. ` 明確指定編號 | **不拋錯**：該項目的 `marker` 被擷取，之後項目自動接續編號 |
+| `23-list-nested-valid.atd` | 巢狀 `@list[...]`——單獨佔一行放在上一個項目底下 | **不拋錯**：併入前一個項目的內容，形成結構化的巢狀清單 |
 
 ## 已知限制：`16-unclosed-raw-domain-silent-swallow.atd`
 

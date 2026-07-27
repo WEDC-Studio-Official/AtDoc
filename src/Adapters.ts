@@ -120,10 +120,16 @@ function renderList(node: DocASTNode, route: Route): string {
   // @list items are structured 'list-item' nodes built by the Parser
   // (Structural-Blocks.md §5 List) — every non-empty line is an item, so
   // nested inline nodes (e.g. @bold) inside an item render correctly instead
-  // of being flattened to text first.
+  // of being flattened to text first. A nested @list is just another content
+  // node inside an item, so renderChildren recurses back into renderList for it.
   const items = node.items ?? [];
-  if (items.length === 0) return '<ul></ul>';
-  return `<ul>${items.map(i => `<li>${renderChildren(i.content, route)}</li>`).join('')}</ul>`;
+  const tag = node.ordered ? 'ol' : 'ul';
+  if (items.length === 0) return `<${tag}></${tag}>`;
+  const li = items.map(i => {
+    const valueAttr = node.ordered && i.marker !== undefined ? ` value="${i.marker}"` : '';
+    return `<li${valueAttr}>${renderChildren(i.content, route)}</li>`;
+  }).join('');
+  return `<${tag}>${li}</${tag}>`;
 }
 
 function renderTabs(node: DocASTNode, route: Route): string {

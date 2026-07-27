@@ -20,6 +20,8 @@ export interface DocASTNode {
   id?: string;                       // @fn
   imgOptions?: Record<string, string>; // @img
   color?: string;                    // @color
+  /** @list only — true when `@list(ordered)`; unset/false renders as a bullet list. */
+  ordered?: boolean;
 
   /** @refn only — parsed integer form of `raw`. */
   number?: number;
@@ -31,6 +33,8 @@ export interface DocASTNode {
   meta?: Record<string, string>; // @meta
   /** @list only — one entry per non-empty line (Structural-Blocks.md §4 List), each a 'list-item' node. */
   items?: DocASTNode[];
+  /** 'list-item' only — explicit numeric marker from a leading "N. "/"N)" prefix, letting @list(ordered) restart/resume numbering via `<li value>`. Ignored when the parent @list isn't ordered. */
+  marker?: number;
 }
 
 export class DocSyntaxError extends Error {

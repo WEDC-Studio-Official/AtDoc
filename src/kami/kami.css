@@ -58,22 +58,38 @@ body {
   font-style: italic;
 }
 
-[data-kami="dash-list"] {
-  list-style: none;
-  padding-left: 0;
+[data-kami="list"] {
   margin: 0 0 16px;
+  padding-left: 0;
 }
-[data-kami="dash-list"] li {
+[data-kami="list"] li {
   position: relative;
   padding-left: 18px;
   margin-bottom: 6px;
   color: var(--kami-dark-warm);
 }
-[data-kami="dash-list"] li::before {
+/* bullet: plain "•" via ::before, no native list-style */
+[data-kami="list"][data-kami-marker="bullet"] {
+  list-style: none;
+}
+[data-kami="list"][data-kami-marker="bullet"] > li::before {
   content: "•";
   position: absolute;
   left: 0;
   color: var(--kami-ink-blue);
+}
+/* ordered: native decimal numbering — <li value> lets a manually-numbered
+   item restart/resume the count (Block Syntax Specification §5 List) */
+[data-kami="list"][data-kami-marker="ordered"] {
+  list-style: decimal;
+  padding-left: 20px;
+}
+[data-kami="list"][data-kami-marker="ordered"] > li {
+  padding-left: 4px;
+}
+/* a nested @list lives inside its parent item's own <li> */
+[data-kami="list"] [data-kami="list"] {
+  margin: 6px 0 0;
 }
 
 [data-kami="code"] {

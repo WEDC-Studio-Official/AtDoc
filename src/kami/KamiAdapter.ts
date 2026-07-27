@@ -166,9 +166,17 @@ export function renderKamiNode(node: DocASTNode): string {
       return `<blockquote data-kami="quote">${renderChildren(node.content)}</blockquote>`;
     case 'list': {
       // Structured 'list-item' nodes come from the shared Parser (Structural-Blocks.md
-      // §5 List) — no per-Adapter string splitting needed here anymore.
+      // §5 List) — no per-Adapter string splitting needed here anymore. A nested
+      // @list is just another content node inside an item, so renderChildren
+      // recurses back into this same case for it.
       const items = node.items ?? [];
-      return `<ul data-kami="dash-list">${items.map(i => `<li>${renderChildren(i.content)}</li>`).join('')}</ul>`;
+      const tag = node.ordered ? 'ol' : 'ul';
+      const marker = node.ordered ? 'ordered' : 'bullet';
+      const li = items.map(i => {
+        const valueAttr = node.ordered && i.marker !== undefined ? ` value="${i.marker}"` : '';
+        return `<li${valueAttr}>${renderChildren(i.content)}</li>`;
+      }).join('');
+      return `<${tag} data-kami="list" data-kami-marker="${marker}">${li}</${tag}>`;
     }
     case 'code':
       // TODO: ivory 底 + 0.5px border + 6px 圓角 + mono 字體（Kami Code Block）

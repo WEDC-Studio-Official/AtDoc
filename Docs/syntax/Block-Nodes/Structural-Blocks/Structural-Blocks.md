@@ -57,7 +57,7 @@ The renderer still decides the actual HTML/PDF/terminal output; the source just 
 | `@h` | `(level)`, optional, `1`–`6` | `block-content` | see [Heading](#heading) for the missing default |
 | `@p` | — | `block-content` | plain text container |
 | `@quote` | — | `block-content` | no distinct citation/author field |
-| `@list` | — (see [List](#list)) | `block-content` | every non-empty line is an item — a structured `ListItem` AST, not re-split text |
+| `@list` | `(ordered)`, optional (see [List](#list)) | `block-content` | every non-empty line is an item — a structured `ListItem` AST, not re-split text |
 | `@code` | `(language)`, optional | `raw-block-content` | unparsed — same idea as `@raw` |
 | `@img` | `(image-option-list)` | `block-content` (alt text) | only node with a structured key=value option list |
 | `@table` | — | `@cols` + `@data` (not generic `block-content`) | only node with dedicated sub-node grammar |
@@ -152,7 +152,39 @@ is equivalent to the older, still-valid:
 
 Each item is now a dedicated `ListItem` AST node (`node.items`) built by the Parser, not by each renderer re-splitting rendered text — so inline nodes inside an item (e.g. `@bold[Apple]`) survive as structured children instead of being flattened first. (Compare [Table](#table), which has a fully structured `Columns`/`Rows` AST — `@list` now has an equivalent, if simpler, guarantee.)
 
-There is still no ordered/unordered distinction or formal nesting syntax. A `(modifier)` array such as `@list(bullet,number)[...]` — declaring "top level is bulleted, second level is numbered" — has been proposed as a way to formalize nested list typing, but it **is not part of the current EBNF** (`list = "@list", block-content` has no modifier slot). Treat it as a design direction, not current grammar.
+#### Ordered lists
+
+`@list(ordered)[...]` renders as `<ol>` instead of the default `<ul>`. An item can additionally start with `N. ` / `N)` to give it an explicit number — the Parser stores it as that `ListItem`'s `marker`, and the Renderer only turns it into `<li value="N">` when the list is `ordered`, letting the browser's native `<ol>` counter handle "jump then auto-resume":
+
+```text
+@list(ordered)[
+- Apple
+- Banana
+3. Cherry
+- Date
+]
+```
+
+Renders `1. Apple`, `2. Banana`, `3. Cherry` (explicit), `4. Date` (auto-resumed).
+
+#### Nested lists
+
+No new syntax — `@list`'s content is already `block-content`, so a nested `@list[...]` is already a legal child. A line holding nothing but a nested `@list[...]` (surrounded only by whitespace) is folded by the Parser into the **previous** item's content instead of starting a new item:
+
+```text
+@list[
+- Fruits
+  @list[
+  - Apple
+  - Banana
+  ]
+- Vegetables
+]
+```
+
+In the AST, the inner `@list` node ends up inside the `Fruits` `ListItem`'s `content` array; the Renderer needs no extra logic — recursing into `content` naturally produces a nested `<ul>`/`<ol>`.
+
+> An earlier note in this doc floated a `(modifier)` array (e.g. `@list(bullet,number)[...]`) for declaring list type per nesting level. The design actually shipped — `@list(ordered)` plus each nested `@list` declaring its own type — is simpler than that proposal.
 
 ---
 

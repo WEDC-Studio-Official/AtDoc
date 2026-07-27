@@ -32,7 +32,8 @@ export type ParenRole =
   | 'options'  // @img
   | 'uri'      // @link
   | 'id'       // @fn
-  | 'color';   // @color
+  | 'color'    // @color
+  | 'ordered'; // @list
 
 export interface NodeDef {
   name: string;
@@ -56,7 +57,7 @@ const REGISTRY: NodeDef[] = [
   def({ name: 'h', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'level' }),
   def({ name: 'p', kind: 'block', content: 'generic', paren: 'none' }),
   def({ name: 'quote', kind: 'block', content: 'generic', paren: 'none' }),
-  def({ name: 'list', kind: 'block', content: 'generic', paren: 'none' }),
+  def({ name: 'list', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'ordered' }),
   def({ name: 'code', kind: 'block', content: 'raw', paren: 'optional', parenRole: 'language' }),
   def({ name: 'img', kind: 'block', content: 'generic', paren: 'required', parenRole: 'options' }),
   def({ name: 'table', kind: 'block', content: 'table', paren: 'none' }),

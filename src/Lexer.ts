@@ -29,12 +29,24 @@ function isRawFamily(mode: ContentMode): boolean {
  * Scans raw, unparsed content starting right after the opening "[".
  * Tracks nested "[" / "]" depth so literal brackets inside code/diagram
  * content don't prematurely terminate the slot (see Text-Formatting.md §4 Raw
- * and Widget-Blocks.md §4 Mermaid for why this matters in practice).
+ * and Widget-Blocks.md §4 Mermaid for why this matters in practice) — the
+ * termination rule is bracket-depth counting, not "stop at the first
+ * unescaped ]" (Inline Syntax Specification §9).
  *
- * `localEscape` enables @raw's two local exceptions (Inline Spec §9):
- *   "@]"  → literal "]"
+ * `localEscape` enables @raw's four local exceptions (Inline Spec §9), two
+ * symmetric pairs for unpaired literal brackets that would otherwise desync
+ * the depth counter:
+ *   "@]"  → literal "]"   (an unpaired ] that must NOT decrement depth)
  *   "@@]" → literal "@]"
- * These do NOT apply to @code/@mermaid, which define no escape mechanism at all.
+ *   "@["  → literal "["   (an unpaired [ that must NOT increment depth)
+ *   "@@[" → literal "@["
+ * These do NOT apply to @code/@mermaid, which define no escape mechanism at
+ * all. Escaping a bracket that's already part of a balanced pair (e.g.
+ * writing "@mark[hello@]" instead of "@mark[hello]") is a misuse — the
+ * escaped "]" stops counting toward depth, so the "[" from "@mark[" never
+ * finds its balancing close and the scan overruns into the surrounding
+ * document. Balanced brackets need no escaping at all; only genuinely
+ * unpaired ones do.
  */
 function scanDepthRaw(source: string, start: number, localEscape: boolean): { text: string; endPos: number } {
   let depth = 1;
@@ -48,8 +60,18 @@ function scanDepthRaw(source: string, start: number, localEscape: boolean): { te
       i += 3;
       continue;
     }
+    if (localEscape && source[i] === '@' && source[i + 1] === '@' && source[i + 2] === '[') {
+      buf += '@[';
+      i += 3;
+      continue;
+    }
     if (localEscape && source[i] === '@' && source[i + 1] === ']') {
       buf += ']';
+      i += 2;
+      continue;
+    }
+    if (localEscape && source[i] === '@' && source[i + 1] === '[') {
+      buf += '[';
       i += 2;
       continue;
     }

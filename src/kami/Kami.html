@@ -31,7 +31,7 @@ MDX 將文件與程式碼融合，為人類開發者提供極高的表達能力�
 <article data-kami="card"><header>Semantic First</header>
 區塊節點描述的是文件的<strong data-kami="bold">語意</strong>（What），而不是<strong data-kami="bold">呈現方式</strong>（How）。因此 @Doc 不提供 <pre data-kami="code"><code class="language-text">@div</code></pre>、<pre data-kami="code"><code class="language-text">@span</code></pre>、<pre data-kami="code"><code class="language-text">@flex</code></pre> 這類版面節點。
 </article>
-<ul data-kami="dash-list"><li>降低學習成本</li><li>避免與 Email、Mention 系統衝突</li><li>提高 AI 解析穩定性</li><li>提高編輯器容錯能力</li><li>保持 DSL 的可擴充性</li><li>建立穩定且可預測的 AST</li></ul>
+<ul data-kami="list" data-kami-marker="bullet"><li>降低學習成本</li><li>避免與 Email、Mention 系統衝突</li><li>提高 AI 解析穩定性</li><li>提高編輯器容錯能力</li><li>保持 DSL 的可擴充性</li><li>建立穩定且可預測的 AST</li></ul>
 <aside data-kami="callout" data-variant="tip"><span data-kami="callout-label">TIP</span><strong>設計取捨</strong> 
 `@cols` 與 `@data` 順序固定且皆為必填，這是刻意的設計取捨——犧牲一點靈活性，換取 Parser 與 AI 生成內容時的高度可預測性。
 </aside>
@@ -126,7 +126,7 @@ See <a data-kami="link" href="https://doc.rust-lang.org/book/ch04-00-understandi
 換行節點用於段落內強制斷行：第一行<br>第二行<br>第三行。
 </p>
 <p data-kami="body">
-逃逸規則讓使用者可以輸出指令關鍵字本身：輸出字面 <pre data-kami="code"><code class="language-text">@mark</code></pre> 與 <pre data-kami="code"><code class="language-text">@bold[hello]</code></pre> 不會被解析成節點，寫法是在前面多加一個 <pre data-kami="code"><code class="language-text">@</code></pre>。
+逃逸規則讓使用者可以輸出指令關鍵字本身：輸出字面 @mark 與 @bold[hello] 不會被解析成節點，寫法是用 @ 全域轉義，或整段包進 @raw[...] 讓解析器完全跳過。
 </p>
 <hr data-kami="hr">
 <h2 data-kami="heading" data-level="2">Raw Domain 示範</h2>

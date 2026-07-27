@@ -2,7 +2,7 @@
 
 *[中文版](./Text-Formatting.zh-TW.md)*
 
-> Companion to [Inline Syntax Specification](../../../Inline-Syntax-Specification.md) §4 (Complete EBNF Definition) — plus §7 (`@mark` Styles Semantics), §9 (`@raw` Opaque Domain), and §10 (Nested Parsing), which each cover one member of this family in dedicated detail. This document covers `@bold`, `@italic`, `@underline`, `@del`, `@mark`, and `@raw` as a group; where a node already has its own numbered section, this reference summarizes and links out rather than repeating it. Categorized as "Text Formatting" in [Block Syntax Specification §2](../../../Block-Syntax-Specification.md#2-document-ast-structure)'s Document AST Structure diagram.
+> Companion to [Inline Syntax Specification](../../../Inline-Syntax-Specification.md) §4 (Complete EBNF Definition) — plus §7 (`@mark` / `@color` Styles Semantics), §9 (`@raw` Opaque Domain), and §10 (Nested Parsing), which each cover one member of this family in dedicated detail. This document covers `@bold`, `@italic`, `@underline`, `@del`, `@mark`, `@color`, and `@raw` as a group; where a node already has its own numbered section, this reference summarizes and links out rather than repeating it. Categorized as "Text Formatting" in [Block Syntax Specification §2](../../../Block-Syntax-Specification.md#2-document-ast-structure)'s Document AST Structure diagram.
 
 ## 0. Table of Contents
 
@@ -15,6 +15,7 @@
   * [Underline](#underline)
   * [Strikethrough — `@del`](#strikethrough--del)
   * [Mark](#mark)
+  * [Color](#color)
   * [Raw](#raw)
 * [5. Semantic HTML Mapping (Non-Normative)](#5-semantic-html-mapping-non-normative)
 * [6. AST Representation](#6-ast-representation)
@@ -26,11 +27,13 @@
 
 ## 1. Design Philosophy
 
-Text Formatting nodes describe how a fragment should be visually or semantically distinguished from surrounding text — emphasized, struck through, highlighted — without dictating a specific font weight, color, or tag. Five of the six members share one shape almost exactly:
+Text Formatting nodes describe how a fragment should be visually or semantically distinguished from surrounding text — emphasized, struck through, highlighted — without dictating a specific font weight, color, or tag. Five of the seven members share one shape almost exactly:
 
 ```text
 @bold   @italic   @underline   @del   @mark
 ```
+
+`@color` is the one deliberate exception to "no specific color" above — it exists precisely to let an author pin an exact text color when the semantic-only default isn't enough. It stays in this family because it's shaped like `@mark` (an inline wrapper plus one extra slot), not a Structural or Container node.
 
 `@raw` is the deliberate outlier: it names an *absence* of formatting parsing, not a formatting style. It belongs to this family because it lives in the same part of the grammar (an `inline-node` wrapping a bracketed body), not because it shares the others' behavior.
 
@@ -64,11 +67,13 @@ A parser can find every `@mark` (for a highlight/annotation index) or every `@de
 | `@italic` | — | `content` (nestable) | plain wrapper |
 | `@underline` | — | `content` (nestable) | plain wrapper |
 | `@del` | — | `content` (nestable) | plain wrapper |
-| `@mark` | `{styles}`, optional | `content` (nestable) | only node in this family with a styles slot — see [§7 below](#mark) |
+| `@mark` | `{styles}`, optional | `content` (nestable) | recolors the *background* — see [§7 below](#mark) |
+| `@color` | `(hex-color)`, required | `content` (nestable) | recolors the *text* — see [Color](#color) |
 | `@raw` | — | `raw-content` (opaque, **not** nestable) | only node in this family that disables inline parsing entirely |
 
 ```ebnf
 mark      = "@mark" , [ styles ] , content ;
+color     = "@color" , "(" , hex-color , ")" , content ;
 bold      = "@bold" , content ;
 italic    = "@italic" , content ;
 underline = "@underline" , content ;
@@ -77,7 +82,7 @@ del       = "@del" , content ;
 raw       = "@raw" , raw-content ;
 ```
 
-Four of the six nodes — `@bold`, `@italic`, `@underline`, `@del` — are structurally identical: a keyword and nothing but `content`. `@mark` adds one optional slot on top of that same shape. `@raw` is the only member whose content production is different in kind, not just in options — see [Raw](#raw).
+Four of the seven nodes — `@bold`, `@italic`, `@underline`, `@del` — are structurally identical: a keyword and nothing but `content`. `@mark` adds one optional slot on top of that same shape; `@color` adds one *required* slot instead. `@raw` is the only member whose content production is different in kind, not just in options — see [Raw](#raw).
 
 ---
 
@@ -131,7 +136,19 @@ Marks a fragment as removed, retracted, or no longer applicable — the semantic
 @mark{red,underline}[紅色並加底線]
 ```
 
-The only Text Formatting node with a second slot: an optional `{styles}` token list (colors, `underline`, `strikethrough`, `bordered`). Full semantics — the two token categories, renderer fallback rules for unrecognized tokens, and why `styles` is a lexical-only production (a brace-wrapped character run, with token splitting left to the semantic/renderer layer) — are covered in dedicated detail at [Inline Syntax Specification §7](../../../Inline-Syntax-Specification.md#7-mark-styles-semantics); this document does not repeat that content.
+A node with a second slot: an optional `{styles}` token list (named colors, hex colors, `underline`, `strikethrough`, `bordered`). Full semantics — the two token categories, renderer fallback rules for unrecognized tokens, and why `styles` is a lexical-only production (a brace-wrapped character run, with token splitting left to the semantic/renderer layer) — are covered in dedicated detail at [Inline Syntax Specification §7](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics); this document does not repeat that content.
+
+Note that `@mark`'s color tokens set a *background* — that's what the named palette (`yellow`, `red`, `green`, …) is tuned for. See [Color](#color) below for actual text-color.
+
+---
+
+### Color
+
+```text
+@color(#ff0000)[這段文字是紅色的]
+```
+
+Where `@mark` recolors the background, `@color` recolors the text itself — a gap the syntax had no answer for before this node existed. Its `(hex-color)` slot is **required**, not optional, and — unlike `@mark`'s `{styles}` — only accepts a literal `#RRGGBB` hex value, not `@mark`'s named color tokens: those seven named colors are pale shades tuned for highlight backgrounds, and would read as low-contrast, barely-visible text if reused here. An unrecognized or malformed value (e.g. `@color(blue)[...]`, `@color(#zzz)[...]`) falls back to no explicit color rather than throwing, per [Inline Syntax Specification §6](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)'s ignore-don't-throw spirit.
 
 ---
 

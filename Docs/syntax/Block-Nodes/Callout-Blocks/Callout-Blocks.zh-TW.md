@@ -75,7 +75,7 @@ Output Target
 
 ## 3. 語法
 
-五個 Callout Blocks 共用同一套語法——節點名稱、選填的 `(title)`，加上 `block-content`：
+五個 Callout Blocks 共用同一套語法——節點名稱、選填的 `(title)`、選填的 `{styles}`，加上 `block-content`：
 
 ```text
 @note[content]
@@ -86,17 +86,17 @@ Output Target
 ```
 
 ```text
-@note(title)[content]
-@tip(title)[content]
-@important(title)[content]
-@warning(title)[content]
-@caution(title)[content]
+@note(title){styles}[content]
+@tip(title){styles}[content]
+@important(title){styles}[content]
+@warning(title){styles}[content]
+@caution(title){styles}[content]
 ```
 
 範例：
 
 ```text
-@caution(資料遺失風險)[
+@caution(資料遺失風險){red,bordered}[
 @bold[警告]
 
 執行此資料庫遷移前，請先建立完整備份。
@@ -108,7 +108,7 @@ Output Target
 
 與 Container Blocks（`@details`、`@card`，參見 [Container Blocks 參考文件](../Container-Blocks/Container-Blocks.zh-TW.md)）相同，Callout Blocks 也採用同一套 `title` 規則（參見 [Block Syntax Specification 第 4 節](../../../Block-Syntax-Specification.md#4-shared-components)）。`title` 是獨立於 `content` 的 AST 欄位（見下方第 7 節）——像上面 `@bold[警告]` 這樣的強調前導文字仍然只是一般的內容本體，不能取代 `(title)`。
 
-節點是語義性的，不代表外觀永遠無法由作者直接指定。@Doc 的通用節點文法同樣保留了選填的 `{styles}` 欄位，用於逐一實例的外觀覆寫——例如 `{bg-fff text-red}`——與 `@mark` 用於行內標記的欄位相同（參見 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark-styles-semantics)）。但與 `title` 不同，`{styles}` 目前**尚未納入任何 Block Node（無論 Callout 或 Container）的正式 EBNF**，僅出現在 [README「核心語法」](../../../README.md) 的示意寫法中。今天寫 `@caution{bg-fff text-red}[...]` 是超前使用尚未定義的文法，而非採用既有功能。
+節點是語義性的，不代表外觀永遠無法由作者直接指定。@Doc 的通用節點文法同樣保留了選填的 `{styles}` 欄位，用於逐一實例的外觀覆寫，與 `@mark` 用於行內標記的欄位相同（參見 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics)）。自 Block Syntax Specification v1.4 起，`{styles}` 已正式納入每個 Callout 與 Container 節點的 EBNF（參見 [Block Syntax Specification 第 4 節](../../../Block-Syntax-Specification.md#4-shared-components)）——token 語意（具名色彩 token、hex token、修飾 token）與 `@mark` 定義的完全相同。個別 Renderer 是否真的把這些 token 映射成可見樣式，仍是 Renderer 自行決定（見 [KamiAdapter.ts](../../../src/kami/KamiAdapter.ts)，目前只實作了一部分）；README 把這個槽位讀成 Tailwind 樣式字串（例如 `{w-300px bg-f8f9fa text-sm}`）的示意寫法仍是前瞻性的，並非現行文法——現行文法是 Inline Spec 第 7 節定義的逗號分隔色彩／修飾 token 列表。
 
 **完全省略 vs. 空括號。** EBNF 將整個 `[ title ]` 標示為可省略，但 `text = { any-unicode-char }` 本身也允許零個字元——因此單就文法而言，`@warning()[content]`（空括號）並未被明確排除。本文件將兩者視為等價：完全省略 `(title)`，與括號內為空白或空字串的 `()`，都應正規化為「沒有標題」。Parser 可以選擇在 Strict Mode 下將 `()` 標示為需要提示的寫法（參見 [Inline Syntax Specification 第 11 節](../../../Inline-Syntax-Specification.md#11-parser-recovery-strategy)），但就語義而言，兩者都不帶標題。
 

@@ -11,13 +11,13 @@
       "metaKeywords": ["meta"]
     },
     "Block": {
-      "structuralKeywords": ["h", "p", "quote", "list", "code", "img", "table", "hr"],
+      "structuralKeywords": ["h", "p", "quote", "list", "code", "img", "table", "hr", "svg"],
       "containerKeywords":  ["details", "card"],
       "calloutKeywords":    ["note", "tip", "important", "warning", "caution"],
       "widgetKeywords":     ["tabs", "mermaid"]
     },
     "Inline": {
-      "formatKeywords":   ["mark", "bold", "italic", "underline", "del", "raw"],
+      "formatKeywords":   ["mark", "color", "bold", "italic", "underline", "del", "raw"],
       "semanticKeywords": ["sup", "sub", "kbd", "link"],
       "footnoteKeywords": ["fn", "refn"],
       "specialKeywords":  ["n"]

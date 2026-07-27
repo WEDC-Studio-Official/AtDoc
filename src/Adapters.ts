@@ -7,10 +7,14 @@
 // exists to make those examples real, not to invent new ones.
 //
 // Two routes, differing only where the grammar actually has something to
-// differ on — @mark's `{styles}` token list (Inline Syntax Specification §7)
-// is the only per-instance style slot formalized in the current EBNF, so
-// it's the only place Route A (class-driven) and Route B (inline CSS) genuinely
-// diverge. Everything else renders identically on both routes.
+// differ on — @mark's and @color's color tokens (Inline Syntax Specification
+// §7, Block Syntax Specification §4) are the only per-instance style slots
+// this Adapter maps to output, so they're the only place Route A
+// (class-driven) and Route B (inline CSS) genuinely diverge. Container and
+// Callout Blocks also carry a parsed `styles` slot (registry.ts `styles: true`)
+// but this Adapter doesn't yet map it to visual output — see KamiAdapter.ts
+// for the Renderer branch that does. Everything else renders identically on
+// both routes.
 
 import type { DocASTNode } from './types.ts';
 
@@ -35,6 +39,21 @@ const MARK_COLORS: Record<string, string> = {
 };
 const MARK_MODIFIERS = ['underline', 'strikethrough', 'bordered'];
 
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * Shared style-token color resolver — accepts either a named token
+ * (Inline Syntax Specification §7) or a literal "#RRGGBB" hex token, used by
+ * both @mark's {styles} slot and @color's required "(#hex)" paren.
+ * Unknown/malformed tokens resolve to undefined so callers can fall back
+ * silently, per §6 Unknown Command Fallback's ignore-don't-throw spirit.
+ */
+function resolveColorToken(token: string | undefined): string | undefined {
+  if (!token) return undefined;
+  if (HEX_COLOR.test(token)) return token;
+  return MARK_COLORS[token];
+}
+
 /** URI scheme inference — Inline Syntax Specification §8 @link URI Semantics. */
 function resolveUri(raw: string): string {
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) return raw; // explicit scheme: MUST be used as-is
@@ -49,13 +68,14 @@ function renderChildren(content: (DocASTNode | string)[], route: Route): string 
 
 function renderMark(node: DocASTNode, route: Route): string {
   const tokens = node.styles ?? [];
-  const colorToken = tokens.find(t => MARK_COLORS[t]);
+  const colorToken = tokens.find(t => resolveColorToken(t) !== undefined);
+  const resolvedColor = resolveColorToken(colorToken);
   const modifierTokens = tokens.filter(t => MARK_MODIFIERS.includes(t));
   const inner = renderChildren(node.content, route);
 
   if (route === 'inline') {
     const styleParts: string[] = [];
-    if (colorToken) styleParts.push(`background-color: ${MARK_COLORS[colorToken]};`);
+    if (resolvedColor) styleParts.push(`background-color: ${resolvedColor};`);
     if (modifierTokens.includes('underline')) styleParts.push('text-decoration: underline;');
     if (modifierTokens.includes('strikethrough')) styleParts.push('text-decoration: line-through;');
     if (modifierTokens.includes('bordered')) styleParts.push('border: 1px solid currentColor;');
@@ -63,21 +83,53 @@ function renderMark(node: DocASTNode, route: Route): string {
     return `<mark${styleAttr}>${inner}</mark>`;
   }
 
-  const classes = ['mark', ...(colorToken ? [`mark-${colorToken}`] : []), ...modifierTokens.map(t => `mark-${t}`)];
-  return `<mark class="${classes.join(' ')}">${inner}</mark>`;
+  // A literal hex token has no Tailwind-style class equivalent — fall back to inline style for it.
+  const isNamedColor = colorToken !== undefined && !HEX_COLOR.test(colorToken);
+  const classes = ['mark', ...(isNamedColor ? [`mark-${colorToken}`] : []), ...modifierTokens.map(t => `mark-${t}`)];
+  const hexStyle = colorToken && !isNamedColor ? ` style="background-color: ${resolvedColor};"` : '';
+  return `<mark class="${classes.join(' ')}"${hexStyle}>${inner}</mark>`;
+}
+
+function renderColor(node: DocASTNode, route: Route): string {
+  // @color is for a precise text color, unlike @mark's named-token highlight
+  // palette (tuned for pale backgrounds, not readable foreground text) — so
+  // it only resolves literal hex, falling back to no explicit color (rather
+  // than near-invisible pale text) for anything else, per the Unknown
+  // Command Fallback ignore-don't-throw spirit (Inline Spec §6).
+  const hex = node.color && HEX_COLOR.test(node.color) ? node.color : undefined;
+  const inner = renderChildren(node.content, route);
+  if (!hex) return `<span>${inner}</span>`;
+  return `<span style="color: ${hex};">${inner}</span>`;
+}
+
+/**
+ * @svg is a raw pass-through node (Widget-Blocks-style raw content, like
+ * @mermaid) — its content is trusted markup the Renderer emits unescaped so
+ * the browser actually draws the vector graphic instead of printing source.
+ * Because that crosses a trust boundary, strip <script> and on*="" handlers
+ * before emitting rather than passing the source through untouched.
+ */
+function sanitizeSvg(raw: string): string {
+  return raw
+    .replace(/<script[\s\S]*?<\/script\s*>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '');
 }
 
 function renderList(node: DocASTNode, route: Route): string {
-  // @list has no dedicated ListItem AST (Structural-Blocks.md §4 List) —
-  // items are literal "- "-prefixed lines inside generic content.
-  const flat = node.content.map(c => (typeof c === 'string' ? escapeHtml(c) : renderNode(c, route))).join('');
-  const items = flat
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.startsWith('- '))
-    .map(line => line.slice(2).trim());
-  if (items.length === 0) return '<ul></ul>';
-  return `<ul>${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+  // @list items are structured 'list-item' nodes built by the Parser
+  // (Structural-Blocks.md §5 List) — every non-empty line is an item, so
+  // nested inline nodes (e.g. @bold) inside an item render correctly instead
+  // of being flattened to text first. A nested @list is just another content
+  // node inside an item, so renderChildren recurses back into renderList for it.
+  const items = node.items ?? [];
+  const tag = node.ordered ? 'ol' : 'ul';
+  if (items.length === 0) return `<${tag}></${tag}>`;
+  const li = items.map(i => {
+    const valueAttr = node.ordered && i.marker !== undefined ? ` value="${i.marker}"` : '';
+    return `<li${valueAttr}>${renderChildren(i.content, route)}</li>`;
+  }).join('');
+  return `<${tag}>${li}</${tag}>`;
 }
 
 function renderTabs(node: DocASTNode, route: Route): string {
@@ -114,10 +166,14 @@ function renderNode(node: DocASTNode, route: Route): string {
       const attrs = [`src="${escapeHtml(opts.src ?? '')}"`, `alt="${escapeHtml(alt)}"`];
       if (opts.width) attrs.push(`width="${escapeHtml(opts.width)}"`);
       if (opts.height) attrs.push(`height="${escapeHtml(opts.height)}"`);
+      const styleParts: string[] = [];
       if (opts.align) {
         const margin = opts.align === 'center' ? '0 auto' : opts.align === 'right' ? '0 0 0 auto' : '0';
-        attrs.push(`style="display:block;margin:${margin};"`);
+        styleParts.push(`display:block;margin:${margin};`);
       }
+      if (opts.radius) styleParts.push(`border-radius:${escapeHtml(opts.radius)};`);
+      if (opts.border) styleParts.push(`border:${escapeHtml(opts.border)};`);
+      if (styleParts.length) attrs.push(`style="${styleParts.join('')}"`);
       return `<img ${attrs.join(' ')}>`;
     }
     case 'table': {
@@ -129,6 +185,8 @@ function renderNode(node: DocASTNode, route: Route): string {
     }
     case 'hr':
       return '<hr>';
+    case 'svg':
+      return sanitizeSvg(node.raw ?? '');
 
     // Container Blocks
     case 'details':
@@ -164,6 +222,8 @@ function renderNode(node: DocASTNode, route: Route): string {
       return `<del>${renderChildren(node.content, route)}</del>`;
     case 'mark':
       return renderMark(node, route);
+    case 'color':
+      return renderColor(node, route);
     case 'raw':
       return escapeHtml(node.raw ?? '');
 

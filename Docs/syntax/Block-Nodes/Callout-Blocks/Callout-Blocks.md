@@ -75,7 +75,7 @@ The document declares *"this is a caution."* The compiler decides *"how should t
 
 ## 3. Syntax
 
-All five Callout Blocks share one grammar — a node name, an optional `(title)`, and `block-content`:
+All five Callout Blocks share one grammar — a node name, an optional `(title)`, an optional `{styles}`, and `block-content`:
 
 ```text
 @note[content]
@@ -86,17 +86,17 @@ All five Callout Blocks share one grammar — a node name, an optional `(title)`
 ```
 
 ```text
-@note(title)[content]
-@tip(title)[content]
-@important(title)[content]
-@warning(title)[content]
-@caution(title)[content]
+@note(title){styles}[content]
+@tip(title){styles}[content]
+@important(title){styles}[content]
+@warning(title){styles}[content]
+@caution(title){styles}[content]
 ```
 
 Example:
 
 ```text
-@caution(Data Loss Risk)[
+@caution(Data Loss Risk){red,bordered}[
 @bold[Warning]
 
 Before running this database migration, create a complete backup.
@@ -108,7 +108,7 @@ Content follows the standard `block-content` rule (see [Block Syntax Specificati
 
 Like Container Blocks (`@details`, `@card` — see [Container Blocks Reference](../Container-Blocks/Container-Blocks.md)), Callout Blocks accept the same `title` production (see [Block Syntax Specification §4](../../../Block-Syntax-Specification.md#4-shared-components)). `title` is a discrete AST field, separate from `content` (§7 below) — an emphasized lead-in such as the `@bold[Warning]` shown above is still ordinary body text, not a substitute for `(title)`.
 
-Node identity being semantic doesn't mean appearance can never be authored directly. @Doc's general node grammar also reserves an optional `{styles}` slot for per-instance visual overrides — e.g. `{bg-fff text-red}` — the same slot `@mark` already uses for inline highlighting (see [Inline Syntax Specification §7](../../../Inline-Syntax-Specification.md#7-mark-styles-semantics)). Unlike `title`, `{styles}` is **not yet part of the formal EBNF** for any block node — Callout or Container — beyond the illustrative shape shown in [README § Core Syntax](../../../README.md). Writing `@caution{bg-fff text-red}[...]` today anticipates the grammar; it is not yet a defined feature.
+Node identity being semantic doesn't mean appearance can never be authored directly. @Doc's general node grammar also reserves an optional `{styles}` slot for per-instance visual overrides, the same slot `@mark` already uses for inline highlighting (see [Inline Syntax Specification §7](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics)). As of Block Syntax Specification v1.4, `{styles}` is now formal EBNF for every Callout and Container node (see [Block Syntax Specification §4](../../../Block-Syntax-Specification.md#4-shared-components)) — token semantics (named color tokens, hex tokens, modifier tokens) are the same ones `@mark` defines. Whether a given renderer actually maps those tokens to visible styling is still a renderer decision (see [KamiAdapter.ts](../../../src/kami/KamiAdapter.ts) for one that only partially does today); the README's illustrative Tailwind-class-string reading of this slot (e.g. `{w-300px bg-f8f9fa text-sm}`) remains forward-looking, not the current grammar — the current grammar is the comma-separated color/modifier token list defined in Inline Spec §7.
 
 **Omitted vs. empty title.** The EBNF marks the whole `[ title ]` group optional, but `text = { any-unicode-char }` also permits zero characters, so `@warning()[content]` isn't explicitly ruled out by the grammar alone. This reference treats the two as equivalent: an omitted `(title)` and an empty or whitespace-only `()` both normalize to *no title*. Parsers MAY additionally flag `()` as a Strict Mode lint (see [Inline Syntax Specification §11](../../../Inline-Syntax-Specification.md#11-parser-recovery-strategy)), but semantically neither carries a title.
 

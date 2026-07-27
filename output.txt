@@ -1,5 +1,5 @@
 F:\program\node\node.exe .\main.ts
---- Tokens --- 482 tokens
+--- Tokens --- 519 tokens
 --- AST ---
 [
   {
@@ -138,6 +138,46 @@ F:\program\node\node.exe .\main.ts
     "type": "list",
     "content": [
       "\n- Apple\n- Banana\n- Orange\n"
+    ],
+    "items": [
+      {
+        "type": "list-item",
+        "content": [
+          "Apple"
+        ]
+      },
+      {
+        "type": "list-item",
+        "content": [
+          "Banana"
+        ]
+      },
+      {
+        "type": "list-item",
+        "content": [
+          "Orange"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "list",
+    "content": [
+      "\nPear\nPeach\n"
+    ],
+    "items": [
+      {
+        "type": "list-item",
+        "content": [
+          "Pear"
+        ]
+      },
+      {
+        "type": "list-item",
+        "content": [
+          "Peach"
+        ]
+      }
     ]
   },
   {
@@ -168,12 +208,27 @@ F:\program\node\node.exe .\main.ts
     "content": [
       "\nWEDC Logo\n"
     ],
-    "paren": "\nhttps://example.com/logo.png,width=200,align=center\n",
+    "paren": "\nhttps://example.com/logo.png,width=200,align=center,radius=8px,border=1px solid #ccc\n",
     "imgOptions": {
       "src": "https://example.com/logo.png",
       "width": "200",
-      "align": "center"
+      "align": "center",
+      "radius": "8px",
+      "border": "1px solid #ccc"
     }
+  },
+  {
+    "type": "h",
+    "content": [
+      "SVG"
+    ],
+    "paren": "3",
+    "level": 3
+  },
+  {
+    "type": "svg",
+    "content": [],
+    "raw": "\n<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n"
   },
   {
     "type": "h",
@@ -342,7 +397,20 @@ F:\program\node\node.exe .\main.ts
           },
           "\n    "
         ],
-        "paren": …       },
+        "paren": "JavaScript",
+        "title": "JavaScript"
+      },
+      {
+        "type": "tab",
+        "content": [
+          "\n        ",
+          {
+            "type": "code",
+            "content": [],
+            "paren": "py",
+            "language": "py",
+            "raw": "print(\"hi\")"
+          },
           "\n    "
         ],
         "paren": "Python",
@@ -464,7 +532,41 @@ F:\program\node\node.exe .\main.ts
           "underline"
         ]
       },
+      "\n",
+      {
+        "type": "mark",
+        "content": [
+          "16 進位背景色"
+        ],
+        "styles": [
+          "#3366ff"
+        ]
+      },
       "\n"
+    ]
+  },
+  {
+    "type": "p",
+    "content": [
+      "\n",
+      {
+        "type": "color",
+        "content": [
+          "這段文字是紅色的"
+        ],
+        "paren": "#ff0000",
+        "color": "#ff0000"
+      },
+      "，",
+      {
+        "type": "color",
+        "content": [
+          "這段沒有指定顏色，優雅地退回無色"
+        ],
+        "paren": "unknown",
+        "color": "unknown"
+      },
+      "。\n"
     ]
   },
   {
@@ -664,7 +766,7 @@ F:\program\node\node.exe .\main.ts
       "\n"
     ]
   }
-]…
+]
 --- Route A: Tailwind JIT HTML ---
 
 <h1>@Doc Full Syntax Coverage Test</h1>
@@ -687,13 +789,18 @@ Show me the code.
 </blockquote>
 <h3>List</h3>
 <ul><li>Apple</li><li>Banana</li><li>Orange</li></ul>
+<ul><li>Pear</li><li>Peach</li></ul>
 <h3>Code</h3>
 <pre><code class="language-ts">
 const x: number = 1;
 console.log(x);
 </code></pre>
 <h3>Image</h3>
-<img src="https://example.com/logo.png" alt="WEDC Logo" width="200" style="display:block;margin:0 auto;">
+<img src="https://example.com/logo.png" alt="WEDC Logo" width="200" style="display:block;margin:0 auto;border-radius:8px;border:1px solid #ccc;">
+<h3>SVG</h3>
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>
+
 <h3>Table</h3>
 <table><thead><tr><th>id</th><th>name</th><th>price</th></tr></thead><tbody><tr><td>1</td><td>早餐</td><td>60</td></tr><tr><td>2</td><td>午餐</td><td>80</td></tr><tr><td>3</td><td>晚餐</td><td>90</td></tr></tbody></table>
 <h3>Horizontal Rule</h3>
@@ -718,7 +825,7 @@ console.log(x);
 <aside class="important">
 API v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。
 </aside>
-<aside class="warning"><strong>資料保留政策</strong>
+<aside class="warning"><strong>資料保留政策</strong> 
 此 API 端點將於 3.0 版本移除。
 </aside>
 <aside class="caution">
@@ -750,6 +857,10 @@ B --&gt; C
 <mark class="mark">預設高亮</mark>
 <mark class="mark mark-yellow">黃色高亮</mark>
 <mark class="mark mark-red mark-underline">紅色並加底線</mark>
+<mark class="mark" style="background-color: #3366ff;">16 進位背景色</mark>
+</p>
+<p>
+<span style="color: #ff0000;">這段文字是紅色的</span>，<span>這段沒有指定顏色，優雅地退回無色</span>。
 </p>
 <p>
 Raw domain 範例：這裡的 @mark[hello] 不會被解析，只會照字面輸出。
@@ -813,13 +924,18 @@ Show me the code.
 </blockquote>
 <h3>List</h3>
 <ul><li>Apple</li><li>Banana</li><li>Orange</li></ul>
+<ul><li>Pear</li><li>Peach</li></ul>
 <h3>Code</h3>
 <pre><code class="language-ts">
 const x: number = 1;
 console.log(x);
 </code></pre>
 <h3>Image</h3>
-<img src="https://example.com/logo.png" alt="WEDC Logo" width="200" style="display:block;margin:0 auto;">
+<img src="https://example.com/logo.png" alt="WEDC Logo" width="200" style="display:block;margin:0 auto;border-radius:8px;border:1px solid #ccc;">
+<h3>SVG</h3>
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>
+
 <h3>Table</h3>
 <table><thead><tr><th>id</th><th>name</th><th>price</th></tr></thead><tbody><tr><td>1</td><td>早餐</td><td>60</td></tr><tr><td>2</td><td>午餐</td><td>80</td></tr><tr><td>3</td><td>晚餐</td><td>90</td></tr></tbody></table>
 <h3>Horizontal Rule</h3>
@@ -844,7 +960,7 @@ console.log(x);
 <aside class="important">
 API v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。
 </aside>
-<aside class="warning"><strong>資料保留政策</strong>
+<aside class="warning"><strong>資料保留政策</strong> 
 此 API 端點將於 3.0 版本移除。
 </aside>
 <aside class="caution">
@@ -876,6 +992,10 @@ B --&gt; C
 <mark>預設高亮</mark>
 <mark style="background-color: #fff3a3;">黃色高亮</mark>
 <mark style="background-color: #ffd2d2; text-decoration: underline;">紅色並加底線</mark>
+<mark style="background-color: #3366ff;">16 進位背景色</mark>
+</p>
+<p>
+<span style="color: #ff0000;">這段文字是紅色的</span>，<span>這段沒有指定顏色，優雅地退回無色</span>。
 </p>
 <p>
 Raw domain 範例：這裡的 @mark[hello] 不會被解析，只會照字面輸出。

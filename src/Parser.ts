@@ -30,6 +30,72 @@ function clampLevel(raw: string | undefined): number {
   return Number.isFinite(lvl) && lvl >= 1 && lvl <= 6 ? lvl : 1;
 }
 
+const LIST_DASH_RE = /^[ \t]*-[ \t]+/;
+const LIST_NUM_RE = /^[ \t]*(\d+)[.)][ \t]+/;
+
+/**
+ * @list item semantics (Structural-Blocks.md §5 List): every non-empty line
+ * is an item. A leading "- " is stripped when present, for backward
+ * compatibility with the old dash-prefixed style — it is no longer required.
+ * A leading "N. "/"N)" is also stripped and kept as `marker`, letting
+ * @list(ordered) restart/resume its numbering via `<li value>`.
+ * Splits on the raw content stream (not re-rendered HTML), so inline nodes
+ * (e.g. @bold) inside an item survive as structured children instead of
+ * being flattened to text.
+ *
+ * A line holding nothing but a single nested @list (plus surrounding
+ * whitespace) isn't a new item — it's folded into the previous item's
+ * content as that item's sub-list, so nesting works with plain indentation
+ * and no dedicated syntax.
+ */
+function buildListItems(content: (DocASTNode | string)[]): DocASTNode[] {
+  const lines: (DocASTNode | string)[][] = [[]];
+
+  for (const part of content) {
+    if (typeof part !== 'string') {
+      lines[lines.length - 1].push(part);
+      continue;
+    }
+    const segments = part.split('\n');
+    segments.forEach((seg, idx) => {
+      if (idx > 0) lines.push([]);
+      if (seg !== '') lines[lines.length - 1].push(seg);
+    });
+  }
+
+  const items: DocASTNode[] = [];
+  for (const line of lines) {
+    const meaningful = line.filter(part => typeof part !== 'string' || part.trim() !== '');
+    if (meaningful.length === 1 && typeof meaningful[0] !== 'string' && (meaningful[0] as DocASTNode).type === 'list') {
+      const prev = items[items.length - 1];
+      if (prev) {
+        prev.content.push(meaningful[0]);
+        continue;
+      }
+    }
+
+    let marker: number | undefined;
+    if (line.length && typeof line[0] === 'string') {
+      const first = line[0] as string;
+      const numMatch = first.match(LIST_NUM_RE);
+      if (numMatch) {
+        marker = parseInt(numMatch[1], 10);
+        line[0] = first.slice(numMatch[0].length);
+      } else {
+        line[0] = first.replace(LIST_DASH_RE, '');
+      }
+    }
+
+    const isBlank = line.every(part => typeof part === 'string' && part.trim() === '');
+    if (isBlank) continue;
+
+    const item: DocASTNode = { type: 'list-item', content: line };
+    if (marker !== undefined) item.marker = marker;
+    items.push(item);
+  }
+  return items;
+}
+
 export class DocParser {
   private tokens: Token[];
   private cursor = 0;
@@ -144,6 +210,8 @@ export class DocParser {
       case 'uri': node.uri = node.paren; break;
       case 'id': node.id = node.paren; break;
       case 'options': node.imgOptions = parseImgOptions(node.paren ?? ''); break;
+      case 'color': node.color = node.paren; break;
+      case 'ordered': node.ordered = /^\s*ordered\s*$/i.test(node.paren ?? ''); break;
     }
 
     if (this.tokens[this.cursor]?.type === 'STYLES') {
@@ -253,6 +321,9 @@ export class DocParser {
         this.expectSlotOpen(node.type);
         node.content = this.parseSlotContent(node.type);
         this.expectSlotClose(node.type);
+        if (node.type === 'list') {
+          node.items = buildListItems(node.content);
+        }
         return node;
       }
     }

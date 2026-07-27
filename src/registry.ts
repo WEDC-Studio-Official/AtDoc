@@ -31,7 +31,9 @@ export type ParenRole =
   | 'language' // @code
   | 'options'  // @img
   | 'uri'      // @link
-  | 'id';      // @fn
+  | 'id'       // @fn
+  | 'color'    // @color
+  | 'ordered'; // @list
 
 export interface NodeDef {
   name: string;
@@ -55,24 +57,25 @@ const REGISTRY: NodeDef[] = [
   def({ name: 'h', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'level' }),
   def({ name: 'p', kind: 'block', content: 'generic', paren: 'none' }),
   def({ name: 'quote', kind: 'block', content: 'generic', paren: 'none' }),
-  def({ name: 'list', kind: 'block', content: 'generic', paren: 'none' }),
+  def({ name: 'list', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'ordered' }),
   def({ name: 'code', kind: 'block', content: 'raw', paren: 'optional', parenRole: 'language' }),
   def({ name: 'img', kind: 'block', content: 'generic', paren: 'required', parenRole: 'options' }),
   def({ name: 'table', kind: 'block', content: 'table', paren: 'none' }),
   def({ name: 'cols', kind: 'block', content: 'comma-list', paren: 'none', restrictedTo: 'table' }),
   def({ name: 'data', kind: 'block', content: 'rows', paren: 'none', restrictedTo: 'table' }),
   def({ name: 'hr', kind: 'block', content: 'none', paren: 'none' }),
+  def({ name: 'svg', kind: 'block', content: 'raw', paren: 'none' }),
 
   // Container Blocks — §6
-  def({ name: 'details', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title' }),
-  def({ name: 'card', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title' }),
+  def({ name: 'details', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title', styles: true }),
+  def({ name: 'card', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title', styles: true }),
 
   // Callout Blocks — §7
-  def({ name: 'note', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title' }),
-  def({ name: 'tip', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title' }),
-  def({ name: 'important', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title' }),
-  def({ name: 'warning', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title' }),
-  def({ name: 'caution', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title' }),
+  def({ name: 'note', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title', styles: true }),
+  def({ name: 'tip', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title', styles: true }),
+  def({ name: 'important', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title', styles: true }),
+  def({ name: 'warning', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title', styles: true }),
+  def({ name: 'caution', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'title', styles: true }),
 
   // Widget Blocks — §8
   def({ name: 'tabs', kind: 'block', content: 'tabs', paren: 'none' }),
@@ -85,6 +88,7 @@ const REGISTRY: NodeDef[] = [
   def({ name: 'underline', kind: 'inline', content: 'generic', paren: 'none' }),
   def({ name: 'del', kind: 'inline', content: 'generic', paren: 'none' }),
   def({ name: 'mark', kind: 'inline', content: 'generic', paren: 'none', styles: true }),
+  def({ name: 'color', kind: 'inline', content: 'generic', paren: 'required', parenRole: 'color' }),
   def({ name: 'raw', kind: 'inline', content: 'raw-escaped', paren: 'none' }),
 
   // Semantic Inline — Inline §4, §8
@@ -113,4 +117,14 @@ export function getNodeDef(name: string): NodeDef | undefined {
 
 export function isKnownCommand(name: string): boolean {
   return BY_NAME.has(name);
+}
+
+/**
+ * The full node table, for consumers that need to derive keyword lists
+ * (e.g. the editor's Monarch tokenizer, src/editor/monarch.ts) instead of
+ * hand-copying names. Keeping this as the single export point means new
+ * REGISTRY entries automatically flow into anything built from it.
+ */
+export function getAllNodeDefs(): readonly NodeDef[] {
+  return REGISTRY;
 }

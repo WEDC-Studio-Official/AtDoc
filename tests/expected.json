@@ -98,5 +98,10 @@
   "25-table-cell-inline-formatting-valid.atd": {
     "shouldThrow": false,
     "note": "@table cells now accept a curated set of inline formatting nodes (registry.ts's isCellAllowedNode) — @bold, @link, @n all parse as real nodes instead of throwing."
+  },
+  "26-color-old-paren-disabled.atd": {
+    "shouldThrow": true,
+    "messageContains": "no longer accepts a parenthesized value",
+    "note": "@color(#hex) was retired when @color moved to sharing @mark's {styles} slot — the old paren form is now a hard error instead of silently discarding the value."
   }
 }

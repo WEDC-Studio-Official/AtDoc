@@ -511,6 +511,13 @@ Renderer MUST 忽略格式不符或無法識別的值並以某種預設值作為
 @color{not-a-color}[這段沒有指定顏色，優雅地退回預設色]
 ```
 
+> [!IMPORTANT]
+> **舊語法已停用**：`@color` 早期版本使用必填的 `(hex-color)` 括號（`@color(#ff0000)[...]`）。
+> 那個語法已經移除，不是「忽略後退回預設值」，而是 Parser MUST 直接拋出語法錯誤
+> （Strict Mode）或標記為診斷（Editor Mode）——因為括號寫法會讓作者誤以為顏色有生效，
+> 實際上卻靜默套用了預設色，這種「看起來設定成功、實際上沒有」的落差比直接報錯更危險，
+> 不適用 [6. Unknown Command Fallback](#6-unknown-command-fallback) 的容錯精神。
+
 ---
 
 ### Renderer 行為

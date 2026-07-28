@@ -68,7 +68,7 @@ A parser can find every `@mark` (for a highlight/annotation index) or every `@de
 | `@underline` | — | `content` (nestable) | plain wrapper |
 | `@del` | — | `content` (nestable) | plain wrapper |
 | `@mark` | `{styles}`, optional | `content` (nestable) | recolors the *background* — see [§7 below](#mark) |
-| `@color` | `{hex-color}`, optional | `content` (nestable) | recolors the *text* — see [Color](#color) |
+| `@color` | `{styles}`, optional | `content` (nestable) | recolors the *text* — see [Color](#color) |
 | `@raw` | — | `raw-content` (opaque, **not** nestable) | only node in this family that disables inline parsing entirely |
 
 ```ebnf
@@ -150,6 +150,8 @@ Note that `@mark`'s color tokens set a *background* — that's what the named pa
 ```
 
 Where `@mark` recolors the background, `@color` recolors the text itself — a gap the syntax had no answer for before this node existed. It shares `@mark`'s exact `{styles}` slot — same brace, same optional-ness, same seven named tokens (`yellow`/`red`/`green`/`blue`/`orange`/`purple`/`gray`) plus literal `#RRGGBB` hex. The two nodes' named tokens resolve through independent palettes, though: `@mark`'s are pale shades tuned for highlight backgrounds, and would read as low-contrast, barely-visible text if reused here, so a Renderer typically keeps a separate, darker palette for `@color`. An unrecognized, malformed, or omitted value (e.g. `@color{not-a-color}[...]`, `@color{#zzz}[...]`, `@color[...]`) falls back to a default rather than throwing, per [Inline Syntax Specification §6](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)'s ignore-don't-throw spirit.
+
+`@color`'s earlier `(hex-color)` paren syntax has been retired, and — unlike the fallback above — using it is a hard Parser error (Strict Mode throw / Editor Mode diagnostic), not a silent fallback: `@color(#ff0000)[...]` looks like it should work and visibly doesn't, which is a worse trap for an author than an upfront error.
 
 ---
 

@@ -207,6 +207,12 @@ export class DocParser {
     if (nodeDef.paren === 'required' && node.paren === undefined) {
       throw new DocSyntaxError(`\`@${name}\` requires a parenthesized ${nodeDef.parenRole ?? 'value'} — e.g. \`@${name}(...)\`.`);
     }
+    // @color's "(hex)" paren syntax was retired in favor of sharing @mark's
+    // "{styles}" slot — the old form is now a hard error instead of silently
+    // discarding the value, so nobody accidentally ships an uncolored @color.
+    if (name === 'color' && node.paren !== undefined) {
+      throw new DocSyntaxError(`\`@color\` no longer accepts a parenthesized value — use \`@color{${node.paren}}\` instead of \`@color(${node.paren})\`.`);
+    }
 
     switch (nodeDef.parenRole) {
       case 'level': node.level = clampLevel(node.paren); break;

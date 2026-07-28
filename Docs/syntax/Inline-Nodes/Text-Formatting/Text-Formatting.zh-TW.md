@@ -68,7 +68,7 @@ Parser 可以直接找出文件中每一個 `@mark`(用於高亮／註記索引)
 | `@underline` | 無 | `content`(可巢狀) | 純包裝 |
 | `@del` | 無 | `content`(可巢狀) | 純包裝 |
 | `@mark` | `{styles}`，選填 | `content`(可巢狀) | 改變的是**背景色**——見下方 [Mark](#mark) |
-| `@color` | `{hex-color}`，選填 | `content`(可巢狀) | 改變的是**文字色**——見 [Color](#color) |
+| `@color` | `{styles}`，選填 | `content`(可巢狀) | 改變的是**文字色**——見 [Color](#color) |
 | `@raw` | 無 | `raw-content`(不透明，**不可**巢狀) | 這個家族中唯一完全停用行內解析的節點 |
 
 ```ebnf
@@ -150,6 +150,8 @@ raw       = "@raw" , raw-content ;
 ```
 
 `@mark` 改變背景色，`@color` 改變的是文字本身的顏色——這是在這個節點出現之前，語法完全沒有答案的一塊空白。它與 `@mark` 共用完全相同的 `{styles}` 槽位——同樣的括號、同樣選填、同樣的七個具名 token(`yellow`／`red`／`green`／`blue`／`orange`／`purple`／`gray`)，也接受字面的 `#RRGGBB` hex 值。差異在於兩者的具名 token 各自對應到獨立的色票：`@mark` 那組是為高亮背景調校的淺色調，直接拿來當文字顏色會對比度不足、幾乎看不清，所以 Renderer 通常會為 `@color` 維護一份色調較深的專屬色票。無法識別、格式不符或省略的值(例如 `@color{not-a-color}[...]`、`@color{#zzz}[...]`、`@color[...]`)會優雅地退回預設值，而不是拋出錯誤，呼應 [Inline Syntax Specification 第 6 節](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)「忽略而非拋錯」的精神。
+
+`@color` 早期版本的 `(hex-color)` 括號語法已經停用——跟上面的容錯 fallback 不同，用舊語法會直接拋出 Parser 錯誤(Strict Mode)或標成診斷(Editor Mode)，而不是靜默退回預設值：`@color(#ff0000)[...]` 看起來像是會生效，實際上卻悄悄沒有作用，這種落差對作者來說比直接報錯更危險。
 
 ---
 

@@ -39,6 +39,7 @@ node tests/run-tests.ts
 | `23-list-nested-valid.atd` | 巢狀 `@list[...]`——單獨佔一行放在上一個項目底下 | **不拋錯**：併入前一個項目的內容，形成結構化的巢狀清單 |
 | `24-list-ordered-no-dash-valid.atd` | `@list(ordered)[...]`——項目沒有 `- ` 前綴，只用換行分隔 | **不拋錯**：`ordered` 跟一般 `@list` 一樣，`-` 是選填，不是必要條件 |
 | `25-table-cell-inline-formatting-valid.atd` | `@table` 儲存格裡放 `@bold`／`@link`／`@n` | **不拋錯**：這些都在 `registry.ts` 的儲存格白名單（`isCellAllowedNode`）裡，會解析成真正的節點而不是純文字 |
+| `26-color-old-paren-disabled.atd` | `@color(#ff0000)[...]`——已停用的舊語法 | **拋錯**：no longer accepts a parenthesized value（`@color` 改用 `{styles}` 後，舊的 `(hex)` 括號不再被靜默忽略，而是硬性拋錯） |
 
 ## 已知限制：`16-unclosed-raw-domain-silent-swallow.atd`
 

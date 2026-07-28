@@ -39,12 +39,25 @@ const MARK_COLORS: Record<string, string> = {
 };
 const MARK_MODIFIERS = ['underline', 'strikethrough', 'bordered'];
 
+// @color's own named-token palette — deliberately a separate table from
+// MARK_COLORS: those are pale shades tuned for @mark's highlight background,
+// and would read as low-contrast, barely-visible text if reused here as a
+// foreground color, so @color gets its own darker, text-appropriate values.
+const COLOR_PRESETS: Record<string, string> = {
+  yellow: '#9A7B00',
+  red: '#A33A3A',
+  green: '#3F7A4A',
+  blue: '#3569A8',
+  orange: '#A9652A',
+  purple: '#76509A',
+  gray: '#666666',
+};
+
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
 /**
- * Shared style-token color resolver — accepts either a named token
- * (Inline Syntax Specification §7) or a literal "#RRGGBB" hex token, used by
- * both @mark's {styles} slot and @color's required "(#hex)" paren.
+ * @mark's {styles} color-token resolver — accepts either a named token
+ * (Inline Syntax Specification §7) or a literal "#RRGGBB" hex token.
  * Unknown/malformed tokens resolve to undefined so callers can fall back
  * silently, per §6 Unknown Command Fallback's ignore-don't-throw spirit.
  */
@@ -52,6 +65,13 @@ function resolveColorToken(token: string | undefined): string | undefined {
   if (!token) return undefined;
   if (HEX_COLOR.test(token)) return token;
   return MARK_COLORS[token];
+}
+
+/** Same idea as resolveColorToken(), but for @color's own {styles} slot and its separate, darker palette (COLOR_PRESETS). */
+function resolveColorPreset(token: string | undefined): string | undefined {
+  if (!token) return undefined;
+  if (HEX_COLOR.test(token)) return token;
+  return COLOR_PRESETS[token];
 }
 
 /** URI scheme inference — Inline Syntax Specification §8 @link URI Semantics. */
@@ -91,15 +111,25 @@ function renderMark(node: DocASTNode, route: Route): string {
 }
 
 function renderColor(node: DocASTNode, route: Route): string {
-  // @color is for a precise text color, unlike @mark's named-token highlight
-  // palette (tuned for pale backgrounds, not readable foreground text) — so
-  // it only resolves literal hex, falling back to no explicit color (rather
-  // than near-invisible pale text) for anything else, per the Unknown
-  // Command Fallback ignore-don't-throw spirit (Inline Spec §6).
-  const hex = node.color && HEX_COLOR.test(node.color) ? node.color : undefined;
+  // @color is for a precise text color; unlike @mark it doesn't fall back to
+  // a default when the token is missing/unrecognized (this Adapter doesn't
+  // maintain a "default color" concept for either node) — an unresolved
+  // token just renders as a plain, uncolored <span>, per the Unknown Command
+  // Fallback ignore-don't-throw spirit (Inline Spec §6).
+  const colorToken = node.color;
+  const resolvedColor = resolveColorPreset(colorToken);
   const inner = renderChildren(node.content, route);
-  if (!hex) return `<span>${inner}</span>`;
-  return `<span style="color: ${hex};">${inner}</span>`;
+
+  if (route === 'inline') {
+    const styleAttr = resolvedColor ? ` style="color: ${resolvedColor};"` : '';
+    return `<span${styleAttr}>${inner}</span>`;
+  }
+
+  // A literal hex token has no Tailwind-style class equivalent — fall back to inline style for it.
+  const isNamedColor = resolvedColor !== undefined && !HEX_COLOR.test(colorToken!);
+  const classes = ['color', ...(isNamedColor ? [`color-${colorToken}`] : [])];
+  const hexStyle = resolvedColor && !isNamedColor ? ` style="color: ${resolvedColor};"` : '';
+  return `<span class="${classes.join(' ')}"${hexStyle}>${inner}</span>`;
 }
 
 /**

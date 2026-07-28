@@ -94,6 +94,7 @@ Document AST
     │
     ├── Text Formatting
     │   ├── @mark
+    │   ├── @color
     │   ├── @bold
     │   ├── @italic
     │   ├── @underline

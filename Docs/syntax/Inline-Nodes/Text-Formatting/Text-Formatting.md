@@ -68,12 +68,12 @@ A parser can find every `@mark` (for a highlight/annotation index) or every `@de
 | `@underline` | — | `content` (nestable) | plain wrapper |
 | `@del` | — | `content` (nestable) | plain wrapper |
 | `@mark` | `{styles}`, optional | `content` (nestable) | recolors the *background* — see [§7 below](#mark) |
-| `@color` | `(hex-color)`, required | `content` (nestable) | recolors the *text* — see [Color](#color) |
+| `@color` | `{hex-color}`, optional | `content` (nestable) | recolors the *text* — see [Color](#color) |
 | `@raw` | — | `raw-content` (opaque, **not** nestable) | only node in this family that disables inline parsing entirely |
 
 ```ebnf
 mark      = "@mark" , [ styles ] , content ;
-color     = "@color" , "(" , hex-color , ")" , content ;
+color     = "@color" , [ styles ] , content ;
 bold      = "@bold" , content ;
 italic    = "@italic" , content ;
 underline = "@underline" , content ;
@@ -82,7 +82,7 @@ del       = "@del" , content ;
 raw       = "@raw" , raw-content ;
 ```
 
-Four of the seven nodes — `@bold`, `@italic`, `@underline`, `@del` — are structurally identical: a keyword and nothing but `content`. `@mark` adds one optional slot on top of that same shape; `@color` adds one *required* slot instead. `@raw` is the only member whose content production is different in kind, not just in options — see [Raw](#raw).
+Four of the seven nodes — `@bold`, `@italic`, `@underline`, `@del` — are structurally identical: a keyword and nothing but `content`. `@mark` and `@color` share one further shape on top of that: the same optional `{styles}` slot — they differ only in what's semantically valid inside it (a token list vs. a single hex value), not in the grammar shape itself. `@raw` is the only member whose content production is different in kind, not just in options — see [Raw](#raw).
 
 ---
 
@@ -145,10 +145,10 @@ Note that `@mark`'s color tokens set a *background* — that's what the named pa
 ### Color
 
 ```text
-@color(#ff0000)[這段文字是紅色的]
+@color{#ff0000}[這段文字是紅色的]
 ```
 
-Where `@mark` recolors the background, `@color` recolors the text itself — a gap the syntax had no answer for before this node existed. Its `(hex-color)` slot is **required**, not optional, and — unlike `@mark`'s `{styles}` — only accepts a literal `#RRGGBB` hex value, not `@mark`'s named color tokens: those seven named colors are pale shades tuned for highlight backgrounds, and would read as low-contrast, barely-visible text if reused here. An unrecognized or malformed value (e.g. `@color(blue)[...]`, `@color(#zzz)[...]`) falls back to no explicit color rather than throwing, per [Inline Syntax Specification §6](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)'s ignore-don't-throw spirit.
+Where `@mark` recolors the background, `@color` recolors the text itself — a gap the syntax had no answer for before this node existed. It shares `@mark`'s exact `{styles}` slot — same brace, same optional-ness — but only accepts a literal `#RRGGBB` hex value, not `@mark`'s named color tokens: those seven named colors are pale shades tuned for highlight backgrounds, and would read as low-contrast, barely-visible text if reused here. An unrecognized, malformed, or omitted value (e.g. `@color{blue}[...]`, `@color{#zzz}[...]`, `@color[...]`) falls back to a default rather than throwing, per [Inline Syntax Specification §6](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)'s ignore-don't-throw spirit.
 
 ---
 

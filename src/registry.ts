@@ -32,7 +32,6 @@ export type ParenRole =
   | 'options'  // @img
   | 'uri'      // @link
   | 'id'       // @defn
-  | 'color'    // @color
   | 'ordered'; // @list
 
 export interface NodeDef {
@@ -41,7 +40,7 @@ export interface NodeDef {
   content: ContentMode;
   paren: ParenMode;
   parenRole?: ParenRole;
-  styles?: boolean;       // "{styles}" slot allowed — @mark only
+  styles?: boolean;       // "{styles}" slot allowed — @mark, @color, styled Container/Callout Blocks
   restrictedTo?: string;  // only valid as a direct child of this node type
 }
 
@@ -88,7 +87,7 @@ const REGISTRY: NodeDef[] = [
   def({ name: 'underline', kind: 'inline', content: 'generic', paren: 'none' }),
   def({ name: 'del', kind: 'inline', content: 'generic', paren: 'none' }),
   def({ name: 'mark', kind: 'inline', content: 'generic', paren: 'none', styles: true }),
-  def({ name: 'color', kind: 'inline', content: 'generic', paren: 'required', parenRole: 'color' }),
+  def({ name: 'color', kind: 'inline', content: 'generic', paren: 'none', styles: true }),
   def({ name: 'raw', kind: 'inline', content: 'raw-escaped', paren: 'none' }),
 
   // Semantic Inline — Inline §4, §8

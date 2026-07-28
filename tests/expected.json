@@ -73,7 +73,7 @@
   },
   "19-color-node-valid.atd": {
     "shouldThrow": false,
-    "note": "@color(#ff0000)[...] — new inline node for literal text color, distinct from @mark's background highlight."
+    "note": "@color{#ff0000}[...] — inline node for literal text color, distinct from @mark's background highlight. Shares @mark's {styles} slot (optional), just restricted to a single hex value."
   },
   "20-list-no-dash-valid.atd": {
     "shouldThrow": false,

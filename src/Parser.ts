@@ -215,12 +215,19 @@ export class DocParser {
       case 'uri': node.uri = node.paren; break;
       case 'id': node.id = node.paren; break;
       case 'options': node.imgOptions = parseImgOptions(node.paren ?? ''); break;
-      case 'color': node.color = node.paren; break;
       case 'ordered': node.ordered = /^\s*ordered\s*$/i.test(node.paren ?? ''); break;
     }
 
     if (this.tokens[this.cursor]?.type === 'STYLES') {
-      node.styles = this.tokens[this.cursor].value.split(',').map(s => s.trim()).filter(Boolean);
+      const raw = this.tokens[this.cursor].value;
+      // @color takes a single hex value, not a comma-separated token list —
+      // unlike every other {styles} consumer, so it gets its own field
+      // instead of the generic split-into-array handling below.
+      if (name === 'color') {
+        node.color = raw.trim();
+      } else {
+        node.styles = raw.split(',').map(s => s.trim()).filter(Boolean);
+      }
       this.cursor++;
     }
 

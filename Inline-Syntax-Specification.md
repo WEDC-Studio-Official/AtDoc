@@ -154,7 +154,7 @@ inline-node =
    ========================================================================== *)
 
 mark      = "@mark" , [ styles ] , content ;
-color     = "@color" , "(" , hex-color , ")" , content ;
+color     = "@color" , [ styles ] , content ;
 bold      = "@bold" , content ;
 italic    = "@italic" , content ;
 underline = "@underline" , content ;
@@ -237,10 +237,10 @@ styles =
 key =
     { text-char - "]" } ;
 
-(* @color's required paren content — see §7 for the full validation rule
-   (must match /^#[0-9a-fA-F]{6}$/); the terminal itself is grammar-level
-   only, exact digit-count/case validation is semantic-level, same split as
-   `styles` below. *)
+(* @color's semantic constraint on its {styles} content — see §7 for the
+   full validation rule (must match /^#[0-9a-fA-F]{6}$/); the terminal itself
+   is grammar-level only, exact digit-count/case validation is semantic-level,
+   same split as `styles` below. *)
 hex-color =
     "#" , hex-digit , hex-digit , hex-digit , hex-digit , hex-digit , hex-digit ;
 
@@ -490,17 +490,19 @@ bordered    (加外框)
 `@mark` 改變的是**背景**（高亮），無法改變文字本身的顏色。`@color` 補上這個能力：
 
 ```text
-@color(#ff0000)[這段文字是紅色的]
+@color{#ff0000}[這段文字是紅色的]
 ```
 
-其中 `(#ff0000)` 為**必填**括號，僅接受 16 進位 hex token（`/^#[0-9a-fA-F]{6}$/`）。
-與 `@mark` 的 `{styles}` 不同，`@color` 刻意不支援上方的具名 color token
+`@color` 與 `@mark` 共用同一個 `{styles}` 欄位（見上方 EBNF），本身為**選填**——
+省略時 Renderer 退回預設色，行為與 `@mark[content]` 省略 `{styles}` 時相同。
+兩者的差異純粹是語意層級的：`@color` 僅接受單一 16 進位 hex token
+（`/^#[0-9a-fA-F]{6}$/`），刻意不支援 `@mark` 的具名 color token
 （`yellow`／`red`／...）——那組具名色是為淺色高亮背景調校的色階，直接當作文字前景色
-會對比度不足、難以閱讀。Renderer MUST 忽略格式不符的 hex 值並以無額外顏色
-（沿用預設文字色）作為 fallback，而非拋出錯誤：
+會對比度不足、難以閱讀。Renderer MUST 忽略格式不符或缺漏的值並以某種預設值作為
+fallback，而非拋出錯誤：
 
 ```text
-@color(not-a-color)[這段沒有指定顏色，優雅地退回無色]
+@color{not-a-color}[這段沒有指定顏色，優雅地退回預設色]
 ```
 
 ---
@@ -509,8 +511,8 @@ bordered    (加外框)
 
 * Renderer MUST 至少支援 `styles` 省略時的預設高亮樣式。
 * Renderer MAY 自行決定各具名 color token 對應的實際色值（例如深色模式與淺色模式下的 `yellow` 可不同）；16 進位 hex token 則 MUST 直接使用指定值，不得重新映射。
-* Renderer MUST 忽略無法識別的 token（包含格式不符的 hex token），並 SHOULD 以純高亮／無額外顏色（無額外樣式）作為 fallback，而非拋出錯誤——此行為與 [6. Unknown Command Fallback](#6-unknown-command-fallback) 中「未知指令退回純文字」的容錯精神一致，但作用範圍限定在 `styles` 或 `@color` 的括號內部，`@mark[content]`／`@color(...)[content]` 本身仍會被正常解析為對應節點。
-* Token 之間的分隔符固定為半形逗號 `,`，前後允許任意數量空白（Parser 應自動 trim）。此規則適用於 `@mark` 的 `styles`；`@color` 的括號內只允許單一 hex 值，不使用逗號分隔。
+* Renderer MUST 忽略無法識別的 token（包含格式不符的 hex token），並 SHOULD 以某種預設值作為 fallback，而非拋出錯誤——此行為與 [6. Unknown Command Fallback](#6-unknown-command-fallback) 中「未知指令退回純文字」的容錯精神一致，但作用範圍限定在 `styles` 內部，`@mark[content]`／`@color[content]` 本身仍會被正常解析為對應節點。fallback 的具體樣子由 Renderer 自行決定：可以是「無額外顏色」（沿用預設文字色），也可以比照 `@mark` 省略 `styles` 時的預設高亮色再利用一次（兩者共用同一個欄位，這麼做在視覺上是自然的）。
+* Token 之間的分隔符固定為半形逗號 `,`，前後允許任意數量空白（Parser 應自動 trim）。此規則適用於 `@mark` 的 `styles`；`@color` 的 `{}` 內只允許單一 hex 值，不使用逗號分隔。
 
 ---
 

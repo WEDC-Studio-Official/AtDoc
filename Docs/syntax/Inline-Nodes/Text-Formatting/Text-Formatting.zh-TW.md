@@ -68,12 +68,12 @@ Parser 可以直接找出文件中每一個 `@mark`(用於高亮／註記索引)
 | `@underline` | 無 | `content`(可巢狀) | 純包裝 |
 | `@del` | 無 | `content`(可巢狀) | 純包裝 |
 | `@mark` | `{styles}`，選填 | `content`(可巢狀) | 改變的是**背景色**——見下方 [Mark](#mark) |
-| `@color` | `(hex-color)`，必填 | `content`(可巢狀) | 改變的是**文字色**——見 [Color](#color) |
+| `@color` | `{hex-color}`，選填 | `content`(可巢狀) | 改變的是**文字色**——見 [Color](#color) |
 | `@raw` | 無 | `raw-content`(不透明，**不可**巢狀) | 這個家族中唯一完全停用行內解析的節點 |
 
 ```ebnf
 mark      = "@mark" , [ styles ] , content ;
-color     = "@color" , "(" , hex-color , ")" , content ;
+color     = "@color" , [ styles ] , content ;
 bold      = "@bold" , content ;
 italic    = "@italic" , content ;
 underline = "@underline" , content ;
@@ -82,7 +82,7 @@ del       = "@del" , content ;
 raw       = "@raw" , raw-content ;
 ```
 
-七個節點中有四個——`@bold`、`@italic`、`@underline`、`@del`——結構完全相同：一個關鍵字，加上單純的 `content`。`@mark` 在同樣的形狀上多了一個選填欄位；`@color` 則是多了一個**必填**欄位。`@raw` 是唯一一個「內容產生式在種類上、而不只是選項上」有所不同的成員——見 [Raw](#raw)。
+七個節點中有四個——`@bold`、`@italic`、`@underline`、`@del`——結構完全相同：一個關鍵字，加上單純的 `content`。`@mark` 與 `@color` 在這個形狀上共用同一個進一步的槽位：同樣選填的 `{styles}`——兩者的差異只在於這個槽位內什麼內容算合法(token 列表 vs. 單一 hex 值)，語法形狀本身完全相同。`@raw` 是唯一一個「內容產生式在種類上、而不只是選項上」有所不同的成員——見 [Raw](#raw)。
 
 ---
 
@@ -145,10 +145,10 @@ raw       = "@raw" , raw-content ;
 ### Color
 
 ```text
-@color(#ff0000)[這段文字是紅色的]
+@color{#ff0000}[這段文字是紅色的]
 ```
 
-`@mark` 改變背景色，`@color` 改變的是文字本身的顏色——這是在這個節點出現之前，語法完全沒有答案的一塊空白。它的 `(hex-color)` 槽位是**必填**，不是選填；而且與 `@mark` 的 `{styles}` 不同，`@color` 只接受字面的 `#RRGGBB` hex 值，不接受 `@mark` 的具名 color token：那七個具名色是為高亮背景調校的淺色調，直接拿來當文字顏色會對比度不足、幾乎看不清。無法識別或格式不符的值(例如 `@color(blue)[...]`、`@color(#zzz)[...]`)會優雅地退回無額外顏色，而不是拋出錯誤，呼應 [Inline Syntax Specification 第 6 節](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)「忽略而非拋錯」的精神。
+`@mark` 改變背景色，`@color` 改變的是文字本身的顏色——這是在這個節點出現之前，語法完全沒有答案的一塊空白。它與 `@mark` 共用完全相同的 `{styles}` 槽位——同樣的括號、同樣選填——但只接受字面的 `#RRGGBB` hex 值，不接受 `@mark` 的具名 color token：那七個具名色是為高亮背景調校的淺色調，直接拿來當文字顏色會對比度不足、幾乎看不清。無法識別、格式不符或省略的值(例如 `@color{blue}[...]`、`@color{#zzz}[...]`、`@color[...]`)會優雅地退回預設值，而不是拋出錯誤，呼應 [Inline Syntax Specification 第 6 節](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)「忽略而非拋錯」的精神。
 
 ---
 

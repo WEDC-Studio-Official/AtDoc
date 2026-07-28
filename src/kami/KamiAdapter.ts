@@ -161,6 +161,14 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/** Same URI scheme inference as Adapters.ts resolveUri() (Inline Syntax Specification §8) — kept local to avoid a cross-Route dependency. */
+function resolveUri(raw: string): string {
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) return raw; // explicit scheme: MUST be used as-is
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) return `mailto:${raw}`;
+  if (/^\+?[0-9][0-9\- ]*$/.test(raw)) return `tel:${raw.replace(/[\s-]/g, '')}`;
+  return `https://${raw}`;
+}
+
 /** Same trust-boundary stripping as Adapters.ts sanitizeSvg() — kept local to avoid a cross-Route dependency. */
 function sanitizeSvg(raw: string): string {
   return raw
@@ -291,7 +299,7 @@ export function renderKamiNode(node: DocASTNode): string {
     case 'kbd':
       return `<kbd data-kami="kbd">${escapeHtml(node.raw ?? '')}</kbd>`;
     case 'link':
-      return `<a data-kami="link" href="${escapeHtml(node.uri ?? '')}">${renderChildren(node.content)}</a>`;
+      return `<a data-kami="link" href="${escapeHtml(resolveUri(node.uri ?? ''))}">${renderChildren(node.content)}</a>`;
 
     // --- Footnotes ---
     case 'defn':

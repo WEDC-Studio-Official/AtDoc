@@ -40,6 +40,7 @@ node tests/run-tests.ts
 | `24-list-ordered-no-dash-valid.atd` | `@list(ordered)[...]`——項目沒有 `- ` 前綴，只用換行分隔 | **不拋錯**：`ordered` 跟一般 `@list` 一樣，`-` 是選填，不是必要條件 |
 | `25-table-cell-inline-formatting-valid.atd` | `@table` 儲存格裡放 `@bold`／`@link`／`@n` | **不拋錯**：這些都在 `registry.ts` 的儲存格白名單（`isCellAllowedNode`）裡，會解析成真正的節點而不是純文字 |
 | `26-color-old-paren-disabled.atd` | `@color(#ff0000)[...]`——已停用的舊語法 | **拋錯**：no longer accepts a parenthesized value（`@color` 改用 `{styles}` 後，舊的 `(hex)` 括號不再被靜默忽略，而是硬性拋錯） |
+| `27-table-cell-raw-family-paren-valid.atd` | `@code(js)[...]` 放在 table 儲存格裡 | **不拋錯**：回歸測試——`parseInlineCellList()` 原本只 consume `NODE` token 就直接找 `RAW`，帶括號的 raw 系節點（如 `@code` 的語言標籤）會拋出誤導性的「expects a content slot」錯誤；同一筆案例裡的 `@raw[...]`（無括號）確認既有的無括號 raw 系拉平行為沒被動到 |
 
 ## 已知限制：`16-unclosed-raw-domain-silent-swallow.atd`
 

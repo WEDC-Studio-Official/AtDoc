@@ -489,6 +489,12 @@ export class DocParser {
         }
         if (isRawFamilyContent(nodeDef?.content)) {
           this.cursor++; // consume NODE
+          // An optional "(...)" (e.g. @code's language tag) can sit between the
+          // NODE and its RAW content — consume and discard it, same as every
+          // other raw-family node's value gets flattened to plain text here.
+          // Without this, `@code(js)[...]` would find a PAREN token where it
+          // expects RAW and throw a misleading "expects a content slot" error.
+          if (this.tokens[this.cursor]?.type === 'PAREN') this.cursor++;
           const rawTok = this.tokens[this.cursor];
           if (!rawTok || rawTok.type !== 'RAW') {
             throw new DocSyntaxError(`\`@${cur.value}\` expects a content slot \`[...]\` immediately after it.`);

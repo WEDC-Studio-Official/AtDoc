@@ -631,6 +631,9 @@ WEDC Logo
 
 每個 `cell` 不是單純的純文字——除了文字本身，還允許一組經過篩選的行內格式節點（`@bold`、`@italic`、`@underline`、`@del`、`@mark`、`@color`、`@sup`、`@sub`、`@link`、`@fn`，以及會被轉成換行的 `@n`），因為這些節點只改變文字的呈現方式，不會影響表格本身「欄位對齊資料列」的結構。這份清單由 Renderer 端維護（`registry.ts` 的 `isCellAllowedNode`），語法層本身不限制清單內容，未來可以擴充。不在清單上的節點（例如 `@card`、`@table`、`@details` 這類會帶來自己版面結構的區塊節點）MUST 拋出語法錯誤，而不是被靜默捨棄——這與 Strict Mode（Inline Syntax Specification 第 11 節）「寧可拋錯，也不要吞掉錯誤內容」的精神一致。
 
+> [!NOTE]
+> **例外**：raw 家族節點（`@code`、`@mermaid`、`@raw`、`@kbd`）也不在 `isCellAllowedNode` 的清單上，但它們既不是「會帶來自己版面結構的區塊節點」，也不适用上面的 MUST 拋錯規則——`Parser.ts`（`parseInlineCellList`）刻意把它們的原始內容拉平成儲存格裡的純文字，而不是拋錯或當成真正的節點解析。這是跟 `@card`/`@table`/`@details` 那類結構節點分開處理的獨立行為，細節見 `registry.ts`（`CELL_ALLOWED_INLINE` 上方註解）與 `Parser.ts`（`parseInlineCellList` 上方註解）。
+
 ```text
 @table[
     @cols[id,name,note]

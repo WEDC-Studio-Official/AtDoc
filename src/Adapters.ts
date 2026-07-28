@@ -86,6 +86,22 @@ function renderChildren(content: (DocASTNode | string)[], route: Route): string 
   return content.map(c => (typeof c === 'string' ? escapeHtml(c) : renderNode(c, route))).join('');
 }
 
+/**
+ * Recursively collects the plain text of a content list, discarding any
+ * formatting nodes' tags — used where the output must be text-only (e.g.
+ * @img's alt attribute), unlike renderChildren() which renders real markup.
+ * A formatting node (e.g. @bold) contributes its own nested content's text;
+ * a raw-family node (e.g. @kbd, which has no `content`) contributes its
+ * `.raw` text instead.
+ */
+function extractPlainText(content: (DocASTNode | string)[]): string {
+  return content.map(c => {
+    if (typeof c === 'string') return c;
+    if (c.content.length) return extractPlainText(c.content);
+    return c.raw ?? '';
+  }).join('');
+}
+
 function renderMark(node: DocASTNode, route: Route): string {
   const tokens = node.styles ?? [];
   const colorToken = tokens.find(t => resolveColorToken(t) !== undefined);
@@ -192,7 +208,7 @@ function renderNode(node: DocASTNode, route: Route): string {
       return `<pre><code class="language-${escapeHtml(node.language ?? 'text')}">${escapeHtml(node.raw ?? '')}</code></pre>`;
     case 'img': {
       const opts = node.imgOptions ?? {};
-      const alt = node.content.map(c => (typeof c === 'string' ? c : '')).join('').trim();
+      const alt = extractPlainText(node.content).trim();
       const attrs = [`src="${escapeHtml(opts.src ?? '')}"`, `alt="${escapeHtml(alt)}"`];
       if (opts.width) attrs.push(`width="${escapeHtml(opts.width)}"`);
       if (opts.height) attrs.push(`height="${escapeHtml(opts.height)}"`);

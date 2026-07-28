@@ -103,5 +103,9 @@
     "shouldThrow": true,
     "messageContains": "no longer accepts a parenthesized value",
     "note": "@color(#hex) was retired when @color moved to sharing @mark's {styles} slot — the old paren form is now a hard error instead of silently discarding the value."
+  },
+  "27-table-cell-raw-family-paren-valid.atd": {
+    "shouldThrow": false,
+    "note": "@code(js)[...] inside a table cell — regression test for a bug where parseInlineCellList() only consumed the NODE token before expecting RAW, so a raw-family node with a paren (like @code's language tag) threw a misleading 'expects a content slot' error. @raw[...] (no paren) alongside it confirms the pre-existing no-paren raw-family flattening still works."
   }
 }

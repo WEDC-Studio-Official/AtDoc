@@ -248,7 +248,7 @@ WEDC Logo
 
 唯一擁有專屬子節點文法（而非通用 `block-content`）的 Structural Block——`@cols` 與 `@data` 皆為必填，且順序固定（參見 [Block Syntax Specification 第 5 節 Table](../../../Block-Syntax-Specification.md#table)）。這讓 `@table` 在整個節點家族中擁有最強的 AST 保證：欄位與資料列是結構化資料，不是需要 Renderer 重新解析的文字。
 
-每個欄位／儲存格不只是純文字，也接受一組經過篩選的行內格式節點（`@bold`、`@link`、`@mark` 等，完整清單見 `registry.ts` 的 `isCellAllowedNode`）——因為這些節點只改變文字的呈現方式，不會影響表格「欄位對齊資料列」的結構保證。清單以外的節點（`@card`、`@table` 這類會帶來自己版面結構的區塊節點）仍會拋出語法錯誤，不會被靜默捨棄。
+每個欄位／儲存格不只是純文字，也接受一組經過篩選的行內格式節點（`@bold`、`@link`、`@mark` 等，完整清單見 `registry.ts` 的 `isCellAllowedNode`）——因為這些節點只改變文字的呈現方式，不會影響表格「欄位對齊資料列」的結構保證。清單以外的節點（`@card`、`@table` 這類會帶來自己版面結構的區塊節點）仍會拋出語法錯誤，不會被靜默捨棄——但有一個刻意的例外：raw 家族節點（`@code`、`@mermaid`、`@raw`、`@kbd`）同樣不在 `isCellAllowedNode` 清單上，但它們不會拋錯，而是把原始內容拉平成儲存格裡的純文字（見 `Parser.ts` 的 `parseInlineCellList`）。
 
 ---
 

@@ -145,10 +145,11 @@ Note that `@mark`'s color tokens set a *background* — that's what the named pa
 ### Color
 
 ```text
+@color{blue}[這段文字是深藍色的]
 @color{#ff0000}[這段文字是紅色的]
 ```
 
-Where `@mark` recolors the background, `@color` recolors the text itself — a gap the syntax had no answer for before this node existed. It shares `@mark`'s exact `{styles}` slot — same brace, same optional-ness — but only accepts a literal `#RRGGBB` hex value, not `@mark`'s named color tokens: those seven named colors are pale shades tuned for highlight backgrounds, and would read as low-contrast, barely-visible text if reused here. An unrecognized, malformed, or omitted value (e.g. `@color{blue}[...]`, `@color{#zzz}[...]`, `@color[...]`) falls back to a default rather than throwing, per [Inline Syntax Specification §6](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)'s ignore-don't-throw spirit.
+Where `@mark` recolors the background, `@color` recolors the text itself — a gap the syntax had no answer for before this node existed. It shares `@mark`'s exact `{styles}` slot — same brace, same optional-ness, same seven named tokens (`yellow`/`red`/`green`/`blue`/`orange`/`purple`/`gray`) plus literal `#RRGGBB` hex. The two nodes' named tokens resolve through independent palettes, though: `@mark`'s are pale shades tuned for highlight backgrounds, and would read as low-contrast, barely-visible text if reused here, so a Renderer typically keeps a separate, darker palette for `@color`. An unrecognized, malformed, or omitted value (e.g. `@color{not-a-color}[...]`, `@color{#zzz}[...]`, `@color[...]`) falls back to a default rather than throwing, per [Inline Syntax Specification §6](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)'s ignore-don't-throw spirit.
 
 ---
 

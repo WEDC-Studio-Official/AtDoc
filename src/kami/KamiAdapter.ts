@@ -125,6 +125,33 @@ function resolveMarkTint(styles: string[] | undefined): string {
 }
 
 // ----------------------------------------------------------------------------
+// Phase 3b: @color 具名 token 對照表 — 深色系、給文字前景色用途。
+// ----------------------------------------------------------------------------
+// 與 MARK_COLOR_TO_KAMI_TINT 是兩張獨立的表：mark 的那份是淺色高亮背景 tint，
+// 直接當文字色會對比度不足、難以閱讀，所以 @color 維護自己這份色調較深的對照表，
+// 兩者共用同一組 token 名稱（yellow/red/green/blue/orange/purple/gray），
+// 但對應的實際色值不同。優先權規則與 resolveMarkTint 相同：
+//  1. 省略 {styles}（@color[content]）→ 套用 DEFAULT_MARK_TINT（跟 @mark 共用同一個預設）。
+//  2. 顯式指定 hex（@color{#3366ff}[...]）→ 直接使用，不重新映射。
+//  3. 顯式指定具名 token（@color{blue}[...]）→ 對照下表解析成實色。
+//  4. token 無法識別 → fallback 為 DEFAULT_MARK_TINT（同規則 1），不拋出錯誤。
+const COLOR_PRESETS: Record<string, string> = {
+  yellow: '#9A7B00',
+  red: '#A33A3A',
+  green: '#3F7A4A',
+  blue: '#3569A8',
+  orange: '#A9652A',
+  purple: '#76509A',
+  gray: '#666666',
+};
+
+function resolveColorValue(token: string | undefined): string {
+  if (!token) return DEFAULT_MARK_TINT;
+  if (/^#[0-9a-fA-F]{6}$/.test(token)) return token;
+  return COLOR_PRESETS[token] ?? DEFAULT_MARK_TINT;
+}
+
+// ----------------------------------------------------------------------------
 // Phase 2: 節點映射表（AST → Kami 樣式）— 骨架
 // 對照 registry.ts 的 REGISTRY 清單順序；每個節點先列出 TODO，
 // 待逐一補上實際 CSS class / inline style。
@@ -249,14 +276,8 @@ export function renderKamiNode(node: DocASTNode): string {
       return `<mark data-kami="mark" style="background-color:${tint};">${renderChildren(node.content)}</mark>`;
     }
     case 'color': {
-      // Unlike @mark's named-token palette (resolveMarkTint() above, tuned
-      // for pale tint backgrounds), @color is a precise text color, so only
-      // literal hex resolves here. Missing/malformed hex falls back to
-      // DEFAULT_MARK_TINT — the same default @mark itself falls back to when
-      // no styles are given — rather than throwing (Inline Spec §6).
-      const colorToken = node.color;
-      const isHex = !!colorToken && /^#[0-9a-fA-F]{6}$/.test(colorToken);
-      const resolved = isHex ? colorToken : DEFAULT_MARK_TINT;
+      // 優先權規則已實作：見上方 resolveColorValue()
+      const resolved = resolveColorValue(node.color);
       return `<span data-kami="color" style="color:${resolved};">${renderChildren(node.content)}</span>`;
     }
     case 'raw':

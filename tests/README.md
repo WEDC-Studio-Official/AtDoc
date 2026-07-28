@@ -32,7 +32,7 @@ node tests/run-tests.ts
 | `16-unclosed-raw-domain-silent-swallow.atd` | `@mermaid[...` 沒有結尾 `]` | **不拋錯，但是已知限制**：見下方說明 |
 | `17-unknown-node-in-comma-list.atd` | `@cols[id,@card[name],price]`——逗號列表裡混入了不在儲存格白名單裡的節點 | **拋錯**：only accepts plain text and inline formatting（`@bold`／`@link` 等格式節點現在合法，`@card` 這類結構節點仍會拋錯） |
 | `18-svg-node-valid.atd` | `@svg[...]`——內嵌原始 `<svg>` 標記 | **不拋錯**：與 `@mermaid` 同樣走 raw pass-through，不經過 escape |
-| `19-color-node-valid.atd` | `@color{#ff0000}[...]`——文字改色節點 | **不拋錯**：與 `@mark` 共用同一個選填的 `{styles}` 欄位，只是語意上限定單一 hex 值 |
+| `19-color-node-valid.atd` | `@color{#ff0000}[...]`——文字改色節點 | **不拋錯**：與 `@mark` 共用同一個選填的 `{styles}` 欄位與具名 token 集合，但各自對應獨立的色票 |
 | `20-list-no-dash-valid.atd` | `@list[...]`——項目沒有 `- ` 前綴，只用換行分隔 | **不拋錯**：新語義下任何非空行都是項目 |
 | `21-list-ordered-valid.atd` | `@list(ordered)[...]`——有序清單 | **不拋錯**：渲染成 `<ol>` 而非預設的 `<ul>` |
 | `22-list-ordered-manual-marker-valid.atd` | 有序清單裡某個項目行首寫 `3. ` 明確指定編號 | **不拋錯**：該項目的 `marker` 被擷取，之後項目自動接續編號 |

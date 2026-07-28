@@ -145,10 +145,11 @@ raw       = "@raw" , raw-content ;
 ### Color
 
 ```text
+@color{blue}[這段文字是深藍色的]
 @color{#ff0000}[這段文字是紅色的]
 ```
 
-`@mark` 改變背景色，`@color` 改變的是文字本身的顏色——這是在這個節點出現之前，語法完全沒有答案的一塊空白。它與 `@mark` 共用完全相同的 `{styles}` 槽位——同樣的括號、同樣選填——但只接受字面的 `#RRGGBB` hex 值，不接受 `@mark` 的具名 color token：那七個具名色是為高亮背景調校的淺色調，直接拿來當文字顏色會對比度不足、幾乎看不清。無法識別、格式不符或省略的值(例如 `@color{blue}[...]`、`@color{#zzz}[...]`、`@color[...]`)會優雅地退回預設值，而不是拋出錯誤，呼應 [Inline Syntax Specification 第 6 節](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)「忽略而非拋錯」的精神。
+`@mark` 改變背景色，`@color` 改變的是文字本身的顏色——這是在這個節點出現之前，語法完全沒有答案的一塊空白。它與 `@mark` 共用完全相同的 `{styles}` 槽位——同樣的括號、同樣選填、同樣的七個具名 token(`yellow`／`red`／`green`／`blue`／`orange`／`purple`／`gray`)，也接受字面的 `#RRGGBB` hex 值。差異在於兩者的具名 token 各自對應到獨立的色票：`@mark` 那組是為高亮背景調校的淺色調，直接拿來當文字顏色會對比度不足、幾乎看不清，所以 Renderer 通常會為 `@color` 維護一份色調較深的專屬色票。無法識別、格式不符或省略的值(例如 `@color{not-a-color}[...]`、`@color{#zzz}[...]`、`@color[...]`)會優雅地退回預設值，而不是拋出錯誤，呼應 [Inline Syntax Specification 第 6 節](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)「忽略而非拋錯」的精神。
 
 ---
 

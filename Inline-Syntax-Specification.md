@@ -495,11 +495,17 @@ bordered    (加外框)
 
 `@color` 與 `@mark` 共用同一個 `{styles}` 欄位（見上方 EBNF），本身為**選填**——
 省略時 Renderer 退回預設色，行為與 `@mark[content]` 省略 `{styles}` 時相同。
-兩者的差異純粹是語意層級的：`@color` 僅接受單一 16 進位 hex token
-（`/^#[0-9a-fA-F]{6}$/`），刻意不支援 `@mark` 的具名 color token
-（`yellow`／`red`／...）——那組具名色是為淺色高亮背景調校的色階，直接當作文字前景色
-會對比度不足、難以閱讀。Renderer MUST 忽略格式不符或缺漏的值並以某種預設值作為
-fallback，而非拋出錯誤：
+
+```text
+@color{blue}[這段文字是深藍色的]
+```
+
+`@color` 接受與 `@mark` 相同的七個具名 color token（`yellow`／`red`／`green`／`blue`／
+`orange`／`purple`／`gray`），也接受單一 16 進位 hex token（`/^#[0-9a-fA-F]{6}$/`）。
+兩者語法上共用同一組 token 名稱，但**對應的實際色值各自獨立**：`@mark` 的色階是為
+淺色高亮背景調校的，直接當作文字前景色會對比度不足、難以閱讀，因此 Renderer
+通常會維護一份色調較深、專門給 `@color` 用的對照表（而不是重用 `@mark` 那份）。
+Renderer MUST 忽略格式不符或無法識別的值並以某種預設值作為 fallback，而非拋出錯誤：
 
 ```text
 @color{not-a-color}[這段沒有指定顏色，優雅地退回預設色]
@@ -510,9 +516,9 @@ fallback，而非拋出錯誤：
 ### Renderer 行為
 
 * Renderer MUST 至少支援 `styles` 省略時的預設高亮樣式。
-* Renderer MAY 自行決定各具名 color token 對應的實際色值（例如深色模式與淺色模式下的 `yellow` 可不同）；16 進位 hex token 則 MUST 直接使用指定值，不得重新映射。
+* Renderer MAY 自行決定各具名 color token 對應的實際色值（例如深色模式與淺色模式下的 `yellow` 可不同；`@mark` 與 `@color` 也可以、通常也應該各自維護不同的對照表，理由見上）；16 進位 hex token 則 MUST 直接使用指定值，不得重新映射。
 * Renderer MUST 忽略無法識別的 token（包含格式不符的 hex token），並 SHOULD 以某種預設值作為 fallback，而非拋出錯誤——此行為與 [6. Unknown Command Fallback](#6-unknown-command-fallback) 中「未知指令退回純文字」的容錯精神一致，但作用範圍限定在 `styles` 內部，`@mark[content]`／`@color[content]` 本身仍會被正常解析為對應節點。fallback 的具體樣子由 Renderer 自行決定：可以是「無額外顏色」（沿用預設文字色），也可以比照 `@mark` 省略 `styles` 時的預設高亮色再利用一次（兩者共用同一個欄位，這麼做在視覺上是自然的）。
-* Token 之間的分隔符固定為半形逗號 `,`，前後允許任意數量空白（Parser 應自動 trim）。此規則適用於 `@mark` 的 `styles`；`@color` 的 `{}` 內只允許單一 hex 值，不使用逗號分隔。
+* Token 之間的分隔符固定為半形逗號 `,`，前後允許任意數量空白（Parser 應自動 trim）。此規則適用於 `@mark` 的 `styles`；`@color` 的 `{}` 內只允許單一 token（color token 或 hex 值），不使用逗號分隔——`@color{blue,bordered}` 這樣的內容會被當成一整個無法識別的字串，退回預設值，而不是被切成多個 token。
 
 ---
 

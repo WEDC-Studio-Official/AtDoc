@@ -152,7 +152,21 @@ block-node =
 *)
 
 metadata =
-    "@meta" , block-content ;
+    "@meta" , meta-content ;
+
+(* meta-content is lexed the same way as block-content — the "[" / "]" pair
+   tokenizes normally, so an unregistered "@word" still falls back to plain
+   text per §6 Unknown Command Fallback — but Parser.ts is semantically
+   stricter here than for any other block node: it rejects every registered
+   node inside @meta, not just structural ones, not even @n or @raw. The
+   parser then splits the resulting text on newlines and the first "=" on
+   each line into key/value pairs and stores them directly on the AST node
+   (MetaNode.meta), rather than leaving that structuring to a later pass.
+   See Metadata.md §3/§6 for the full behavior and worked examples. *)
+meta-content =
+    "[" ,
+        { text } ,
+    "]" ;
 
 heading =
     "@h" ,

@@ -59,14 +59,22 @@ keywords = parser,ast,dsl
 ```
 
 ```ebnf
-metadata = "@meta" , block-content ;
+metadata = "@meta" , meta-content ;
 ```
 
-`@meta` 沒有 modifier，也沒有 title——只有 `block-content`，與所有純文字型 block node 共用的通用內容規則相同（參見 [Block Syntax Specification 第 4 節](../../Block-Syntax-Specification.md#4-shared-components)）。
+`@meta` 沒有 modifier，也沒有 title——而且跟其他所有 block node 不同，它的內容也不是 `block-content`。它有自己專屬的文法產生式 `meta-content`（參見 [Block Syntax Specification 第 3 節](../../Block-Syntax-Specification.md#3-ebnf)）：`"["`／`"]"` 的詞法掃描方式跟 `block-content` 一樣（未註冊的 `@word` 一樣會依 [Unknown Command Fallback](../../Inline-Syntax-Specification.md#6-unknown-command-fallback) 退回純文字），但 Parser 在語意層級比其他任何節點都嚴格——它會拒絕 `@meta` 內部**任何**已註冊的節點，不只是結構性節點。連 `@bold`、`@n`，甚至 `@raw` 都不例外：
 
-這點值得停下來說明清楚：**`key = value` 這種寫法本身並不是獨立的文法產生式。** EBNF 中完全沒有 `meta-entry` 或 `key-value-pair` 這類規則——`@meta` 的內容就跟 `@p` 一樣，被當成一般的文字與 inline-stream 解析。把每一行按 `=` 拆成 key 與 value，是**語意層級**的慣例，不是**語法層級**的規則——這與 `@mark` 的 style token 之於 `{styles}` 欄位的關係完全相同（參見 [Inline Syntax Specification 第 7 節](../../Inline-Syntax-Specification.md#7-mark-styles-semantics)）：括號的形狀由文法定義，但括號**內部**什麼東西有意義，留給 Renderer 或後續的語意分析階段處理。
+```text
+@meta[
+title = @bold[Something]
+]
+```
 
-這件事有一個實際的後果：上面範例中的 `@Doc` 值之所以安全，純粹是因為 `Doc` 不是已註冊的行內指令名稱。根據 [Unknown Command Fallback 規則](../../Inline-Syntax-Specification.md#6-unknown-command-fallback)，`@Doc` 會退回成純文字——但如果作者把 `title = @bold[Something]` 寫成 metadata 的值，就會在一行原本應該是扁平 key-value 的文字裡，觸發真正的行內語法解析，因為 `@meta` 的內容是一般的 `block-content`，不是 `raw-block-content`。需要在值裡包含 `@` 開頭文字的作者，應該使用跳脫（`@@`，參見 [Inline Syntax Specification 第 5 節](../../Inline-Syntax-Specification.md#5-escape-rule)）或直接維持純文字。
+會拋出 `` `@meta` only accepts plain text in its content slot — found an unexpected `@bold` node ``——沒有任何一種已註冊節點會在 `@meta` 裡被靜默接受或捨棄。
+
+這點值得停下來說明清楚：**`key = value` 這種寫法確實是真正的結構，只是沒有表現成獨立的 EBNF 產生式。** Parser 收集完 `@meta` 的純文字內容之後，會立刻依照 `"\n"` 以及每一行第一個 `"="` 把它拆成 key/value，直接存成 AST 節點上真正的資料（`MetaNode.meta`，一個單純的 `{ [key]: value }` map）——見下方第 6 節。這跟 `@mark` 的 `{styles}` 欄位（參見 [Inline Syntax Specification 第 7 節](../../Inline-Syntax-Specification.md#7-mark-styles-semantics)）不一樣：`@mark` 的逗號 token 切分完全留給 Renderer 處理；`@meta` 的 key-value 結構化在解析階段就完成了，Renderer 根本還沒看到 AST 之前就已經是結構化資料。
+
+這件事有一個實際的後果：上面範例中的 `@Doc` 值之所以安全，純粹是因為 `Doc` 不是已註冊的行內指令名稱——它會依 Unknown Command Fallback 退回成純文字，原封不動變成值的一部分。如果作者需要在值裡包含某個**已註冊**指令名稱的字面文字（`@bold`、`@n` 等），必須跳脫 `@`（`@@`，參見 [Inline Syntax Specification 第 5 節](../../Inline-Syntax-Specification.md#5-escape-rule)）——不跳脫直接寫的話會拋錯，不會像未註冊名稱那樣自動退回或被靜默忽略。
 
 ---
 
@@ -79,6 +87,9 @@ document = [ metadata ] , { block-node } ;
 ```
 
 `@meta` 最多只能出現**一次**，而且只能出現在所有 block-node **之前**——不能出現在文件中段，也不能巢狀放在 `@card` 或 `@details` 裡面。這與 `@tab` 的限定情境（參見 [Widget Blocks § Tabs](../Block-Nodes/Widget-Blocks/Widget-Blocks.zh-TW.md#tabs)）是不同種類的限制：`@tab` 的限制關乎**父節點**——不論 `@tabs` 出現在哪裡，`@tab` 只能出現在其中；而 `@meta` 的限制關乎**文件位置**——只能出現一次，而且只能在最前面。
+
+> [!NOTE]
+> **目前 Parser 沒有真的強制執行這條規則。** 上面說的是預期的約定，不是 `Parser.ts` 現在會檢查的東西：它的頂層迴圈允許 `@meta` 出現在文件任何位置、出現任意多次；而 `@card`／`@details` 的子節點也是走同一套一般內容解析，所以巢狀的 `@meta` 目前也不會報錯——`@card[@meta[title=Nested]]` 現在可以正常解析。「只能出現一次、只能在最前面、不能巢狀」是作者應該遵守的約定，不是 Parser 目前保證會擋下違規寫法。
 
 ---
 
@@ -114,11 +125,10 @@ author = WEDC
 Document
 └── Metadata
     └── MetaNode
-        └── Content
-            └── "title = @Doc\nauthor = WEDC"
+        └── meta: { title: "@Doc", author: "WEDC" }
 ```
 
-請注意，這裡沒有 `MetaEntry` 或 `KeyValuePair` 節點——如第 3 節所述，文法根本沒有把 key/value 行結構化。工具如果想要 `{ title: "@Doc", author: "WEDC" }` 這種真正的 key-value 資料，就得自行解析 `MetaNode.Content`；AST 只保證這個區塊存在且屬於 metadata，並不保證它的內容已經是結構化資料。
+key-value 資料**不會**留成一段未結構化的原始字串等工具自己重新解析——`MetaNode.meta` 在 Parser 回傳 AST 的當下就已經是一個單純的 `{ [key]: value }` map 了。這裡確實沒有獨立的 `MetaEntry`／`KeyValuePair`**節點**（它是物件上的一個屬性，不是像 `@table` 的 columns／rows 那樣結構化的子節點），但資料本身完全結構化：使用端直接讀 `node.meta.title` 就好，完全不需要自己切行、切 `=` 號。
 
 ---
 

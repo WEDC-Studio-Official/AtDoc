@@ -250,14 +250,14 @@ export function renderKamiNode(node: DocASTNode): string {
     }
     case 'color': {
       // Unlike @mark's named-token palette (resolveMarkTint() above, tuned
-      // for pale tint backgrounds), @color is a precise text color — the
-      // Kami tint table would be nearly unreadable as foreground text, so
-      // only literal hex resolves here; anything else falls back to no
-      // explicit color rather than throwing (Inline Spec §6).
+      // for pale tint backgrounds), @color is a precise text color, so only
+      // literal hex resolves here. Missing/malformed hex falls back to
+      // DEFAULT_MARK_TINT — the same default @mark itself falls back to when
+      // no styles are given — rather than throwing (Inline Spec §6).
       const colorToken = node.color;
       const isHex = !!colorToken && /^#[0-9a-fA-F]{6}$/.test(colorToken);
-      const style = isHex ? ` style="color:${colorToken};"` : '';
-      return `<span data-kami="color"${style}>${renderChildren(node.content)}</span>`;
+      const resolved = isHex ? colorToken : DEFAULT_MARK_TINT;
+      return `<span data-kami="color" style="color:${resolved};">${renderChildren(node.content)}</span>`;
     }
     case 'raw':
       return escapeHtml(node.raw ?? '');

@@ -107,6 +107,28 @@ See @link(https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html)[
     ]
 ]
 
+@h(3)[各平台安裝差異]
+
+@tabs[
+    @tab(Windows)[
+        @p[
+        透過官方安裝程式或 winget 安裝，需另外安裝 MSVC Build Tools 作為連結器。
+        ]
+    ]
+
+    @tab(macOS)[
+        @p[
+        透過 rustup 或 Homebrew 安裝，需先安裝 Xcode Command Line Tools。
+        ]
+    ]
+
+    @tab(Linux)[
+        @p[
+        透過發行版套件管理器或 rustup 安裝，通常已內建 gcc 可直接作為連結器。
+        ]
+    ]
+]
+
 @mermaid[
 graph TD
 A[宣告變數] --> B[取得所有權]

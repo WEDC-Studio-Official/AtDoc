@@ -42,7 +42,7 @@
 //     Monarch tokenizes one editor line at a time and @img's paren is
 //     allowed to span lines (see test.atd).
 
-import { getAllNodeDefs } from '../registry.ts';
+import { getAllAliasDefs, getAllNodeDefs } from '../registry.ts';
 import type { ContentMode, ParenMode } from '../registry.ts';
 
 const IDENT_BOUNDARY = '(?![a-zA-Z0-9_-])';
@@ -51,10 +51,21 @@ function alternation(names: string[]): string {
   return names.join('|');
 }
 
+// Short aliases (@h/@p/@b/@i/@u) highlight the same as whatever their
+// canonical command highlights as — they share its content/paren shape, just
+// under a different spelling (registry.ts's getNodeDef() resolves both to
+// the identical NodeDef) — so every bucket below must include them too, or
+// they'd silently fall through to the plain-text Unknown Command Fallback
+// rule despite being fully valid commands.
 function namesWhere(predicate: (content: ContentMode, paren: ParenMode) => boolean): string[] {
-  return getAllNodeDefs()
-    .filter(d => predicate(d.content, d.paren))
-    .map(d => d.name);
+  const defs = getAllNodeDefs();
+  const byName = new Map(defs.map(d => [d.name, d]));
+  const names = defs.filter(d => predicate(d.content, d.paren)).map(d => d.name);
+  for (const a of getAllAliasDefs()) {
+    const canonical = byName.get(a.canonical);
+    if (canonical && predicate(canonical.content, canonical.paren)) names.push(a.alias);
+  }
+  return names;
 }
 
 const voidNames = namesWhere(content => content === 'none');

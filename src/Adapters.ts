@@ -7,9 +7,9 @@
 // exists to make those examples real, not to invent new ones.
 //
 // Two routes, differing only where the grammar actually has something to
-// differ on — @mark's and @color's color tokens (Inline Syntax Specification
-// §7, Block Syntax Specification §4) are the only per-instance style slots
-// this Adapter maps to output, so they're the only place Route A
+// differ on — @mark's, @color's, and @bordered's color tokens (Inline Syntax
+// Specification §7, Block Syntax Specification §4) are the only per-instance
+// style slots this Adapter maps to output, so they're the only place Route A
 // (class-driven) and Route B (inline CSS) genuinely diverge. Container and
 // Callout Blocks also carry a parsed `styles` slot (registry.ts `styles: true`)
 // but this Adapter doesn't yet map it to visual output — see KamiAdapter.ts
@@ -37,8 +37,6 @@ const MARK_COLORS: Record<string, string> = {
   purple: '#e8d2ff',
   gray: '#e0e0e0',
 };
-const MARK_MODIFIERS = ['underline', 'strikethrough', 'bordered'];
-
 // @color's own named-token palette — deliberately a separate table from
 // MARK_COLORS: those are pale shades tuned for @mark's highlight background,
 // and would read as low-contrast, barely-visible text if reused here as a
@@ -106,24 +104,39 @@ function renderMark(node: DocASTNode, route: Route): string {
   const tokens = node.styles ?? [];
   const colorToken = tokens.find(t => resolveColorToken(t) !== undefined);
   const resolvedColor = resolveColorToken(colorToken);
-  const modifierTokens = tokens.filter(t => MARK_MODIFIERS.includes(t));
   const inner = renderChildren(node.content, route);
 
   if (route === 'inline') {
-    const styleParts: string[] = [];
-    if (resolvedColor) styleParts.push(`background-color: ${resolvedColor};`);
-    if (modifierTokens.includes('underline')) styleParts.push('text-decoration: underline;');
-    if (modifierTokens.includes('strikethrough')) styleParts.push('text-decoration: line-through;');
-    if (modifierTokens.includes('bordered')) styleParts.push('border: 1px solid currentColor;');
-    const styleAttr = styleParts.length ? ` style="${styleParts.join(' ')}"` : '';
+    const styleAttr = resolvedColor ? ` style="background-color: ${resolvedColor};"` : '';
     return `<mark${styleAttr}>${inner}</mark>`;
   }
 
   // A literal hex token has no Tailwind-style class equivalent — fall back to inline style for it.
   const isNamedColor = colorToken !== undefined && !HEX_COLOR.test(colorToken);
-  const classes = ['mark', ...(isNamedColor ? [`mark-${colorToken}`] : []), ...modifierTokens.map(t => `mark-${t}`)];
+  const classes = ['mark', ...(isNamedColor ? [`mark-${colorToken}`] : [])];
   const hexStyle = colorToken && !isNamedColor ? ` style="background-color: ${resolvedColor};"` : '';
   return `<mark class="${classes.join(' ')}"${hexStyle}>${inner}</mark>`;
+}
+
+/**
+ * @bordered — shares @color's exact {styles} slot and darker COLOR_PRESETS
+ * swatch (resolveColorPreset), just painted onto a border instead of a
+ * foreground color. Retires @mark's old 'bordered' modifier token in favor
+ * of being its own first-class node, the same way 'underline' already has
+ * its own @underline node and 'strikethrough' already has @del.
+ */
+function renderBordered(node: DocASTNode, route: Route): string {
+  const resolvedColor = resolveColorPreset(node.color) ?? 'currentColor';
+  const inner = renderChildren(node.content, route);
+
+  if (route === 'inline') {
+    return `<span style="border: 1px solid ${resolvedColor};">${inner}</span>`;
+  }
+
+  const isNamedColor = node.color !== undefined && resolveColorPreset(node.color) !== undefined && !HEX_COLOR.test(node.color);
+  const classes = ['bordered', ...(isNamedColor ? [`bordered-${node.color}`] : [])];
+  const hexStyle = !isNamedColor ? ` style="border: 1px solid ${resolvedColor};"` : '';
+  return `<span class="${classes.join(' ')}"${hexStyle}>${inner}</span>`;
 }
 
 function renderColor(node: DocASTNode, route: Route): string {
@@ -196,9 +209,9 @@ function renderNode(node: DocASTNode, route: Route): string {
       return '';
 
     // Structural Blocks
-    case 'h':
+    case 'heading':
       return `<h${node.level ?? 1}>${renderChildren(node.content, route)}</h${node.level ?? 1}>`;
-    case 'p':
+    case 'paragraph':
       return `<p>${renderChildren(node.content, route)}</p>`;
     case 'quote':
       return `<blockquote>${renderChildren(node.content, route)}</blockquote>`;
@@ -273,6 +286,8 @@ function renderNode(node: DocASTNode, route: Route): string {
       return renderMark(node, route);
     case 'color':
       return renderColor(node, route);
+    case 'bordered':
+      return renderBordered(node, route);
     case 'raw':
       return escapeHtml(node.raw ?? '');
 

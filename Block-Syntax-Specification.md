@@ -12,6 +12,7 @@
 * [8. Widget Blocks](#8-widget-blocks)
 * [9. Metadata](#9-metadata)
 * [10. Core Principle](#10-core-principle)
+* [11. Simplified Syntax Aliases](#11-simplified-syntax-aliases)
 
 ---
 
@@ -64,8 +65,8 @@ Document AST
 ├── Block Nodes
 │   │
 │   ├── Structural Blocks
-│   │   ├── @h
-│   │   ├── @p
+│   │   ├── @heading (alias: @h)
+│   │   ├── @paragraph (alias: @p)
 │   │   ├── @quote
 │   │   ├── @list
 │   │   ├── @code
@@ -95,9 +96,10 @@ Document AST
     ├── Text Formatting
     │   ├── @mark
     │   ├── @color
-    │   ├── @bold
-    │   ├── @italic
-    │   ├── @underline
+    │   ├── @bordered
+    │   ├── @bold (alias: @b)
+    │   ├── @italic (alias: @i)
+    │   ├── @underline (alias: @u)
     │   ├── @del
     │   └── @raw
     │
@@ -169,12 +171,12 @@ meta-content =
     "]" ;
 
 heading =
-    "@h" ,
+    ( "@heading" | "@h" ) ,
     [ "(" , level , ")" ] ,
     block-content ;
 
 paragraph =
-    "@p" , block-content ;
+    ( "@paragraph" | "@p" ) , block-content ;
 
 quote =
     "@quote" , block-content ;
@@ -422,13 +424,19 @@ text =
 
 ### Heading
 
+正典語法為 `@heading`；`@h` 是等效的簡化別名（Simplified Alias），兩者解析為同一個 AST 節點，Renderer 不會區分作者實際輸入的是哪一種寫法。
+
 ```text
+@heading(1)[
+Introduction
+]
+
 @h(1)[
 Introduction
 ]
 ```
 
-HTML:
+HTML（兩種寫法輸出相同）：
 
 ```html
 <h1>Introduction</h1>
@@ -438,13 +446,19 @@ HTML:
 
 ### Paragraph
 
+正典語法為 `@paragraph`；`@p` 是等效的簡化別名。
+
 ```text
+@paragraph[
+Hello World
+]
+
 @p[
 Hello World
 ]
 ```
 
-HTML:
+HTML（兩種寫法輸出相同）：
 
 ```html
 <p>Hello World</p>
@@ -918,3 +932,18 @@ React 是 Renderer。
 而 @Doc 是：
 
 > Source of Truth.
+
+---
+
+## 11. Simplified Syntax Aliases
+
+部分高頻指令額外提供簡化別名（Simplified Alias）——純粹是輸入時的簡寫，Parser 會將其正規化為正典名稱後才建立 AST 節點（`node.type` 永遠是正典名稱），Renderer 完全不需要、也不會區分作者實際輸入的是哪一種寫法。
+
+Block Syntax 涵蓋的別名：
+
+| Canonical | Alias |
+|---|---|
+| `@heading` | `@h` |
+| `@paragraph` | `@p` |
+
+（Inline Syntax 的 `@bold`/`@italic`/`@underline` 別名 `@b`/`@i`/`@u` 定義在 Inline Syntax Specification。）

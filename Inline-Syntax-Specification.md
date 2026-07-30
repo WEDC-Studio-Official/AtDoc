@@ -8,13 +8,14 @@
 * [4. 完整 EBNF 語法定義](#4-完整-ebnf-語法定義)
 * [5. Escape Rule](#5-escape-rule)
 * [6. Unknown Command Fallback](#6-unknown-command-fallback)
-* [7. @mark / @color Styles Semantics](#7-mark--color-styles-semantics)
+* [7. @mark / @color / @bordered Styles Semantics](#7-mark--color--bordered-styles-semantics)
 * [8. @link URI Semantics](#8-link-uri-semantics)
 * [9. @raw Opaque Domain](#9-raw-opaque-domain)
 * [10. Nested Parsing](#10-nested-parsing)
 * [11. Parser Recovery Strategy](#11-parser-recovery-strategy)
 * [12. Architecture](#12-architecture)
 * [13. Core Principle](#13-core-principle)
+* [14. Simplified Syntax Aliases](#14-simplified-syntax-aliases)
 
 ---
 
@@ -135,6 +136,7 @@ inline-stream =
 inline-node =
       mark
     | color
+    | bordered
     | bold
     | italic
     | underline
@@ -155,9 +157,12 @@ inline-node =
 
 mark      = "@mark" , [ styles ] , content ;
 color     = "@color" , [ styles ] , content ;
-bold      = "@bold" , content ;
-italic    = "@italic" , content ;
-underline = "@underline" , content ;
+(* @bordered shares @color's exact {styles} slot and swatch (see §7),
+   applied as a text border instead of a foreground color. *)
+bordered  = "@bordered" , [ styles ] , content ;
+bold      = ( "@bold" | "@b" ) , content ;
+italic    = ( "@italic" | "@i" ) , content ;
+underline = ( "@underline" | "@u" ) , content ;
 del       = "@del" , content ;
 
 raw       = "@raw" , raw-content ;
@@ -418,7 +423,7 @@ test@example.com
 
 ---
 
-## 7. @mark / @color Styles Semantics
+## 7. @mark / @color / @bordered Styles Semantics
 
 `@mark` 支援可選的 `styles` 修飾語法：
 
@@ -440,11 +445,7 @@ test@example.com
 
 ### Style Token 語意
 
-`style` 內容目前定義為以下兩類 token，可混用並以逗號分隔：
-
-**1. 顏色 Token（Color Token）**
-
-代表高亮色彩，Renderer 依語意對應到實際顏色值。支援兩種寫法，可擇一使用：
+`style` 內容為以逗號分隔的**顏色 Token（Color Token）**字串，代表高亮色彩，Renderer 依語意對應到實際顏色值。支援兩種寫法，可擇一使用：
 
 * **具名 Token**（Renderer 自訂實際色值）：
 
@@ -461,15 +462,7 @@ test@example.com
   格式不符 `/^#[0-9a-fA-F]{6}$/` 的 token（例如 `#f00`、`#gggggg`）不視為合法 hex token，
   依一般規則走 Unknown Command Fallback 的容錯精神（見下方 Renderer 行為）。
 
-**2. 修飾 Token（Modifier Token）**
-
-代表額外的視覺或語意修飾，非顏色本身：
-
-```text
-underline   (加底線)
-strikethrough (加刪除線)
-bordered    (加外框)
-```
+> **變更記錄**：先前版本另定義了 `underline`／`strikethrough`／`bordered` 三個修飾 Token，已移除。`underline` 與 `@underline` 節點語意重複；`strikethrough` 與 `@del` 節點語意重複；`bordered` 已升格為獨立節點 `@bordered`（見下方）。`style` 現在只承載顏色語意，不再混用修飾語意。
 
 ---
 
@@ -478,8 +471,7 @@ bordered    (加外框)
 ```text
 @mark[預設高亮]
 @mark{yellow}[黃色高亮]
-@mark{red,underline}[紅色並加底線]
-@mark{blue,bordered}[藍色並加外框]
+@mark{red}[紅色高亮]
 @mark{#3366ff}[16 進位背景色]
 ```
 
@@ -520,12 +512,26 @@ Renderer MUST 忽略格式不符或無法識別的值並以某種預設值作為
 
 ---
 
+### @bordered — 文字外框
+
+`@bordered` 為文字加上外框，與 `@color` 共用完全相同的 `{styles}` 欄位——同樣的括號、同樣選填、同樣的七個具名 token 加 hex，也共用同一份色票對照表（實作上可直接重用 `@color` 的 resolver），只是套用在**外框**而非文字色：
+
+```text
+@bordered[預設外框]
+@bordered{blue}[藍色外框]
+@bordered{#3366ff}[16 進位外框色]
+```
+
+省略 `{styles}` 或給出無法識別的值時，Renderer 以其預設外框樣式作為 fallback，而非拋出錯誤，呼應 §6 Unknown Command Fallback 的容錯精神。此節點取代了 `@mark` 先前 `{styles}` 中的 `bordered` 修飾 token，成為獨立的第一級節點，與 `underline`（已有 `@underline`）、`strikethrough`（已有 `@del`）的角色一致。
+
+---
+
 ### Renderer 行為
 
-* Renderer MUST 至少支援 `styles` 省略時的預設高亮樣式。
-* Renderer MAY 自行決定各具名 color token 對應的實際色值（例如深色模式與淺色模式下的 `yellow` 可不同；`@mark` 與 `@color` 也可以、通常也應該各自維護不同的對照表，理由見上）；16 進位 hex token 則 MUST 直接使用指定值，不得重新映射。
-* Renderer MUST 忽略無法識別的 token（包含格式不符的 hex token），並 SHOULD 以某種預設值作為 fallback，而非拋出錯誤——此行為與 [6. Unknown Command Fallback](#6-unknown-command-fallback) 中「未知指令退回純文字」的容錯精神一致，但作用範圍限定在 `styles` 內部，`@mark[content]`／`@color[content]` 本身仍會被正常解析為對應節點。fallback 的具體樣子由 Renderer 自行決定：可以是「無額外顏色」（沿用預設文字色），也可以比照 `@mark` 省略 `styles` 時的預設高亮色再利用一次（兩者共用同一個欄位，這麼做在視覺上是自然的）。
-* Token 之間的分隔符固定為半形逗號 `,`，前後允許任意數量空白（Parser 應自動 trim）。此規則適用於 `@mark` 的 `styles`；`@color` 的 `{}` 內只允許單一 token（color token 或 hex 值），不使用逗號分隔——`@color{blue,bordered}` 這樣的內容會被當成一整個無法識別的字串，退回預設值，而不是被切成多個 token。
+* Renderer MUST 至少支援 `styles` 省略時的預設高亮樣式（`@mark`）／預設外框樣式（`@bordered`）。
+* Renderer MAY 自行決定各具名 color token 對應的實際色值（例如深色模式與淺色模式下的 `yellow` 可不同；`@mark` 與 `@color`／`@bordered` 也可以、通常也應該各自維護不同的對照表，理由見上）；16 進位 hex token 則 MUST 直接使用指定值，不得重新映射。
+* Renderer MUST 忽略無法識別的 token（包含格式不符的 hex token），並 SHOULD 以某種預設值作為 fallback，而非拋出錯誤——此行為與 [6. Unknown Command Fallback](#6-unknown-command-fallback) 中「未知指令退回純文字」的容錯精神一致，但作用範圍限定在 `styles` 內部，`@mark[content]`／`@color[content]`／`@bordered[content]` 本身仍會被正常解析為對應節點。fallback 的具體樣子由 Renderer 自行決定：可以是「無額外顏色」（沿用預設文字色／外框色），也可以比照 `@mark` 省略 `styles` 時的預設高亮色再利用一次（三者共用同一個欄位形狀，這麼做在視覺上是自然的）。
+* Token 之間的分隔符固定為半形逗號 `,`，前後允許任意數量空白（Parser 應自動 trim）。此規則適用於 `@mark` 的 `styles`；`@color`／`@bordered` 的 `{}` 內只允許單一 token（color token 或 hex 值），不使用逗號分隔。
 
 ---
 
@@ -846,3 +852,17 @@ Renderer 可以自由輸出：
 > Cross Platform
 
 的新一代文件中介格式。
+
+---
+
+## 14. Simplified Syntax Aliases
+
+`@bold`／`@italic`／`@underline` 提供簡化別名 `@b`／`@i`／`@u`——純粹是輸入時的簡寫，Parser 會將其正規化為正典名稱後才建立 AST 節點（`node.type` 永遠是正典名稱），Renderer 完全不需要、也不會區分作者實際輸入的是哪一種寫法。
+
+| Canonical | Alias |
+|---|---|
+| `@bold` | `@b` |
+| `@italic` | `@i` |
+| `@underline` | `@u` |
+
+（Block Syntax 的 `@heading`/`@paragraph` 別名 `@h`/`@p` 定義在 Block Syntax Specification §11。）

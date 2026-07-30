@@ -2,7 +2,7 @@
 
 *[English version](./Structural-Blocks.md)*
 
-> 本文件是 [Block Syntax Specification](../../../Block-Syntax-Specification.md) 第 5 節（Structural Blocks）的語義說明文件。語法定義請參閱該節，本文聚焦於 `@h`、`@p`、`@quote`、`@list`、`@code`、`@img`、`@table`、`@hr`、`@svg` 的意義、使用時機，以及目前尚未完全定案的部分。
+> 本文件是 [Block Syntax Specification](../../../Block-Syntax-Specification.md) 第 5 節（Structural Blocks）的語義說明文件。語法定義請參閱該節，本文聚焦於 `@heading`、`@paragraph`、`@quote`、`@list`、`@code`、`@img`、`@table`、`@hr`、`@svg` 的意義、使用時機，以及目前尚未完全定案的部分。
 
 ## 0. 目錄
 
@@ -40,8 +40,8 @@ Markdown 本身在這部分已經做得不錯——但它的規則是位置性�
 
 ```text
 Markdown           @Doc
-# 標題         →   @h(1)[標題]
-純文字         →   @p[純文字]
+# 標題         →   @heading(1)[標題]
+純文字         →   @paragraph[純文字]
 > 引言         →   @quote[引言]
 - 項目         →   @list[- 項目]
 ```
@@ -54,8 +54,8 @@ Markdown           @Doc
 
 | 節點 | Modifier／選項 | 內容 | 形狀備註 |
 |---|---|---|---|
-| `@h` | `(level)`，選填，`1`–`6` | `block-content` | 省略時的預設值見 [Heading](#heading) |
-| `@p` | 無 | `block-content` | 最單純的純文字容器 |
+| `@heading` | `(level)`，選填，`1`–`6` | `block-content` | 省略時的預設值見 [Heading](#heading) |
+| `@paragraph` | 無 | `block-content` | 最單純的純文字容器 |
 | `@quote` | 無 | `block-content` | 沒有獨立的引用來源／作者欄位 |
 | `@list` | `(ordered)`，選填（見 [List](#list)） | `block-content` | 任何非空行都是項目——結構化 `ListItem` AST，不再是重新切分的文字 |
 | `@code` | `(language)`，選填 | `raw-block-content` | 不解析——概念上與 `@raw` 相同 |
@@ -72,8 +72,10 @@ Markdown           @Doc
 
 ### Heading
 
+> 簡化別名：`@h`。與 `@heading` 解析為同一個 AST 節點，純粹是輸入時的簡寫（見 [Block Syntax Specification 第 11 節](../../../Block-Syntax-Specification.md#11-simplified-syntax-aliases)）。
+
 ```text
-@h(1)[
+@heading(1)[
 Introduction
 ]
 ```
@@ -84,14 +86,16 @@ HTML：
 <h1>Introduction</h1>
 ```
 
-`level` 接受 `1`–`6`。文法將 `(level)` 標示為選填（`[ "(" , level , ")" ]`），但 [Block Syntax Specification 第 3 節](../../../Block-Syntax-Specification.md#3-ebnf) 並未說明省略時的預設值。本文件將省略層級的 `@h[...]` 視為等同於 `@h(1)[...]`——最高層級標題——直到核心規格另有說明為止。
+`level` 接受 `1`–`6`。文法將 `(level)` 標示為選填（`[ "(" , level , ")" ]`），但 [Block Syntax Specification 第 3 節](../../../Block-Syntax-Specification.md#3-ebnf) 並未說明省略時的預設值。本文件將省略層級的 `@heading[...]` 視為等同於 `@heading(1)[...]`——最高層級標題——直到核心規格另有說明為止。
 
 ---
 
 ### Paragraph
 
+> 簡化別名：`@p`。與 `@paragraph` 解析為同一個 AST 節點。
+
 ```text
-@p[
+@paragraph[
 Hello World
 ]
 ```
@@ -124,7 +128,7 @@ Show me the code.
 </blockquote>
 ```
 
-與 `@p` 相同，`@quote` 沒有 modifier——沒有獨立欄位可以放引用來源或作者。作者如果想在引言下方加上「— Linus Torvalds」，只能把它寫成內容的第二行，這與 Callout Blocks 在取得 `(title)` 之前的取捨完全相同（參見 [Callout Blocks 第 3 節](../Callout-Blocks/Callout-Blocks.zh-TW.md#3-語法)）。
+與 `@paragraph` 相同，`@quote` 沒有 modifier——沒有獨立欄位可以放引用來源或作者。作者如果想在引言下方加上「— Linus Torvalds」，只能把它寫成內容的第二行，這與 Callout Blocks 在取得 `(title)` 之前的取捨完全相同（參見 [Callout Blocks 第 3 節](../Callout-Blocks/Callout-Blocks.zh-TW.md#3-語法)）。
 
 ---
 
@@ -344,7 +348,7 @@ Terminal：
 
 ## 7. AI 生成穩定性
 
-Markdown 的位置性規則——開頭的 `#`、四格縮排、以空行結束段落——正是生成式模型最容易悄悄出錯的地方：少一個空行，結構的意義就默默改變了。@Doc 用明確的節點名稱取代位置：無論周圍空白如何，`@h(1)[...]` 都不會被誤認成一段剛好以 `#` 字元開頭的段落。
+Markdown 的位置性規則——開頭的 `#`、四格縮排、以空行結束段落——正是生成式模型最容易悄悄出錯的地方：少一個空行，結構的意義就默默改變了。@Doc 用明確的節點名稱取代位置：無論周圍空白如何，`@heading(1)[...]` 都不會被誤認成一段剛好以 `#` 字元開頭的段落。
 
 ---
 

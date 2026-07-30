@@ -59,7 +59,7 @@ Parser 可以直接找出文件裡每一個 `@tabs` 或 `@mermaid`，不需要�
 | `@tab` | `(text)`，**必填**，非選填 | `block-content` | 不屬於 `block-node`；只能出現在 `@tabs` 內（見 [Tabs](#tabs)） |
 | `@mermaid` | 無 | `raw-block-content` | 不解析——跟 `@code` 同樣的概念，但連 `(language)` 欄位都沒有 |
 
-沒有任何兩列是相同的——這跟 [Structural Blocks 第 3 節](../Structural-Blocks/Structural-Blocks.md#3-shape-comparison) 對 `@h`、`@code`、`@table`、`@hr` 做的「沒有共用形狀」觀察一致。
+沒有任何兩列是相同的——這跟 [Structural Blocks 第 3 節](../Structural-Blocks/Structural-Blocks.md#3-shape-comparison) 對 `@heading`、`@code`、`@table`、`@hr` 做的「沒有共用形狀」觀察一致。
 
 ---
 

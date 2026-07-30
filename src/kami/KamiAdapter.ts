@@ -188,12 +188,12 @@ export function renderKamiNode(node: DocASTNode): string {
       return ''; // 不渲染可見 HTML，同 Adapters.ts 現有行為
 
     // --- Structural Blocks --- (TODO: 補齊 Kami class/style)
-    case 'h': {
+    case 'heading': {
       const level = node.level ?? 1;
       // TODO: Display/H1/H2/H3 依 level 對應 KamiTokens.type
       return `<h${level} data-kami="heading" data-level="${level}">${renderChildren(node.content)}</h${level}>`;
     }
-    case 'p':
+    case 'paragraph':
       // TODO: KamiTokens.type.body
       return `<p data-kami="body">${renderChildren(node.content)}</p>`;
     case 'quote':
@@ -287,6 +287,11 @@ export function renderKamiNode(node: DocASTNode): string {
       // 優先權規則已實作：見上方 resolveColorValue()
       const resolved = resolveColorValue(node.color);
       return `<span data-kami="color" style="color:${resolved};">${renderChildren(node.content)}</span>`;
+    }
+    case 'bordered': {
+      // 與 @color 共用同一套色票（resolveColorValue）——套用在外框而非文字色。
+      const resolved = resolveColorValue(node.color);
+      return `<span data-kami="bordered" style="border:1px solid ${resolved};">${renderChildren(node.content)}</span>`;
     }
     case 'raw':
       return escapeHtml(node.raw ?? '');

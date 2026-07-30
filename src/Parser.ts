@@ -150,7 +150,7 @@ export class DocParser {
       if (cur.type === 'NODE' && this.isTopLevelBlock(cur.value)) break;
 
       if (cur.type === 'NODE') {
-        const child = this.parseNode('p');
+        const child = this.parseNode('paragraph');
         if (child) content.push(child);
         continue;
       }
@@ -172,7 +172,7 @@ export class DocParser {
       this.cursor++;
     }
 
-    return { type: 'p', content };
+    return { type: 'paragraph', content };
   }
 
   /**
@@ -198,7 +198,10 @@ export class DocParser {
 
     this.cursor++; // consume NODE
 
-    const node: DocASTNode = { type: name, content: [] };
+    // node.type is always the canonical registry name — @h/@p/@b/@i/@u
+    // resolve transparently via registry.ts's alias table (getNodeDef), so
+    // the AST never distinguishes how the author spelled the command.
+    const node: DocASTNode = { type: nodeDef.name, content: [] };
 
     if (this.tokens[this.cursor]?.type === 'PAREN') {
       node.paren = this.tokens[this.cursor].value;
@@ -210,7 +213,7 @@ export class DocParser {
     // @color's "(hex)" paren syntax was retired in favor of sharing @mark's
     // "{styles}" slot — the old form is now a hard error instead of silently
     // discarding the value, so nobody accidentally ships an uncolored @color.
-    if (name === 'color' && node.paren !== undefined) {
+    if (nodeDef.name === 'color' && node.paren !== undefined) {
       throw new DocSyntaxError(`\`@color\` no longer accepts a parenthesized value — use \`@color{${node.paren}}\` instead of \`@color(${node.paren})\`.`);
     }
 
@@ -226,10 +229,12 @@ export class DocParser {
 
     if (this.tokens[this.cursor]?.type === 'STYLES') {
       const raw = this.tokens[this.cursor].value;
-      // @color takes a single hex value, not a comma-separated token list —
-      // unlike every other {styles} consumer, so it gets its own field
-      // instead of the generic split-into-array handling below.
-      if (name === 'color') {
+      // @color and @bordered both take a single color-token value, not a
+      // comma-separated token list — unlike every other {styles} consumer,
+      // so they get their own field instead of the generic split-into-array
+      // handling below. @bordered applies that value as a border instead of
+      // a foreground color (see Adapters.ts / KamiAdapter.ts).
+      if (nodeDef.name === 'color' || nodeDef.name === 'bordered') {
         node.color = raw.trim();
       } else {
         node.styles = raw.split(',').map(s => s.trim()).filter(Boolean);

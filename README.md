@@ -134,7 +134,7 @@ Structure and presentation are fully separated. Semantics live in the notation, 
 
 | 槽位 | 角色 | 範例 |
 |---|---|---|
-| `@node` | 節點類型 | `@h`, `@p`, `@card` |
+| `@node` | 節點類型 | `@heading`（別名 `@h`）, `@paragraph`（別名 `@p`）, `@card` |
 | `(modifier)` | 變體或屬性 | `(primary)`, `(ja)` |
 | `{styles}` | 樣式或元數據 | `{w-300px bg-fff}` |
 | `[content]` | 內容槽位 ── **全域唯一** | `[Submit]` |
@@ -154,13 +154,13 @@ title = @Doc 2026 Spec
 description = AI-native semantic document runtime
 ]
 
-@h(1)[@Doc 專案規範]
+@heading(1)[@Doc 專案規範]
 
-@p[這是普通段落，其中包含行內語義節點。]
+@paragraph[這是普通段落，其中包含行內語義節點。]
 
 @card(featured)[
-  @h[AI 原生語言]
-  @p[具有確定性語法的結構化標記語言，專為雙向 AST 設計]
+  @heading[AI 原生語言]
+  @paragraph[具有確定性語法的結構化標記語言，專為雙向 AST 設計]
 ]
 
 @table[
@@ -175,7 +175,7 @@ description = AI-native semantic document runtime
 
 
 > [!NOTE]
-> 以下節點已調整：`@seo`、`@lang` 已併入 `@meta`；`@title` 改用 `@h`；`@text` 改用 `@p`；`@btn` 暫時棄用。以上為部分範例，實際語法以正式規格文件為準。
+> 以下節點已調整：`@seo`、`@lang` 已併入 `@meta`；`@title` 改用 `@heading`（別名 `@h`）；`@text` 改用 `@paragraph`（別名 `@p`）；`@btn` 暫時棄用。以上為部分範例，實際語法以正式規格文件為準。
 
 ---
 
@@ -204,7 +204,7 @@ Dynamic values live in the AST as structured data, not raw strings. The adapter 
 ### Core Nodes — 結構原件
 文件骨架，不可再分割的原子。
 
-`@h` `@p` `@quote` `@code` `@list` `@img` `@link` `@table`
+`@heading`（別名 `@h`） `@paragraph`（別名 `@p`） `@quote` `@code` `@list` `@img` `@link` `@table`
 
 ### Semantic Nodes — 語義容器
 兩種行為模式：

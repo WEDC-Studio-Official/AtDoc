@@ -180,6 +180,15 @@ body {
    inside @bordered, or directly beside plain text). */
 [data-kami="mark"] { padding: 0; border-radius: 0; }
 
+/* @bordered's rounded corners (inline "border-radius" set per-instance in
+   KamiAdapter.ts) don't clip nested content by default — a nested @mark's
+   sharp-cornered background box can visually poke past the rounded border
+   at the corners. `overflow` has no effect on a plain `display: inline`
+   element per spec, so this also switches it to `inline-block` (still wraps
+   like inline content in normal flow) purely so the `overflow: hidden`
+   actually clips. */
+[data-kami="bordered"] { display: inline-block; overflow: hidden; }
+
 [data-kami="table"] {
   width: 100%;
   border-collapse: collapse;

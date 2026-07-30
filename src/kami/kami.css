@@ -186,8 +186,14 @@ body {
    at the corners. `overflow` has no effect on a plain `display: inline`
    element per spec, so this also switches it to `inline-block` (still wraps
    like inline content in normal flow) purely so the `overflow: hidden`
-   actually clips. */
-[data-kami="bordered"] { display: inline-block; overflow: hidden; }
+   actually clips. `line-height: 1` removes the inline-block's half-leading —
+   a browser reserves extra vertical space above/below inline-block content
+   based on the font's line-height, which otherwise shows up as a small gap
+   between the border and its content even with zero padding.
+   `vertical-align: middle` keeps the box centered against surrounding text
+   instead of sitting on the text baseline (which would leave visible room
+   below it for descenders). */
+[data-kami="bordered"] { display: inline-block; overflow: hidden; line-height: 1; vertical-align: middle; }
 
 [data-kami="table"] {
   width: 100%;

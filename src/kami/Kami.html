@@ -2,164 +2,86 @@
 <html lang="zh-Hant">
 <head><meta charset="UTF-8"><link rel="stylesheet" href="kami.css"></head>
 <body><div class="page">
-<h1 data-kami="heading" data-level="1">@Doc：為 AI 而生的語義文件格式</h1>
+<h1 data-kami="heading" data-level="1">深入 Rust 所有權系統</h1>
 <p data-kami="body">
-每一代文件格式，都在解決那個時代最核心的問題。<strong data-kami="bold">Word</strong> 解決了編輯，<strong data-kami="bold">HTML</strong> 解決了顯示，<strong data-kami="bold">Markdown</strong> 解決了人類易寫性，<strong data-kami="bold">JSON</strong> 解決了資料交換，<strong data-kami="bold">JSX</strong> 解決了元件組合。但沒有一種格式，是<mark data-kami="mark" style="background-color:#F3E9C7;">真正為 AI 生成內容而設計</mark>的。
+記憶體管理是系統程式語言的核心戰場。<strong data-kami="bold">C</strong> 把一切交給程式設計師，<strong data-kami="bold">Java</strong> 把一切交給 GC，而 <strong data-kami="bold">Rust</strong> 選擇了第三條路：<mark data-kami="mark" style="background-color:#F3E9C7;">在編譯期靜態驗證記憶體安全</mark>。這不是取捨，而是範式轉移。
 </p>
 <blockquote data-kami="quote">
-Semantic First, Layout Later.
-語意優先，排版在後。
+Ownership is Rust's most unique feature.
+所有權是 Rust 最獨特的特性。
 </blockquote>
 <hr data-kami="hr">
-<h2 data-kami="heading" data-level="2">為什麼需要新的格式</h2>
-<p data-kami="body">
-LLM 讀 Markdown 沒問題，問題出在反過來：讓 LLM <em data-kami="italic">生成</em> Markdown 並交給下游程式解析時，輸出結構幾乎<u data-kami="underline">無法被可靠保證</u>。縮排歧義、巢狀清單漂移、表格損壞、parser 方言差異，每一項都是實務中的地雷。
-</p>
+<h2 data-kami="heading" data-level="2">三條基本規則</h2>
+<ul data-kami="list" data-kami-marker="bullet"><li>每個值都有一個擁有者（owner）</li><li>同一時間只能有一個擁有者</li><li>擁有者離開作用域時，值即被釋放</li></ul>
 <aside data-kami="callout" data-variant="important"><span data-kami="callout-label">IMPORTANT</span><strong>核心觀察</strong> 
-Markdown 沒有語義意圖。它無法表達「這個按鈕是 primary variant」，也無法表達「這張表格需要斑馬紋」。
+所有權規則在<u data-kami="underline">編譯期</u>完成檢查，執行期<em data-kami="italic">零成本</em>。這是 Rust 與 GC 語言的根本差異。
 </aside>
-<p data-kami="body">
-HTML 可以表達任何東西，但代價是把展示邏輯寫死在結構裡。<del data-kami="del">這曾經被認為是優點</del>。同一份內容要渲染到不同平台？重寫。要讓 AI 生成穩定的 HTML？面對幻覺標籤與未閉合元素的風險。
-</p>
-<h3 data-kami="heading" data-level="3">MDX 的取捨</h3>
-<p data-kami="body">
-MDX 將文件與程式碼融合，為人類開發者提供極高的表達能力。但這種自由度對生成式模型而言意味著另一件事：更高的語法不穩定性。
-</p>
-<table data-kami="table"><thead><tr><th>dimension</th><th>mdx</th><th>doc</th></tr></thead><tbody><tr><td>本質定位</td><td>把文件變成程式</td><td>把文件變成語義資料</td></tr><tr><td>AI生成穩定性</td><td>容易語法崩潰</td><td>確定性語法</td></tr><tr><td>括號語義</td><td>多重混淆</td><td>全域唯一即Content</td></tr><tr><td>Token成本</td><td>冗長樣板代碼</td><td>語法極度壓縮</td></tr></tbody></table>
-<hr data-kami="hr">
-<h2 data-kami="heading" data-level="2">@Doc 的設計哲學</h2>
-<article data-kami="card"><header>Semantic First</header>
-區塊節點描述的是文件的<strong data-kami="bold">語意</strong>（What），而不是<strong data-kami="bold">呈現方式</strong>（How）。因此 @Doc 不提供 <pre data-kami="code"><code class="language-text">@div</code></pre>、<pre data-kami="code"><code class="language-text">@span</code></pre>、<pre data-kami="code"><code class="language-text">@flex</code></pre> 這類版面節點。
-</article>
-<ul data-kami="list" data-kami-marker="bullet"><li>降低學習成本</li><li>避免與 Email、Mention 系統衝突</li><li>提高 AI 解析穩定性</li><li>提高編輯器容錯能力</li><li>保持 DSL 的可擴充性</li><li>建立穩定且可預測的 AST</li></ul>
-<aside data-kami="callout" data-variant="tip"><span data-kami="callout-label">TIP</span><strong>設計取捨</strong> 
-`@cols` 與 `@data` 順序固定且皆為必填，這是刻意的設計取捨——犧牲一點靈活性，換取 Parser 與 AI 生成內容時的高度可預測性。
-</aside>
-<h3 data-kami="heading" data-level="3">Known Command Recognition</h3>
-<p data-kami="body">
-@Doc 採用「只有已知指令具有語法意義」的原則。當 Lexer 掃描到 <pre data-kami="code"><code class="language-text">@</code></pre> 時，會依照優先順序判斷：若後續為 <pre data-kami="code"><code class="language-text">@@</code></pre>，解析為單一純文字 <pre data-kami="code"><code class="language-text">@</code></pre>；若符合已註冊指令名稱，進入對應語法解析流程；否則整段視為普通文字輸出。
-</p>
-<details data-kami="details"><summary>範例對照表</summary>
-輸入 <pre data-kami="code"><code class="language-text">@mark[hello]</code></pre> 會被解析為 mark 節點。
-輸入 <pre data-kami="code"><code class="language-text">@@mark</code></pre> 會輸出純文字 <pre data-kami="code"><code class="language-text">@mark</code></pre>。
-輸入 <pre data-kami="code"><code class="language-text">test@example.com</code></pre> 保持為純文字，不會誤觸發解析。
-</details>
-<aside data-kami="callout" data-variant="warning"><span data-kami="callout-label">WARNING</span><strong>常見誤解</strong> 
-不要以為所有 <pre data-kami="code"><code class="language-text">@</code></pre> 開頭的字串都會被解析——<pre data-kami="code"><code class="language-text">@GitHub</code></pre>、<pre data-kami="code"><code class="language-text">@unknown</code></pre> 這類未註冊指令，Lexer 會直接退回純文字模式。
-</aside>
-<hr data-kami="hr">
-<h2 data-kami="heading" data-level="2">節點總覽</h2>
-<h3 data-kami="heading" data-level="3">結構型區塊</h3>
-<p data-kami="body">
-標題、段落、引用、清單、程式碼、圖片、表格、分隔線，這八種構成了文件的骨架。
-</p>
-<pre data-kami="code"><code class="language-ts">
-interface DocASTNode {
-  type: string;
-  content: (DocASTNode | string)[];
+<h3 data-kami="heading" data-level="3">移動語義示範</h3>
+<pre data-kami="code"><code class="language-rust">
+fn main() {
+    let s1 = String::from(&quot;hello&quot;);
+    let s2 = s1;            // s1 的所有權移動到 s2
+    // println!(&quot;{}&quot;, s1);  // 編譯錯誤：s1 已失效
+    println!(&quot;{}&quot;, s2);
 }
 </code></pre>
-<img data-kami="image" src="https://example.com/architecture-diagram.png">
-<h3 data-kami="heading" data-level="3">容器區塊</h3>
-<p data-kami="body">
-<pre data-kami="code"><code class="language-text">@details</code></pre> 與 <pre data-kami="code"><code class="language-text">@card</code></pre> 提供了可摺疊與可強調的容器語意，不涉及任何樣式假設。
-</p>
-<h3 data-kami="heading" data-level="3">標註區塊</h3>
-<aside data-kami="callout" data-variant="note"><span data-kami="callout-label">NOTE</span>
-這是一般性補充資訊，讀者可依需求選擇性閱讀。
+<aside data-kami="callout" data-variant="warning"><span data-kami="callout-label">WARNING</span><strong>常見誤解</strong> 
+移動（move）不是複製。<del data-kami="del">以為賦值會自動深拷貝</del>是從其他語言帶來的直覺，在 Rust 中必須顯式呼叫 clone()。
 </aside>
 <aside data-kami="callout" data-variant="caution"><span data-kami="callout-label">CAUTION</span>
-在 Strict Mode 下，未閉合的區塊會直接拋出 <pre data-kami="code"><code class="language-text">DocSyntaxError</code></pre>，不會嘗試靜默修復。
+使用 unsafe 區塊會繞過借用檢查器，<mark data-kami="mark" style="background-color:#EEF2F7;">所有安全保證隨之失效</mark>，請務必在 code review 中重點檢視。
 </aside>
-<h3 data-kami="heading" data-level="3">小工具區塊</h3>
+<h3 data-kami="heading" data-level="3">借用與生命週期</h3>
 <p data-kami="body">
-<pre data-kami="code"><code class="language-text">@tabs</code></pre> 與 <pre data-kami="code"><code class="language-text">@mermaid</code></pre> 屬於 Widget Blocks，前者用於多分頁內容切換：
+借用檢查器（borrow checker）確保引用永遠有效<sup data-kami="footnote-ref" id="fnref1"><a href="#fn1">1</a></sup>。規則很簡單：同一時間可以有多個不可變借用，<strong data-kami="bold">或</strong>一個可變借用，<mark data-kami="mark" style="background-color:#F1DCDC;">但不能同時存在</mark><sup data-kami="footnote-ref" id="fnref2"><a href="#fn2">2</a></sup>。
 </p>
-<div data-kami="tabs"><div role="tablist"><button data-kami="tab-trigger" aria-controls="kami-tab-0">語法層</button><button data-kami="tab-trigger" aria-controls="kami-tab-1">渲染層</button><button data-kami="tab-trigger" aria-controls="kami-tab-2">生態層</button></div><div data-kami="tab-panel" id="kami-tab-0">
-        <p data-kami="body">
-        <pre data-kami="code"><code class="language-text">@Doc</code></pre> 的語法層完全由 EBNF 定義，Lexer 與 Parser 對照同一份 Command Registry 運作。
-        </p>
-    </div><div data-kami="tab-panel" id="kami-tab-1">
-        <p data-kami="body">
-        Renderer 可以自由決定輸出目標，包含 HTML、React、PDF、DOCX、Discord、Terminal，甚至是 AI UI。
-        </p>
-    </div><div data-kami="tab-panel" id="kami-tab-2">
-        <p data-kami="body">
-        Kami Adapter 是 Renderer 生態中的一個成員，示範了同一份 AST 如何映射到不同的視覺規範。
-        </p>
-    </div></div>
+<p data-kami="body"><li data-kami="footnote" id="fn1">
+See <a data-kami="link" href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html">The Rust Book, Ch. 4.2</a>.
+ <a data-kami="footnote-back" href="#fnref1">↩</a></li></p>
+<p data-kami="body"><li data-kami="footnote" id="fn2">
+這條規則在編譯期防止了資料競爭（data race），無需執行期鎖。
+ <a data-kami="footnote-back" href="#fnref2">↩</a></li></p>
+<hr data-kami="hr">
+<h2 data-kami="heading" data-level="2">與其他語言比較</h2>
+<table data-kami="table"><thead><tr><th>language</th><th>strategy</th><th>cost</th></tr></thead><tbody><tr><td>C/C++</td><td>手動管理</td><td>懸空指標與洩漏風險</td></tr><tr><td>Java/Go</td><td>垃圾回收</td><td>GC 暫停與記憶體開銷</td></tr><tr><td>Rust</td><td>所有權系統</td><td>編譯期學習成本</td></tr></tbody></table>
+<aside data-kami="callout" data-variant="tip"><span data-kami="callout-label">TIP</span><strong>選型建議</strong> 
+如果專案對延遲敏感（遊戲引擎、嵌入式、高頻交易），所有權系統的前期學習成本會在後期加倍回收。
+</aside>
+<h2 data-kami="heading" data-level="2">實務工作流程</h2>
+<div data-kami="tabs"><div role="tablist"><button data-kami="tab-trigger" aria-controls="kami-tab-0">安裝</button><button data-kami="tab-trigger" aria-controls="kami-tab-1">編譯</button><button data-kami="tab-trigger" aria-controls="kami-tab-2">除錯</button></div><div data-kami="tab-panel" id="kami-tab-0"><p data-kami="body">
+        使用 rustup 安裝工具鏈，完成後按 <kbd data-kami="kbd">Ctrl</kbd> + <kbd data-kami="kbd">`</kbd> 開啟終端機驗證版本。
+        </p></div><div data-kami="tab-panel" id="kami-tab-1"><p data-kami="body"><pre data-kami="code"><code class="language-text">cargo build</code></pre> 會執行完整的借用檢查，錯誤訊息包含修正建議。
+        </p></div><div data-kami="tab-panel" id="kami-tab-2"><p data-kami="body">
+        遇到 E0382（value moved）時，優先考慮借用而非 clone。
+        </p></div></div>
 <pre data-kami="mermaid">
 graph TD
-A[Source Text] --&gt; B[Lexer]
-B --&gt; C[Token Stream]
-C --&gt; D[Parser]
-D --&gt; E[AST]
-E --&gt; F[Renderer]
+A[宣告變數] --&gt; B[取得所有權]
+B --&gt; C{離開作用域?}
+C --&gt;|是| D[自動呼叫 Drop]
+C --&gt;|否| E[繼續持有]
 </pre>
+<img data-kami="image" src="https://example.com/ownership-diagram.png">
 <hr data-kami="hr">
-<h2 data-kami="heading" data-level="2">行內語意節點</h2>
+<h2 data-kami="heading" data-level="2">附錄：行內節點測試</h2>
 <p data-kami="body">
-文字格式化節點包含 <strong data-kami="bold">粗體</strong>、<em data-kami="italic">斜體</em>、<u data-kami="underline">底線</u>、<del data-kami="del">刪除線</del>，以及可自訂樣式的 <mark data-kami="mark" style="background-color:#D6E1EE;">標記文字</mark>。
+科學記號：E = mc<sup data-kami="sup">2</sup>，化學式：H<sub data-kami="sub">2</sub>O。<br>
+換行測試：第一行<br>第二行。
 </p>
 <p data-kami="body">
-語意行內節點則涵蓋數學與科學符號：E = mc<sup data-kami="sup">2</sup>，H<sub data-kami="sub">2</sub>O。也包含鍵盤按鍵標示，例如按下 <kbd data-kami="kbd">Ctrl</kbd> + <kbd data-kami="kbd">C</kbd> 進行複製，或 <kbd data-kami="kbd">Cmd</kbd> + <kbd data-kami="kbd">Shift</kbd> + <kbd data-kami="kbd">P</kbd> 開啟命令面板。
+連結推導測試：造訪<a data-kami="link" href="https://github.com/rust-lang/rust">Rust 原始碼</a>，回報問題請寄<a data-kami="link" href="mailto:bugs@example.com">回報信箱</a>，或撥打<a data-kami="link" href="tel:+886912345678">技術支援</a>。
 </p>
 <p data-kami="body">
-連結節點會依內容自動推導 URI Scheme：詳見<a data-kami="link" href="https://github.com/wedc/atdoc">官方 GitHub Repo</a>，或寄信至<a data-kami="link" href="hello@example.com">聯絡信箱</a>，也可以直接撥打<a data-kami="link" href="+886912345678">客服專線</a>。
+逃逸測試：字面輸出 @bold 不會被解析；整段跳過：這裡的 @mark[hello] 保持原樣。<br>
+不成對括號跳脫測試：字面右括號 ] 與字面 @@] 序列都能輸出。<br>
+不成對左括號跳脫測試：缺少開頭方括號的字面右括號 ] 測試，以及缺少結尾方括號的字面左括號 [ 測試。
 </p>
-<h3 data-kami="heading" data-level="3">腳注系統</h3>
-<p data-kami="body">
-Rust 的所有權系統<sup data-kami="footnote-ref" id="fnref1"><a href="#fn1">1</a></sup>從根本上消除了資料競爭問題，這也是它區別於 C++ 手動記憶體管理的核心賣點<sup data-kami="footnote-ref" id="fnref2"><a href="#fn2">2</a></sup>。
-</p>
-<p data-kami="body">
-<li data-kami="footnote" id="fn1">
-See <a data-kami="link" href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html">The Rust Programming Language, Ch. 4</a>.
- <a data-kami="footnote-back" href="#fnref1">↩</a></li>
-</p>
-<p data-kami="body">
-<li data-kami="footnote" id="fn2">
-比較討論可參見 Herb Sutter 的相關演講與著作，此處不展開列舉。
- <a data-kami="footnote-back" href="#fnref2">↩</a></li>
-</p>
-<h3 data-kami="heading" data-level="3">特殊節點</h3>
-<p data-kami="body">
-換行節點用於段落內強制斷行：第一行<br>第二行<br>第三行。
-</p>
-<p data-kami="body">
-逃逸規則讓使用者可以輸出指令關鍵字本身：輸出字面 @mark 與 @bold[hello] 不會被解析成節點，寫法是用 @ 全域轉義，或整段包進 @raw[...] 讓解析器完全跳過。
-</p>
-<hr data-kami="hr">
-<h2 data-kami="heading" data-level="2">Raw Domain 示範</h2>
-<p data-kami="body">
-<pre data-kami="code"><code class="language-text">@raw</code></pre> 屬於 Opaque Domain，進入之後不解析任何內部語法：
-</p>
-<p data-kami="body">
-Raw 範例：這裡的 @mark[hello] 與 @bold[world] 都不會被解析，只會照字面輸出。
-</p>
-<hr data-kami="hr">
-<h2 data-kami="heading" data-level="2">巢狀解析範例</h2>
-<p data-kami="body">
-由於 content-element 同時允許 inline-node 與 plain-text-char，@Doc 支援完整遞迴嵌套：
-</p>
-<p data-kami="body">
-<strong data-kami="bold">
-這是粗體外層，
-裡面包含
-<mark data-kami="mark" style="background-color:#F3E9C7;">重要高亮</mark>
-以及
-<u data-kami="underline">底線強調</u>
-甚至還可以再包一層
-<em data-kami="italic">斜體加<mark data-kami="mark" style="background-color:#F1DCDC;">紅色標記</mark>的組合</em>
-。
-</strong>
-</p>
-<hr data-kami="hr">
-<h2 data-kami="heading" data-level="2">結語</h2>
-<p data-kami="body">
-@Doc 的核心目標並非取代 Markdown，而是建立 <strong data-kami="bold">Human Editable</strong>、<strong data-kami="bold">Machine Deterministic</strong>、<strong data-kami="bold">AI Friendly</strong>、<strong data-kami="bold">Cross Platform</strong> 的新一代文件中介格式。
-</p>
-<article data-kami="card"><header>Core Principle</header>
-HTML 是 Renderer。Markdown 是 Renderer。React 是 Renderer。
-而 @Doc 是 Source of Truth。
-</article></div></body>
+<details data-kami="details"><summary>巢狀嵌套測試</summary><p data-kami="body"><strong data-kami="bold">粗體外層包含<span data-kami="bordered" style="border:1px solid #3569A8;"><mark data-kami="mark" style="background-color:#D6E1EE;">藍色標記加外框</mark></span>與<em data-kami="italic">斜體加<u data-kami="underline">底線</u></em>的組合。</strong></p></details>
+<article data-kami="card"><header>Summary</header>
+所有權不是限制，而是契約。
+編譯器是隊友，不是敵人。
+</article>
+<aside data-kami="callout" data-variant="note"><span data-kami="callout-label">NOTE</span>
+本文件為 @Doc 節點覆蓋測試用途，內容涵蓋全部 Block 與 Inline 節點。
+</aside></div></body>
 </html>

@@ -142,7 +142,7 @@ https://example.com/ownership-diagram.png,width=480,align=center
 
 @details(巢狀嵌套測試)[
     @p[
-    @bold[粗體外層包含@mark{blue,bordered}[藍色標記]與@italic[斜體加@underline[底線]]的組合。]
+    @bold[粗體外層包含@bordered{blue}[@mark{blue}[藍色標記加外框]]與@italic[斜體加@underline[底線]]的組合。]
     ]
 ]
 

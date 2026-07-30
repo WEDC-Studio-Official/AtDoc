@@ -59,7 +59,7 @@ A parser can find every `@tabs` or `@mermaid` in a document directly, without sc
 | `@tab` | `(text)`, **required**, not optional | `block-content` | not part of `block-node`; valid only inside `@tabs` (see [Tabs](#tabs)) |
 | `@mermaid` | — | `raw-block-content` | unparsed — same idea as `@code`, but without even a `(language)` slot |
 
-No two rows are identical — the same "no shared shape" observation [Structural Blocks §3](../Structural-Blocks/Structural-Blocks.md#3-shape-comparison) makes about `@h`, `@code`, `@table`, and `@hr`.
+No two rows are identical — the same "no shared shape" observation [Structural Blocks §3](../Structural-Blocks/Structural-Blocks.md#3-shape-comparison) makes about `@heading`, `@code`, `@table`, and `@hr`.
 
 ---
 

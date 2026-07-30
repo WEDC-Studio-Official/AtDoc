@@ -3,7 +3,7 @@ export interface DocASTNode {
 
   /** Raw text of the "(...)" slot, if present — meaning depends on the node (see `parenRole` in registry.ts). */
   paren?: string;
-  /** Parsed "{styles}" tokens — @mark and styled Block Nodes (Inline Syntax Specification §7, Block Syntax Specification §4). */
+  /** Parsed "{styles}" comma-list tokens — @mark and styled Block Nodes (Inline Syntax Specification §7, Block Syntax Specification §4). */
   styles?: string[];
 
   /** Generic nestable content — used by every node whose registry `content` mode is 'generic'. */
@@ -13,13 +13,13 @@ export interface DocASTNode {
   raw?: string;
 
   // Convenience fields derived from `paren`, populated per `parenRole`:
-  level?: number;                    // @h
+  level?: number;                    // @heading
   title?: string;                    // @details, @card, callouts, @tab
   language?: string;                 // @code
   uri?: string;                      // @link
   id?: string;                       // @defn
   imgOptions?: Record<string, string>; // @img
-  color?: string;                    // @color
+  color?: string;                    // @color, @bordered
   /** @list only — true when `@list(ordered)`; unset/false renders as a bullet list. */
   ordered?: boolean;
 

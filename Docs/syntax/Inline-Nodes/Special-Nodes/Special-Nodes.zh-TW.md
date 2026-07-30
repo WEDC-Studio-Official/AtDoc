@@ -143,7 +143,7 @@ inline-node =
 
 ## 6. 轉義的作用範圍——全域規則 vs. `@raw` 例外
 
-全域 `@@` 規則(Inline Spec 第 5 節)適用於一般的 `inline-stream` 上下文——`@p`、`@quote`、`@bold` 內部皆是如此。但它**不適用**於 `@raw` 內部。[Inline Syntax Specification 第 9 節](../../../Inline-Syntax-Specification.md#9-raw-opaque-domain) 明確寫道：
+全域 `@@` 規則(Inline Spec 第 5 節)適用於一般的 `inline-stream` 上下文——`@paragraph`、`@quote`、`@bold` 內部皆是如此。但它**不適用**於 `@raw` 內部。[Inline Syntax Specification 第 9 節](../../../Inline-Syntax-Specification.md#9-raw-opaque-domain) 明確寫道：
 
 > 全域 `@@` 轉義規則（第 5 節）不再適用。
 

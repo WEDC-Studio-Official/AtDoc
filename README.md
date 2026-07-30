@@ -107,7 +107,7 @@ MDX fuses documents with code, giving human developers maximum expressiveness. F
 | **本質定位** | 把文件變成程式（Code-driven） | 把文件變成語義資料（Data-driven） |
 | **AI 生成穩定性** | 允許任意 JS 邏輯，LLM 容易語法崩潰 | 確定性語法，LLM 輸出可預測 |
 | **括號語義** | `{}` `[]` `<>` 語義多重混淆 | `[]` 全域唯一含義就是 **Content（內容）** |
-| **Token 成本** | 冗長標籤閉合與 JS 樣板代碼 | 語法極度壓縮（`w-300px` 而非 `w-[300px]`） |
+| **Token 成本** | 冗長標籤閉合與 JS 樣板代碼 | 語法極度壓縮（`w-300px` 而非 `w-[300px]`，規劃中，見下方核心語法一節的但書） |
 | **錯誤處理** | 渲染時崩潰，錯一個字元白畫面 | 解析時捕捉，AI 可秒級自我修正 |
 
 ---
@@ -126,7 +126,7 @@ Structure and presentation are fully separated. Semantics live in the notation, 
 
 ## 核心語法 / Core Syntax
 
-每個節點遵循相同的四槽結構：
+每個節點的長期目標是同一個四槽結構：
 
 ```
 @node(modifier){styles}[content]<action>
@@ -134,11 +134,16 @@ Structure and presentation are fully separated. Semantics live in the notation, 
 
 | 槽位 | 角色 | 範例 |
 |---|---|---|
-| `@node` | 節點類型 | `@h`, `@p`, `@card` |
+| `@node` | 節點類型 | `@heading`（別名 `@h`）, `@paragraph`（別名 `@p`）, `@card` |
 | `(modifier)` | 變體或屬性 | `(primary)`, `(ja)` |
 | `{styles}` | 樣式或元數據 | `{w-300px bg-fff}` |
 | `[content]` | 內容槽位 ── **全域唯一** | `[Submit]` |
 | `<action>` | 尾綴動作 | `<submit>`, `<install>` |
+
+> [!NOTE]
+> **規劃中，非現行文法**：`<action>` 尾綴槽位目前完全沒有實作——`src/Lexer.ts` 沒有對應的 Token 型別，Block／Inline Syntax Specification 的正式 EBNF 也沒有這個產生式。上表 `{styles}` 的 `{w-300px bg-fff}` 這類 Tailwind class 字串範例同樣是前瞻性示意，不是現行語法：現行 `{styles}` 只接受逗號分隔的顏色 token（具名色或 hex），用於 `@mark`／`@color`／`@bordered`（見 [Inline Syntax Specification 第 7 節](../../Inline-Syntax-Specification.md#7-mark--color--bordered-styles-semantics)）。目前唯一可解析、有測試覆蓋的是 `@node(modifier){styles}[content]` 四槽中的前三槽。
+>
+> **Planned, not current grammar**: the trailing `<action>` slot is not implemented at all — `src/Lexer.ts` has no corresponding token type, and neither Block nor Inline Syntax Specification's formal EBNF defines this production. The `{w-300px bg-fff}`-style Tailwind class example for `{styles}` above is likewise illustrative, not current syntax: `{styles}` today only accepts a comma-separated list of color tokens (named colors or hex), used by `@mark`/`@color`/`@bordered` (see [Inline Syntax Specification §7](../../Inline-Syntax-Specification.md#7-mark--color--bordered-styles-semantics)). Only the first three of the four slots — `@node(modifier){styles}[content]` — are currently parseable and test-covered.
 
 `[]` 在 @Doc 中只有一個含義：**內容**。沒有例外，沒有逃逸地獄。
 
@@ -154,13 +159,13 @@ title = @Doc 2026 Spec
 description = AI-native semantic document runtime
 ]
 
-@h(1)[@Doc 專案規範]
+@heading(1)[@Doc 專案規範]
 
-@p[這是普通段落，其中包含行內語義節點。]
+@paragraph[這是普通段落，其中包含行內語義節點。]
 
 @card(featured)[
-  @h[AI 原生語言]
-  @p[具有確定性語法的結構化標記語言，專為雙向 AST 設計]
+  @heading[AI 原生語言]
+  @paragraph[具有確定性語法的結構化標記語言，專為雙向 AST 設計]
 ]
 
 @table[
@@ -175,7 +180,7 @@ description = AI-native semantic document runtime
 
 
 > [!NOTE]
-> 以下節點已調整：`@seo`、`@lang` 已併入 `@meta`；`@title` 改用 `@h`；`@text` 改用 `@p`；`@btn` 暫時棄用。以上為部分範例，實際語法以正式規格文件為準。
+> 以下節點已調整：`@seo`、`@lang` 已併入 `@meta`；`@title` 改用 `@heading`（別名 `@h`）；`@text` 改用 `@paragraph`（別名 `@p`）；`@btn` 暫時棄用。以上為部分範例，實際語法以正式規格文件為準。
 
 ---
 
@@ -204,7 +209,7 @@ Dynamic values live in the AST as structured data, not raw strings. The adapter 
 ### Core Nodes — 結構原件
 文件骨架，不可再分割的原子。
 
-`@h` `@p` `@quote` `@code` `@list` `@img` `@link` `@table`
+`@heading`（別名 `@h`） `@paragraph`（別名 `@p`） `@quote` `@code` `@list` `@img` `@table`
 
 ### Semantic Nodes — 語義容器
 兩種行為模式：
@@ -220,11 +225,11 @@ Dynamic values live in the AST as structured data, not raw strings. The adapter 
 
 因為 `[]` 是唯一具備內容語義的括號，模型不需要推理括號衝突。
 
-Token 成本也更低：`w-300px` 而非 Tailwind 的任意值語法 `w-[300px]`——括號由編譯器補回，不由模型生成。
+Token 成本也更低：`w-300px` 而非 Tailwind 的任意值語法 `w-[300px]`——括號由編譯器補回，不由模型生成（規劃中，目前 `{styles}` 僅支援顏色 token，見上方核心語法一節的但書）。
 
 @Doc gives the model a constrained, deterministic grammar. Errors surface at parse time, not render time. And because `[]` is the only content bracket, the model has nothing to collide with.
 
-Token cost is also lower: `w-300px` instead of `w-[300px]` — the bracket is restored by the compiler, not burned on generation.
+Token cost is also lower: `w-300px` instead of `w-[300px]` — the bracket is restored by the compiler, not burned on generation (planned; `{styles}` currently only supports color tokens, see the Core Syntax note above).
 
 ---
 

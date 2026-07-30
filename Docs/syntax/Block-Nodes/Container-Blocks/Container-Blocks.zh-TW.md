@@ -91,7 +91,7 @@ styles  = "{" , { text-char - "}" } , "}" ;
 ]
 ```
 
-`title` 對兩個節點都是選填欄位(參見 [Block Syntax Specification 第 4 節](../../../Block-Syntax-Specification.md#4-shared-components))；省略時，由 Renderer 決定預設呈現方式。`styles` 同樣是選填欄位，自 Block Syntax Specification v1.4 起已正式納入兩個節點的 EBNF——token 語意(具名色彩 token、hex token、修飾 token)完全沿用 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics)；個別 Renderer 是否／如何把它們映射成視覺樣式，仍是 Renderer 自行決定(見下方第 5 節說明)。
+`title` 對兩個節點都是選填欄位(參見 [Block Syntax Specification 第 4 節](../../../Block-Syntax-Specification.md#4-shared-components))；省略時，由 Renderer 決定預設呈現方式。`styles` 同樣是選填欄位，自 Block Syntax Specification v1.4 起已正式納入兩個節點的 EBNF——token 語意(具名色彩 token、hex token、修飾 token)完全沿用 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color--bordered-styles-semantics)；個別 Renderer 是否／如何把它們映射成視覺樣式，仍是 Renderer 自行決定(見下方第 5 節說明)。
 
 **完全省略 vs. 空括號。** EBNF 將整個 `[ title ]` 標示為可省略，但 `text = { any-unicode-char }` 本身也允許零個字元——因此單就文法而言，`@card()[content]`(空括號)並未被明確排除。本文件將兩者視為等價：完全省略 `(title)`，與括號內為空白或空字串的 `()`，都應正規化為「沒有標題」。Parser 可以選擇在 Strict Mode 下將 `()` 標示為需要提示的寫法(參見 [Inline Syntax Specification 第 11 節](../../../Inline-Syntax-Specification.md#11-parser-recovery-strategy))，但就語義而言，兩者都不帶標題。
 

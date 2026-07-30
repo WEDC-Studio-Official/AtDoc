@@ -2,7 +2,7 @@
 
 *[English version](./Text-Formatting.md)*
 
-> 本文件是 [Inline Syntax Specification](../../../Inline-Syntax-Specification.md) 第 4 節(完整 EBNF 語法定義)的語義說明文件——另外還有第 7 節(`@mark` / `@color` Styles Semantics)、第 9 節(`@raw` Opaque Domain)、第 10 節(Nested Parsing)，各自針對這個家族中的一個節點有專屬的詳細說明。本文將 `@bold`、`@italic`、`@underline`、`@del`、`@mark`、`@color`、`@raw` 視為一組整體來說明；若某節點已有自己的獨立章節，本文只做摘要並連結過去，不重複內容。在 [Block Syntax Specification 第 2 節](../../../Block-Syntax-Specification.md#2-document-ast-structure) 的 Document AST Structure 圖中，這一組被歸類為「Text Formatting」。
+> 本文件是 [Inline Syntax Specification](../../../Inline-Syntax-Specification.md) 第 4 節(完整 EBNF 語法定義)的語義說明文件——另外還有第 7 節(`@mark` / `@color` / `@bordered` Styles Semantics)、第 9 節(`@raw` Opaque Domain)、第 10 節(Nested Parsing)，各自針對這個家族中的一個節點有專屬的詳細說明。本文將 `@bold`、`@italic`、`@underline`、`@del`、`@mark`、`@color`、`@bordered`、`@raw` 視為一組整體來說明；若某節點已有自己的獨立章節，本文只做摘要並連結過去，不重複內容。在 [Block Syntax Specification 第 2 節](../../../Block-Syntax-Specification.md#2-document-ast-structure) 的 Document AST Structure 圖中，這一組被歸類為「Text Formatting」。
 
 ## 0. 目錄
 
@@ -16,6 +16,7 @@
   * [Strikethrough — `@del`](#strikethrough--del)
   * [Mark](#mark)
   * [Color](#color)
+  * [Bordered](#bordered)
   * [Raw](#raw)
 * [5. HTML 語義對應(非規範性)](#5-html-語義對應非規範性)
 * [6. AST 表示](#6-ast-表示)
@@ -27,13 +28,13 @@
 
 ## 1. 設計哲學
 
-Text Formatting 節點描述的是：一段文字片段應該如何在視覺或語義上與周圍文字區隔——強調、刪除線、高亮——但不指定具體的字重、顏色或標籤。七個成員中有五個幾乎共用同一種形狀：
+Text Formatting 節點描述的是：一段文字片段應該如何在視覺或語義上與周圍文字區隔——強調、刪除線、高亮——但不指定具體的字重、顏色或標籤。八個成員中有五個幾乎共用同一種形狀：
 
 ```text
 @bold   @italic   @underline   @del   @mark
 ```
 
-`@color` 是「不指定具體顏色」這條原則刻意的例外——它存在的目的正是讓作者在語意性預設不夠用時，能釘死一個精確的文字顏色。它仍屬於這個家族，是因為它的形狀與 `@mark` 相同(一個行內包裹器加一個額外欄位)，而不是 Structural 或 Container 節點。
+`@color` 與 `@bordered` 是「不指定具體顏色」這條原則刻意的例外——它們存在的目的正是讓作者在語意性預設不夠用時，能釘死一個精確的文字顏色／外框色。兩者仍屬於這個家族，是因為形狀與 `@mark` 相同(一個行內包裹器加一個額外欄位)，而不是 Structural 或 Container 節點；`@bordered` 進一步與 `@color` 共用完全相同的 `{styles}` 色票語意(見 [Color](#color)、[Bordered](#bordered))。
 
 `@raw` 是刻意存在的例外：它命名的是「*不解析*格式」這件事，而不是一種格式化樣式。它之所以被歸在這個家族裡，是因為它在文法中佔據的位置相同(一個包裹著方括號內容的 `inline-node`)，而不是因為它與其他成員行為相似。
 
@@ -63,26 +64,28 @@ Parser 可以直接找出文件中每一個 `@mark`(用於高亮／註記索引)
 
 | 節點 | Modifier／選項 | 內容型別 | 形狀備註 |
 |---|---|---|---|
-| `@bold` | 無 | `content`(可巢狀) | 純包裝 |
-| `@italic` | 無 | `content`(可巢狀) | 純包裝 |
-| `@underline` | 無 | `content`(可巢狀) | 純包裝 |
+| `@bold`(別名 `@b`) | 無 | `content`(可巢狀) | 純包裝 |
+| `@italic`(別名 `@i`) | 無 | `content`(可巢狀) | 純包裝 |
+| `@underline`(別名 `@u`) | 無 | `content`(可巢狀) | 純包裝 |
 | `@del` | 無 | `content`(可巢狀) | 純包裝 |
 | `@mark` | `{styles}`，選填 | `content`(可巢狀) | 改變的是**背景色**——見下方 [Mark](#mark) |
-| `@color` | `(hex-color)`，必填 | `content`(可巢狀) | 改變的是**文字色**——見 [Color](#color) |
+| `@color` | `{styles}`，選填 | `content`(可巢狀) | 改變的是**文字色**——見 [Color](#color) |
+| `@bordered` | `{styles}`，選填 | `content`(可巢狀) | 改變的是**外框色**，與 `@color` 共用同一個 `{styles}` 槽位——見 [Bordered](#bordered) |
 | `@raw` | 無 | `raw-content`(不透明，**不可**巢狀) | 這個家族中唯一完全停用行內解析的節點 |
 
 ```ebnf
 mark      = "@mark" , [ styles ] , content ;
-color     = "@color" , "(" , hex-color , ")" , content ;
-bold      = "@bold" , content ;
-italic    = "@italic" , content ;
-underline = "@underline" , content ;
+color     = "@color" , [ styles ] , content ;
+bordered  = "@bordered" , [ styles ] , content ;
+bold      = ( "@bold" | "@b" ) , content ;
+italic    = ( "@italic" | "@i" ) , content ;
+underline = ( "@underline" | "@u" ) , content ;
 del       = "@del" , content ;
 
 raw       = "@raw" , raw-content ;
 ```
 
-七個節點中有四個——`@bold`、`@italic`、`@underline`、`@del`——結構完全相同：一個關鍵字，加上單純的 `content`。`@mark` 在同樣的形狀上多了一個選填欄位；`@color` 則是多了一個**必填**欄位。`@raw` 是唯一一個「內容產生式在種類上、而不只是選項上」有所不同的成員——見 [Raw](#raw)。
+八個節點中有四個——`@bold`、`@italic`、`@underline`、`@del`——結構完全相同：一個關鍵字，加上單純的 `content`(`@bold`／`@italic`／`@underline` 三者還各自提供 `@b`／`@i`／`@u` 簡化別名，見各節說明)。`@mark`／`@color`／`@bordered` 在這個形狀上共用同一個進一步的槽位：同樣選填的 `{styles}`——三者的差異只在於這個槽位內什麼內容算合法(`@mark` 是逗號分隔的 token 列表；`@color`／`@bordered` 是單一 color token)，語法形狀本身完全相同。`@raw` 是唯一一個「內容產生式在種類上、而不只是選項上」有所不同的成員——見 [Raw](#raw)。
 
 ---
 
@@ -90,8 +93,11 @@ raw       = "@raw" , raw-content ;
 
 ### Bold
 
+> 簡化別名：`@b`。與 `@bold` 解析為同一個 AST 節點，純粹是輸入時的簡寫(見 [Inline Syntax Specification 第 14 節](../../../Inline-Syntax-Specification.md#14-simplified-syntax-aliases))。
+
 ```text
 這是@bold[重要]內容。
+這是@b[重要]內容。
 ```
 
 標記一段文字比周圍內容具有更強的重要性。沒有 modifier，也沒有 styles——這個家族中最單純的節點。
@@ -100,8 +106,11 @@ raw       = "@raw" , raw-content ;
 
 ### Italic
 
+> 簡化別名：`@i`。
+
 ```text
 這是@italic[強調]內容。
+這是@i[強調]內容。
 ```
 
 標記一段文字在風格或語義上有所區隔——強調、標題，或外來語詞彙。形狀與 `@bold` 相同。
@@ -110,8 +119,11 @@ raw       = "@raw" , raw-content ;
 
 ### Underline
 
+> 簡化別名：`@u`。
+
 ```text
 這是@underline[底線]內容。
+這是@u[底線]內容。
 ```
 
 形狀同樣相同。與 `@bold`／`@italic` 不同的是，底線在 Markdown 中完全沒有強力的先例——但 @Doc 依然給了它一級節點的地位，而不是逼作者退回原生 `<u>`。
@@ -133,10 +145,10 @@ raw       = "@raw" , raw-content ;
 ```text
 @mark[預設高亮]
 @mark{yellow}[黃色高亮]
-@mark{red,underline}[紅色並加底線]
+@mark{red}[紅色高亮]
 ```
 
-擁有第二個槽位的節點之一：一個選填的 `{styles}` token 列表(具名顏色、hex 顏色、`underline`、`strikethrough`、`bordered`)。完整語意——兩類 token 的定義、Renderer 對無法識別 token 的 fallback 規則，以及為何 `styles` 只是一個詞法層級的產生式(花括號包裹的字元序列，token 切分留給語意層／Renderer 處理)——都已在 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics) 詳細說明，本文不再重複。
+擁有第二個槽位的節點之一：一個選填的 `{styles}` color token 列表(具名顏色或 hex 顏色，可逗號分隔多個)。`underline`／`strikethrough`／`bordered` 這三個修飾 token 已從 `{styles}` 移除——`underline` 與 `@underline` 節點語意重複、`strikethrough` 與 `@del` 節點語意重複，`bordered` 則升格為獨立節點 `@bordered`(見下方)。完整語意——color token 的定義、Renderer 對無法識別 token 的 fallback 規則，以及為何 `styles` 只是一個詞法層級的產生式(花括號包裹的字元序列，token 切分留給語意層／Renderer 處理)——都已在 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color--bordered-styles-semantics) 詳細說明，本文不再重複。
 
 要注意 `@mark` 的顏色 token 改變的是**背景色**——這正是那組具名色階(`yellow`、`red`、`green`……)調校的用途。真正的文字改色請見下方 [Color](#color)。
 
@@ -145,10 +157,24 @@ raw       = "@raw" , raw-content ;
 ### Color
 
 ```text
-@color(#ff0000)[這段文字是紅色的]
+@color{blue}[這段文字是深藍色的]
+@color{#ff0000}[這段文字是紅色的]
 ```
 
-`@mark` 改變背景色，`@color` 改變的是文字本身的顏色——這是在這個節點出現之前，語法完全沒有答案的一塊空白。它的 `(hex-color)` 槽位是**必填**，不是選填；而且與 `@mark` 的 `{styles}` 不同，`@color` 只接受字面的 `#RRGGBB` hex 值，不接受 `@mark` 的具名 color token：那七個具名色是為高亮背景調校的淺色調，直接拿來當文字顏色會對比度不足、幾乎看不清。無法識別或格式不符的值(例如 `@color(blue)[...]`、`@color(#zzz)[...]`)會優雅地退回無額外顏色，而不是拋出錯誤，呼應 [Inline Syntax Specification 第 6 節](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)「忽略而非拋錯」的精神。
+`@mark` 改變背景色，`@color` 改變的是文字本身的顏色——這是在這個節點出現之前，語法完全沒有答案的一塊空白。它與 `@mark` 共用完全相同的 `{styles}` 槽位——同樣的括號、同樣選填、同樣的七個具名 token(`yellow`／`red`／`green`／`blue`／`orange`／`purple`／`gray`)，也接受字面的 `#RRGGBB` hex 值。差異在於兩者的具名 token 各自對應到獨立的色票：`@mark` 那組是為高亮背景調校的淺色調，直接拿來當文字顏色會對比度不足、幾乎看不清，所以 Renderer 通常會為 `@color` 維護一份色調較深的專屬色票。無法識別、格式不符或省略的值(例如 `@color{not-a-color}[...]`、`@color{#zzz}[...]`、`@color[...]`)會優雅地退回預設值，而不是拋出錯誤，呼應 [Inline Syntax Specification 第 6 節](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback)「忽略而非拋錯」的精神。
+
+`@color` 早期版本的 `(hex-color)` 括號語法已經停用——跟上面的容錯 fallback 不同，用舊語法會直接拋出 Parser 錯誤(Strict Mode)或標成診斷(Editor Mode)，而不是靜默退回預設值：`@color(#ff0000)[...]` 看起來像是會生效，實際上卻悄悄沒有作用，這種落差對作者來說比直接報錯更危險。
+
+---
+
+### Bordered
+
+```text
+@bordered{blue}[藍色外框]
+@bordered{#3366ff}[16 進位外框色]
+```
+
+為文字加上外框——與 `@color` 共用完全相同的 `{styles}` 槽位語意(同樣的具名 token 加 hex，見上方 [Color](#color))，只是套用在**外框**而非文字色，實作上通常直接重用 `@color` 的色票 resolver。省略 `{styles}` 或給出無法識別的值時，Renderer 以其預設外框樣式作為 fallback，同樣呼應「忽略而非拋錯」的精神。此節點取代了 `@mark` 先前 `{styles}` 中的 `bordered` 修飾 token，成為獨立的第一級節點，與 `underline`(已有 `@underline`)、`strikethrough`(已有 `@del`)的角色一致。完整語意見 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color--bordered-styles-semantics)。
 
 ---
 

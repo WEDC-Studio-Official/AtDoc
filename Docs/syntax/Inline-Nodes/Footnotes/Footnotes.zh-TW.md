@@ -90,7 +90,7 @@ See The Rust Programming Language, Chapter 4: Understanding Ownership.
 這項結論已經過同儕審查@fn[2]。
 ```
 
-`@fn` **僅**帶有一個編號——沒有內容欄位、沒有 modifier，什麼都沒有。它屬於 `inline-node`，因此可以出現在任何 `inline-stream` 能出現的地方(`@p`、`@quote`、`@list` 等——見 [Block Syntax Specification 第 4 節](../../../Block-Syntax-Specification.md#4-shared-components))——包括 `@table` 的儲存格，因為 `@fn` 在 `registry.ts` 的儲存格格式白名單裡(見 [Block Syntax Specification 第 5 節 Table](../../../Block-Syntax-Specification.md#table))，即使儲存格本身的文法並不是通用的 `block-content` 產生式。
+`@fn` **僅**帶有一個編號——沒有內容欄位、沒有 modifier，什麼都沒有。它屬於 `inline-node`，因此可以出現在任何 `inline-stream` 能出現的地方(`@paragraph`、`@quote`、`@list` 等——見 [Block Syntax Specification 第 4 節](../../../Block-Syntax-Specification.md#4-shared-components))——包括 `@table` 的儲存格，因為 `@fn` 在 `registry.ts` 的儲存格格式白名單裡(見 [Block Syntax Specification 第 5 節 Table](../../../Block-Syntax-Specification.md#table))，即使儲存格本身的文法並不是通用的 `block-content` 產生式。
 
 ---
 

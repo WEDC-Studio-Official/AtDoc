@@ -12,6 +12,7 @@
 * [8. Widget Blocks](#8-widget-blocks)
 * [9. Metadata](#9-metadata)
 * [10. Core Principle](#10-core-principle)
+* [11. Simplified Syntax Aliases](#11-simplified-syntax-aliases)
 
 ---
 
@@ -64,8 +65,8 @@ Document AST
 ├── Block Nodes
 │   │
 │   ├── Structural Blocks
-│   │   ├── @h
-│   │   ├── @p
+│   │   ├── @heading (alias: @h)
+│   │   ├── @paragraph (alias: @p)
 │   │   ├── @quote
 │   │   ├── @list
 │   │   ├── @code
@@ -94,9 +95,11 @@ Document AST
     │
     ├── Text Formatting
     │   ├── @mark
-    │   ├── @bold
-    │   ├── @italic
-    │   ├── @underline
+    │   ├── @color
+    │   ├── @bordered
+    │   ├── @bold (alias: @b)
+    │   ├── @italic (alias: @i)
+    │   ├── @underline (alias: @u)
     │   ├── @del
     │   └── @raw
     │
@@ -151,15 +154,29 @@ block-node =
 *)
 
 metadata =
-    "@meta" , block-content ;
+    "@meta" , meta-content ;
+
+(* meta-content is lexed the same way as block-content — the "[" / "]" pair
+   tokenizes normally, so an unregistered "@word" still falls back to plain
+   text per §6 Unknown Command Fallback — but Parser.ts is semantically
+   stricter here than for any other block node: it rejects every registered
+   node inside @meta, not just structural ones, not even @n or @raw. The
+   parser then splits the resulting text on newlines and the first "=" on
+   each line into key/value pairs and stores them directly on the AST node
+   (MetaNode.meta), rather than leaving that structuring to a later pass.
+   See Metadata.md §3/§6 for the full behavior and worked examples. *)
+meta-content =
+    "[" ,
+        { text } ,
+    "]" ;
 
 heading =
-    "@h" ,
+    ( "@heading" | "@h" ) ,
     [ "(" , level , ")" ] ,
     block-content ;
 
 paragraph =
-    "@p" , block-content ;
+    ( "@paragraph" | "@p" ) , block-content ;
 
 quote =
     "@quote" , block-content ;
@@ -407,13 +424,19 @@ text =
 
 ### Heading
 
+正典語法為 `@heading`；`@h` 是等效的簡化別名（Simplified Alias），兩者解析為同一個 AST 節點，Renderer 不會區分作者實際輸入的是哪一種寫法。
+
 ```text
+@heading(1)[
+Introduction
+]
+
 @h(1)[
 Introduction
 ]
 ```
 
-HTML:
+HTML（兩種寫法輸出相同）：
 
 ```html
 <h1>Introduction</h1>
@@ -423,13 +446,19 @@ HTML:
 
 ### Paragraph
 
+正典語法為 `@paragraph`；`@p` 是等效的簡化別名。
+
 ```text
+@paragraph[
+Hello World
+]
+
 @p[
 Hello World
 ]
 ```
 
-HTML:
+HTML（兩種寫法輸出相同）：
 
 ```html
 <p>Hello World</p>
@@ -630,6 +659,9 @@ WEDC Logo
 > 犧牲一點靈活性，換取 Parser 與 AI 生成內容時的高度可預測性。
 
 每個 `cell` 不是單純的純文字——除了文字本身，還允許一組經過篩選的行內格式節點（`@bold`、`@italic`、`@underline`、`@del`、`@mark`、`@color`、`@sup`、`@sub`、`@link`、`@fn`，以及會被轉成換行的 `@n`），因為這些節點只改變文字的呈現方式，不會影響表格本身「欄位對齊資料列」的結構。這份清單由 Renderer 端維護（`registry.ts` 的 `isCellAllowedNode`），語法層本身不限制清單內容，未來可以擴充。不在清單上的節點（例如 `@card`、`@table`、`@details` 這類會帶來自己版面結構的區塊節點）MUST 拋出語法錯誤，而不是被靜默捨棄——這與 Strict Mode（Inline Syntax Specification 第 11 節）「寧可拋錯，也不要吞掉錯誤內容」的精神一致。
+
+> [!NOTE]
+> **例外**：raw 家族節點（`@code`、`@mermaid`、`@raw`、`@kbd`）也不在 `isCellAllowedNode` 的清單上，但它們既不是「會帶來自己版面結構的區塊節點」，也不适用上面的 MUST 拋錯規則——`Parser.ts`（`parseInlineCellList`）刻意把它們的原始內容拉平成儲存格裡的純文字，而不是拋錯或當成真正的節點解析。這是跟 `@card`/`@table`/`@details` 那類結構節點分開處理的獨立行為，細節見 `registry.ts`（`CELL_ALLOWED_INLINE` 上方註解）與 `Parser.ts`（`parseInlineCellList` 上方註解）。
 
 ```text
 @table[
@@ -900,3 +932,18 @@ React 是 Renderer。
 而 @Doc 是：
 
 > Source of Truth.
+
+---
+
+## 11. Simplified Syntax Aliases
+
+部分高頻指令額外提供簡化別名（Simplified Alias）——純粹是輸入時的簡寫，Parser 會將其正規化為正典名稱後才建立 AST 節點（`node.type` 永遠是正典名稱），Renderer 完全不需要、也不會區分作者實際輸入的是哪一種寫法。
+
+Block Syntax 涵蓋的別名：
+
+| Canonical | Alias |
+|---|---|
+| `@heading` | `@h` |
+| `@paragraph` | `@p` |
+
+（Inline Syntax 的 `@bold`/`@italic`/`@underline` 別名 `@b`/`@i`/`@u` 定義在 Inline Syntax Specification。）

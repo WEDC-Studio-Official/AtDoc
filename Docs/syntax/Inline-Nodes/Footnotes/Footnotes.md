@@ -90,7 +90,7 @@ The in-text marker — a superscript-style pointer at the exact spot in the body
 這項結論已經過同儕審查@fn[2]。
 ```
 
-`@fn` carries **only** a number — no content slot, no modifier, nothing else. It is `inline-node`, so it can appear anywhere `inline-stream` can (inside `@p`, `@quote`, `@list`, etc. — see [Block Syntax Specification §4](../../../Block-Syntax-Specification.md#4-shared-components)) — including `@table` cells, since `@fn` is on `registry.ts`'s curated cell-formatting allowlist (see [Block Syntax Specification §5 Table](../../../Block-Syntax-Specification.md#table)), even though a table cell's grammar isn't the general-purpose `block-content` production.
+`@fn` carries **only** a number — no content slot, no modifier, nothing else. It is `inline-node`, so it can appear anywhere `inline-stream` can (inside `@paragraph`, `@quote`, `@list`, etc. — see [Block Syntax Specification §4](../../../Block-Syntax-Specification.md#4-shared-components)) — including `@table` cells, since `@fn` is on `registry.ts`'s curated cell-formatting allowlist (see [Block Syntax Specification §5 Table](../../../Block-Syntax-Specification.md#table)), even though a table cell's grammar isn't the general-purpose `block-content` production.
 
 ---
 

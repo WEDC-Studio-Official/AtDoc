@@ -150,7 +150,7 @@ export class DocParser {
       if (cur.type === 'NODE' && this.isTopLevelBlock(cur.value)) break;
 
       if (cur.type === 'NODE') {
-        const child = this.parseNode('p');
+        const child = this.parseNode('paragraph');
         if (child) content.push(child);
         continue;
       }
@@ -172,7 +172,7 @@ export class DocParser {
       this.cursor++;
     }
 
-    return { type: 'p', content };
+    return { type: 'paragraph', content };
   }
 
   /**
@@ -198,7 +198,10 @@ export class DocParser {
 
     this.cursor++; // consume NODE
 
-    const node: DocASTNode = { type: name, content: [] };
+    // node.type is always the canonical registry name — @h/@p/@b/@i/@u
+    // resolve transparently via registry.ts's alias table (getNodeDef), so
+    // the AST never distinguishes how the author spelled the command.
+    const node: DocASTNode = { type: nodeDef.name, content: [] };
 
     if (this.tokens[this.cursor]?.type === 'PAREN') {
       node.paren = this.tokens[this.cursor].value;
@@ -206,6 +209,12 @@ export class DocParser {
     }
     if (nodeDef.paren === 'required' && node.paren === undefined) {
       throw new DocSyntaxError(`\`@${name}\` requires a parenthesized ${nodeDef.parenRole ?? 'value'} — e.g. \`@${name}(...)\`.`);
+    }
+    // @color's "(hex)" paren syntax was retired in favor of sharing @mark's
+    // "{styles}" slot — the old form is now a hard error instead of silently
+    // discarding the value, so nobody accidentally ships an uncolored @color.
+    if (nodeDef.name === 'color' && node.paren !== undefined) {
+      throw new DocSyntaxError(`\`@color\` no longer accepts a parenthesized value — use \`@color{${node.paren}}\` instead of \`@color(${node.paren})\`.`);
     }
 
     switch (nodeDef.parenRole) {
@@ -215,12 +224,21 @@ export class DocParser {
       case 'uri': node.uri = node.paren; break;
       case 'id': node.id = node.paren; break;
       case 'options': node.imgOptions = parseImgOptions(node.paren ?? ''); break;
-      case 'color': node.color = node.paren; break;
       case 'ordered': node.ordered = /^\s*ordered\s*$/i.test(node.paren ?? ''); break;
     }
 
     if (this.tokens[this.cursor]?.type === 'STYLES') {
-      node.styles = this.tokens[this.cursor].value.split(',').map(s => s.trim()).filter(Boolean);
+      const raw = this.tokens[this.cursor].value;
+      // @color and @bordered both take a single color-token value, not a
+      // comma-separated token list — unlike every other {styles} consumer,
+      // so they get their own field instead of the generic split-into-array
+      // handling below. @bordered applies that value as a border instead of
+      // a foreground color (see Adapters.ts / KamiAdapter.ts).
+      if (nodeDef.name === 'color' || nodeDef.name === 'bordered') {
+        node.color = raw.trim();
+      } else {
+        node.styles = raw.split(',').map(s => s.trim()).filter(Boolean);
+      }
       this.cursor++;
     }
 
@@ -476,6 +494,12 @@ export class DocParser {
         }
         if (isRawFamilyContent(nodeDef?.content)) {
           this.cursor++; // consume NODE
+          // An optional "(...)" (e.g. @code's language tag) can sit between the
+          // NODE and its RAW content — consume and discard it, same as every
+          // other raw-family node's value gets flattened to plain text here.
+          // Without this, `@code(js)[...]` would find a PAREN token where it
+          // expects RAW and throw a misleading "expects a content slot" error.
+          if (this.tokens[this.cursor]?.type === 'PAREN') this.cursor++;
           const rawTok = this.tokens[this.cursor];
           if (!rawTok || rawTok.type !== 'RAW') {
             throw new DocSyntaxError(`\`@${cur.value}\` expects a content slot \`[...]\` immediately after it.`);

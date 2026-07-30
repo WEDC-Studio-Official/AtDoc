@@ -143,7 +143,7 @@ This is the detail this document exists to surface: the EBNF's flat `inline-node
 
 ## 6. Escape Scope — Global Rule vs. `@raw` Exceptions
 
-The global `@@` rule (§5 of the Inline Spec) applies in ordinary `inline-stream` context — inside `@p`, `@quote`, `@bold`, and so on. It does **not** apply inside `@raw`. [Inline Syntax Specification §9](../../../Inline-Syntax-Specification.md#9-raw-opaque-domain) is explicit:
+The global `@@` rule (§5 of the Inline Spec) applies in ordinary `inline-stream` context — inside `@paragraph`, `@quote`, `@bold`, and so on. It does **not** apply inside `@raw`. [Inline Syntax Specification §9](../../../Inline-Syntax-Specification.md#9-raw-opaque-domain) is explicit:
 
 > 全域 `@@` 轉義規則（第 5 節）不再適用。
 

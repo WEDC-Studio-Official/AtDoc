@@ -2,7 +2,7 @@
 
 *[中文版](./Structural-Blocks.zh-TW.md)*
 
-> Companion to [Block Syntax Specification](../../../Block-Syntax-Specification.md) §5 (Structural Blocks). The grammar lives there; this document covers meaning, usage, and the open edges of `@h`, `@p`, `@quote`, `@list`, `@code`, `@img`, `@table`, `@hr`, and `@svg`.
+> Companion to [Block Syntax Specification](../../../Block-Syntax-Specification.md) §5 (Structural Blocks). The grammar lives there; this document covers meaning, usage, and the open edges of `@heading`, `@paragraph`, `@quote`, `@list`, `@code`, `@img`, `@table`, `@hr`, and `@svg`.
 
 ## 0. Table of Contents
 
@@ -40,8 +40,8 @@ Markdown already covers this ground reasonably well for humans — but its rules
 
 ```text
 Markdown           @Doc
-# Title       →    @h(1)[Title]
-plain text    →    @p[plain text]
+# Title       →    @heading(1)[Title]
+plain text    →    @paragraph[plain text]
 > quoted      →    @quote[quoted]
 - item        →    @list[- item]
 ```
@@ -54,8 +54,8 @@ The renderer still decides the actual HTML/PDF/terminal output; the source just 
 
 | Node | Modifier / Option | Content | Shape notes |
 |---|---|---|---|
-| `@h` | `(level)`, optional, `1`–`6` | `block-content` | see [Heading](#heading) for the missing default |
-| `@p` | — | `block-content` | plain text container |
+| `@heading` | `(level)`, optional, `1`–`6` | `block-content` | see [Heading](#heading) for the missing default |
+| `@paragraph` | — | `block-content` | plain text container |
 | `@quote` | — | `block-content` | no distinct citation/author field |
 | `@list` | `(ordered)`, optional (see [List](#list)) | `block-content` | every non-empty line is an item — a structured `ListItem` AST, not re-split text |
 | `@code` | `(language)`, optional | `raw-block-content` | unparsed — same idea as `@raw` |
@@ -72,8 +72,10 @@ No two rows are identical. That's intentional — see §1.
 
 ### Heading
 
+> Simplified alias: `@h`. Parses to the identical AST node as `@heading` — purely a shorthand at authoring time (see [Block Syntax Specification §11](../../../Block-Syntax-Specification.md#11-simplified-syntax-aliases)).
+
 ```text
-@h(1)[
+@heading(1)[
 Introduction
 ]
 ```
@@ -84,14 +86,16 @@ HTML:
 <h1>Introduction</h1>
 ```
 
-`level` accepts `1`–`6`. The grammar marks `(level)` optional (`[ "(" , level , ")" ]`), but [Block Syntax Specification §3](../../../Block-Syntax-Specification.md#3-ebnf) doesn't state a default when it's omitted. This reference treats a level-less `@h[...]` as equivalent to `@h(1)[...]` — a top-level heading — until the core spec says otherwise.
+`level` accepts `1`–`6`. The grammar marks `(level)` optional (`[ "(" , level , ")" ]`), but [Block Syntax Specification §3](../../../Block-Syntax-Specification.md#3-ebnf) doesn't state a default when it's omitted. This reference treats a level-less `@heading[...]` as equivalent to `@heading(1)[...]` — a top-level heading — until the core spec says otherwise.
 
 ---
 
 ### Paragraph
 
+> Simplified alias: `@p`. Parses to the identical AST node as `@paragraph`.
+
 ```text
-@p[
+@paragraph[
 Hello World
 ]
 ```
@@ -124,7 +128,7 @@ Show me the code.
 </blockquote>
 ```
 
-Like `@p`, `@quote` has no modifier — there's no dedicated field for a citation or attribution. An author who wants "— Linus Torvalds" under a quote has to write it as a second line of content, the same trade-off Callout Blocks had before they gained `(title)` (see [Callout Blocks §3](../Callout-Blocks/Callout-Blocks.md#3-syntax)).
+Like `@paragraph`, `@quote` has no modifier — there's no dedicated field for a citation or attribution. An author who wants "— Linus Torvalds" under a quote has to write it as a second line of content, the same trade-off Callout Blocks had before they gained `(title)` (see [Callout Blocks §3](../Callout-Blocks/Callout-Blocks.md#3-syntax)).
 
 ---
 
@@ -248,7 +252,7 @@ WEDC Logo
 
 The only Structural Block with dedicated sub-node grammar instead of generic `block-content` — `@cols` and `@data` are required, in that order (see [Block Syntax Specification §5 Table](../../../Block-Syntax-Specification.md#table)). This gives `@table` the strongest AST guarantees in the family: columns and rows are structured data, not text a renderer has to re-parse.
 
-Each column/cell isn't plain text only — it also accepts a curated set of inline formatting nodes (`@bold`, `@link`, `@mark`, etc. — full list in `registry.ts`'s `isCellAllowedNode`), since those only change how the text is presented without touching the table's own "columns line up with rows" structural guarantee. Anything outside that list (`@card`, `@table`, and other nodes that bring their own layout structure) still throws rather than being silently dropped.
+Each column/cell isn't plain text only — it also accepts a curated set of inline formatting nodes (`@bold`, `@link`, `@mark`, etc. — full list in `registry.ts`'s `isCellAllowedNode`), since those only change how the text is presented without touching the table's own "columns line up with rows" structural guarantee. Anything outside that list (`@card`, `@table`, and other nodes that bring their own layout structure) still throws rather than being silently dropped — with one deliberate exception: the raw-family nodes (`@code`, `@mermaid`, `@raw`, `@kbd`) aren't in `isCellAllowedNode` either, but instead of throwing, their raw content is flattened into the cell as plain text (see `Parser.ts`'s `parseInlineCellList`).
 
 ---
 
@@ -344,7 +348,7 @@ Documentation platform: a native blockquote or callout component, chosen by the 
 
 ## 7. AI Generation Stability
 
-Markdown's positional rules — a leading `#`, a four-space indent, a blank line ending a paragraph — are exactly the kind of thing generative models get subtly wrong: one missing blank line and the structure silently changes meaning. @Doc replaces position with an explicit node name: `@h(1)[...]` cannot be confused with a paragraph that merely starts with the character `#`, regardless of surrounding whitespace.
+Markdown's positional rules — a leading `#`, a four-space indent, a blank line ending a paragraph — are exactly the kind of thing generative models get subtly wrong: one missing blank line and the structure silently changes meaning. @Doc replaces position with an explicit node name: `@heading(1)[...]` cannot be confused with a paragraph that merely starts with the character `#`, regardless of surrounding whitespace.
 
 ---
 

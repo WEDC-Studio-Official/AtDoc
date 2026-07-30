@@ -2,13 +2,13 @@
 
 *[English version](./Widget-Blocks.md)*
 
-> 本文件是 [Block Syntax Specification](../../../Block-Syntax-Specification.md) 第 8 節（Widget Blocks）的語義說明文件。語法定義請參閱該節，本文聚焦於 `@tabs`、`@tab`、`@mermaid` 的意義、使用時機，以及 fallback（降級呈現）的設計理由。
+> 本文件是 [Block Syntax Specification](../../../Block-Syntax-Specification.md) 第 8 節（Widget Blocks）的語義說明文件。語法定義請參閱該節，本文聚焦於 `@tabs`、`@tab`、`@mermaid` 的意義、使用時機，以及尚未定案的部分。
 
 ## 0. 目錄
 
 * [1. 設計哲學](#1-設計哲學)
 * [2. Widget Blocks 的由來](#2-widget-blocks-的由來)
-* [3. 語法](#3-語法)
+* [3. 結構形狀比較](#3-結構形狀比較)
 * [4. 節點說明](#4-節點說明)
   * [Tabs](#tabs)
   * [Mermaid](#mermaid)
@@ -21,21 +21,21 @@
 
 ## 1. 設計哲學
 
-Structural、Container、Callout Blocks 在任何環境下都能優雅降級——terminal 永遠可以把標題、卡片或警告印成純文字。Widget Blocks 不一樣：它們指名的是一種 Renderer**能力**，而不只是樣式選擇。Renderer 可以自由選擇 `@caution` 要用什麼顏色，但它沒辦法憑空生出 `@tabs` 的互動性，也沒辦法憑空生出 `@mermaid` 需要的繪圖引擎。
+Widget Blocks 涵蓋的內容，比 Structural Block 需要更多結構，卻又不符合 Container Block 或 Callout Block 共用的「標題 + 內容」形狀。README 的 Node Taxonomy 頂層只命名了「Core Nodes」與「Semantic Nodes」；Widget Blocks 是在 Block Syntax Specification 這個層級才引入的分類（見 [第 2 節 Document AST Structure](../../../Block-Syntax-Specification.md#2-document-ast-structure)），用來歸類那些文法完全是為該 widget 量身打造的區塊層級元件。
 
 ```text
-@tabs   @mermaid
+@tabs / @tab   @mermaid
 ```
 
-Widget Blocks 是 @Doc 語義與目標平台實際能力交會的邊界。每個 Adapter 都必須為這個家族準備一套明確的 fallback 策略——而不只是挑一種呈現風格。
+跟 Structural Blocks 一樣（見 [Structural Blocks 第 1 節](../Structural-Blocks/Structural-Blocks.md#1-design-philosophy)），這個家族的兩個成員並不共用同一種形狀：`@tabs` 是只接受 `@tab` 子節點的限制性容器，`@mermaid` 則是一個不透明、不解析的內容領域。把它們歸在「Widget」這個名字底下的原因，是兩者都會渲染成一個自成一體的互動或內嵌單元——不是因為它們共用文法。
 
 ---
 
 ## 2. Widget Blocks 的由來
 
-分頁與圖表都沒有標準的 Markdown 表示法。圖表靠 fenced code block 慣例（```` ```mermaid ````）硬湊出來，也只有部分 Renderer 認得；分頁則完全沒有慣例可言——每個文件框架都自創一套元件（Docusaurus 的 `<Tabs><TabItem>`、VitePress 的自訂容器語法、Nextra 的 `<Tabs.Tab>`），彼此互不相容。
+有些內容既不是段落，也不是可摺疊的區塊，更不是分級的警告框——它是一個帶有自己內部規則的小型獨立元件：一個分頁切換器、一種內嵌的圖表語言。Markdown 對這兩者都沒有原生的表示法；作者只能退回原始 HTML（`<div class="tabs">...`）、特定框架的 MDX 元件，或是靠 fenced code block 硬湊、讓 Renderer 去比對語言字串（```` ```mermaid ````）才能特殊處理。
 
-@Doc 為兩者各自提供單一、確定的語法，取代「文件框架剛好發明了什麼就用什麼」：
+@Doc 為兩者各自提供一個明確的節點，而不是把既有的基本語法硬套上去：
 
 ```text
 語意（Meaning）
@@ -44,48 +44,22 @@ AST Node
   ↓
 Renderer Adapter
   ↓
-Output Target（互動式 UI、靜態 fallback，或原始圖表語言）
+Output Target
 ```
 
-作者只需寫一次 `@tabs[...]`：Web adapter 可以渲染成真正可互動的分頁，terminal adapter 可以依序印出每個 `@tab`，PDF adapter 可以將它們逐一排版——全部來自同一份原始碼。
+Parser 可以直接找出文件裡每一個 `@tabs` 或 `@mermaid`，不需要去掃描 `class="tabs"` 屬性，也不需要拿 fenced code block 的語言標籤去比對一份已知清單。
 
 ---
 
-## 3. 語法
+## 3. 結構形狀比較
 
-```ebnf
-tabs         = "@tabs" , tabs-content ;
-tabs-content = "[" , { tab } , "]" ;
-tab          = "@tab" , "(" , text , ")" , block-content ;
+| 節點 | Modifier／選項 | 內容 | 形狀備註 |
+|---|---|---|---|
+| `@tabs` | 無 | 只能是 `{ @tab }`——不是通用的 `block-content` | 唯一一個內容被限定成單一子節點型別的節點 |
+| `@tab` | `(text)`，**必填**，非選填 | `block-content` | 不屬於 `block-node`；只能出現在 `@tabs` 內（見 [Tabs](#tabs)） |
+| `@mermaid` | 無 | `raw-block-content` | 不解析——跟 `@code` 同樣的概念，但連 `(language)` 欄位都沒有 |
 
-mermaid      = "@mermaid" , raw-block-content ;
-```
-
-範例：
-
-```text
-@tabs[
-    @tab(JavaScript)[
-        console.log("hi");
-    ]
-
-    @tab(Python)[
-        print("hi")
-    ]
-]
-```
-
-```text
-@mermaid[
-graph TD
-A --> B
-]
-```
-
-這個家族與目前介紹過的其他 Block Node 有兩處明顯不同：
-
-* **`@tab` 的標題是必填，不是選填。** 其他每個帶標題的節點（`@details`、`@card`，以及現在的 Callout Blocks）都把 `(title)` 定義成 `[ title ]`——選填。而 `tab = "@tab" , "(" , text , ")" , ...` 的括號外沒有 `[ ]`。一個沒有標籤的分頁在 UI 上根本無法被選取，因此文法直接不允許省略它。
-* **`@tab` 不屬於 `block-node`。** EBNF 刻意將它排除在通用的 `block-node` 聯集之外（參見 [Block Syntax Specification 第 3 節](../../../Block-Syntax-Specification.md#3-ebnf)）——它只能出現在 `tabs-content` 內。若在文件頂層或 `@card` 內寫 `@tab(...)[...]`，在 Strict Mode 下屬於錯誤。這是 @Doc 中唯一的**限定情境節點（restricted-context node）**：只在單一位置合法的語法。這與 `@raw` 的 Opaque Domain（參見 [Inline Syntax Specification 第 9 節](../../../Inline-Syntax-Specification.md#9-raw-opaque-domain)）是不同種類的限制——`@raw` 限制的是「內部解析什麼」，`@tab` 限制的是「它能出現在哪裡」。
+沒有任何兩列是相同的——這跟 [Structural Blocks 第 3 節](../Structural-Blocks/Structural-Blocks.md#3-shape-comparison) 對 `@heading`、`@code`、`@table`、`@hr` 做的「沒有共用形狀」觀察一致。
 
 ---
 
@@ -93,7 +67,7 @@ A --> B
 
 ### Tabs
 
-一組帶標籤、互斥的內容面板——讀者（或 Renderer）一次只選擇檢視其中一個。
+`@tabs` **只**接受一個或多個 `@tab` 子節點——不接受其他 block-node，也不接受裸文字：
 
 ```text
 @tabs[
@@ -111,15 +85,15 @@ A --> B
 ]
 ```
 
-`@tabs` **只**接受 `@tab` 子節點——不接受裸文字，也不接受其他 block node。Parser 在 Strict Mode 下 MUST 拒絕其他內容，或在 Editor Mode 下自動修正（參見 [Inline Syntax Specification 第 11 節](../../../Inline-Syntax-Specification.md#11-parser-recovery-strategy)）。
+* `@tab(title)[content]`——`title` 是分頁的顯示標籤，`content` 是完整的 `block-content`（內部可以放任何 block-node 或 inline-stream）。
+* 跟 Container Blocks（`@details`、`@card`）或 Callout Blocks 的 `(title)` 不同，`@tab` 的 `(text)` 在 EBNF 裡**不是選填**（`tab = "@tab" , "(" , text , ")" , block-content`）——括號外沒有 `[ ... ]` 包起來。沒有標籤的分頁沒有定義的形式。
+* 如果 `@tabs[...]` 裡出現 `@tab` 以外的任何東西（裸文字，或其他 block-node），Parser 在 Strict Mode 下 MUST 視為語法錯誤，或在 Editor Mode 下自動修正／標記（見 [Block Syntax Specification 第 8 節 Tabs](../../../Block-Syntax-Specification.md#tabs)）。
 
-適用於：讀者需要在幾個對等選項間切換的情境——同一段程式碼的不同語言版本、依作業系統而異的安裝步驟、不同的設定檔格式。不適用於循序步驟（改用 `@list`），也不適用於應該同時全部可見的內容（改用 `@card`）。
+`@tab` 在 EBNF 裡被刻意排除在 `block-node` 聯集之外（見 [Block Syntax Specification 第 3 節](../../../Block-Syntax-Specification.md#3-ebnf)，緊接在 `metadata =` 上方的那則註記），所以它不能出現在文件頂層，也不能出現在其他節點的 `block-content` 裡——只能出現在 `@tabs` 內。這呼應了 `@raw` 背後的 Opaque Domain 概念（見 [Inline Syntax Specification 第 9 節](../../../Inline-Syntax-Specification.md#9-raw-opaque-domain)）：一段語法只在單一特定情境下才有意義。
 
 ---
 
 ### Mermaid
-
-一段原樣傳遞、未經解析的 [Mermaid](https://mermaid.js.org/) 圖表定義。
 
 ```text
 @mermaid[
@@ -128,9 +102,9 @@ A --> B
 ]
 ```
 
-內容採用 `raw-block-content`——與 `@code`（參見 [Structural Blocks § Code](../Structural-Blocks/Structural-Blocks.zh-TW.md#code)）相同的傳遞行為：括號之間的任何內容都不會被當作 @Doc 語法解讀。Parser 只是把字面上的圖表語言文字，原封不動交給下游知道如何繪製它的引擎。
+`@mermaid` 的內容是 `raw-block-content`——跟 `@code` 用的是同一套「內容不解析」概念（見 [Structural Blocks: Code](../Structural-Blocks/Structural-Blocks.md#code)），差別是 `@mermaid` 完全沒有 `(language)` 欄位，因為圖表語言已經由節點名稱本身表明。Parser 一看到 `@mermaid[`，在對應的 `]` 出現之前，裡面的任何內容都不會被當成 @Doc 語法解讀——沒有 `@bold`，沒有 `@link`，也沒有巢狀 block。
 
-因為圖表的呈現完全仰賴繪圖引擎是否存在，若 Renderer 不支援 Mermaid，SHOULD 退回成一般的程式碼區塊（顯示原始圖表定義），而不是悄悄捨棄內容——這與 `@code` 在找不到對應語法高亮時採用的原則一致。
+適用於：任何用 Mermaid 自己的文字語法表示的圖表（流程圖、循序圖、狀態圖等）。實際執行 Mermaid 引擎去繪圖，或是在無法渲染圖表的目標上退回成一般程式碼區塊，是 Renderer 的責任。
 
 ---
 
@@ -141,11 +115,11 @@ A --> B
 ```text
 @tabs[
     @tab(JavaScript)[
-        console.log("hi");
+        @code(js)[console.log("hi")]
     ]
 
     @tab(Python)[
-        print("hi")
+        @code(py)[print("hi")]
     ]
 ]
 ```
@@ -159,15 +133,26 @@ Document
             │   ├── Title
             │   │   └── "JavaScript"
             │   └── Content
-            │       └── "console.log(\"hi\");"
+            │       └── CodeNode (js) → "console.log(\"hi\")"
             └── TabNode
                 ├── Title
                 │   └── "Python"
                 └── Content
-                    └── "print(\"hi\")"
+                    └── CodeNode (py) → "print(\"hi\")"
 ```
 
-因為每個面板都是各自獨立、帶有自己 `Title` 與 `Content` 的 `TabNode`，工具可以列舉所有分頁、只抽取某個片段的 Python 版本，或標記出只有一個子節點的 `@tabs`——完全不需要解析標記語法。
+相對地，`@mermaid` 產生的是單一葉節點，本體儲存成一段不透明字串，跟 `@code` 一樣：
+
+```text
+Document
+└── BlockNodes
+    └── WidgetNodes
+        └── MermaidNode
+            └── RawContent
+                └── "graph TD\nA --> B"
+```
+
+因為 `@tab` 的標題是獨立的 `Title` 欄位，而不是混在文字裡，工具可以列出 `@tabs` 區塊裡的每一個分頁標籤，完全不需要重新解析內容——這跟 Container Blocks 靠專屬 `Title` 欄位得到的好處一樣（見 [Container Blocks 第 6 節](../Container-Blocks/Container-Blocks.md#6-ast-representation)）。
 
 ---
 
@@ -177,39 +162,40 @@ Document
 
 ```text
 @tabs[
-    @tab(npm)[
-        npm install
-    ]
-
-    @tab(pnpm)[
-        pnpm install
-    ]
+    @tab(npm)[npm install]
+    @tab(pnpm)[pnpm add]
 ]
 ```
 
-Web：一個可互動的分頁列，一次只顯示一個面板，點擊切換。
+Web：由 Adapter 自行選擇的原生分頁切換元件。
 
-Terminal（沒有互動能力）：每個分頁依序印出，各自帶著自己的標籤——
+Terminal：
 
 ```text
-== npm ==
-npm install
-
-== pnpm ==
-pnpm install
+[npm] npm install
+[pnpm] pnpm add
 ```
 
-文件平台：由 Renderer 選擇該框架原生的分頁元件（`<Tabs>`、`<Tabs.Tab>` 等）——而不是由 @Doc 原始碼決定。
+原始碼：
 
-同樣的原則也適用於 `@mermaid`：Web adapter 渲染成 SVG 圖表，terminal 或純文字 adapter 則退回成帶標籤的程式碼區塊，顯示原始圖表定義。
+```text
+@mermaid[
+graph TD
+A --> B
+]
+```
+
+Web：渲染出來的圖表（Mermaid 引擎，或一張 SVG）。
+
+Terminal／純文字：一個包著原始 Mermaid 原始碼的 fenced code block——因為不能假設任何目標都能渲染圖表。
 
 ---
 
 ## 7. AI 生成穩定性
 
-若沒有專屬節點，模型會依照訓練時看過最多的文件框架 JSX 來表達分頁——`<Tabs><TabItem value="js">`、VitePress 的容器語法、Nextra 元件——猜錯了，輸出就無法在這個專案實際使用的工具鏈上編譯。`@tabs(...)` / `@tab(...)` 讓模型無論目標框架是什麼，都只需要輸出同一種形式；該對應到哪個 UI 元件，是 Adapter 的責任，不是模型的責任。
+若沒有專屬節點，模型會用不一致、特定框架的標記來表達分頁切換器——一個手刻 JS 的 `<div class="tabs">`、一組 MDX 的 `<Tabs><Tab>`，或是一種要靠 Renderer 逆向工程猜測的「每個標題一個分頁」慣例。`@tabs[ @tab(title)[content] ... ]` 給模型唯一一種確定的形狀，而把 `@tabs` 的子節點限制成只能是 `@tab`（第 4 節）意味著模型不可能不小心產生一個裡面混著裸文字、讓 Parser 得自己猜怎麼處理的 `@tabs` 區塊。
 
-`@mermaid[...]` 同樣固定了**外層包裝**語法（模型不必再猜測該用 fenced ```` ```mermaid ```` 區塊、自訂 shortcode，還是原始 `<script>` 標籤），同時保留圖表語言本身——它已經有相當程度的標準化——完全不受影響。
+`@mermaid` 不透明的本體則排除了另一種失敗模式：因為 `@mermaid[...]` 裡面完全不會被當成 @Doc 語法解析，模型生成的 Mermaid 原始碼（有自己的 `-->`、`[]`、`{}` 慣例）就不會被誤判成 @Doc 的括號。
 
 ---
 
@@ -221,4 +207,4 @@ Widget Blocks 遵循與 @Doc 其餘部分相同的原則：
 Semantic First, Layout Later
 ```
 
-分頁元件不是由它的點擊事件處理器定義的，Mermaid 圖表也不是由它最終產生的 SVG 定義的。兩者都是由作者寫下的結構化意圖定義的——那個意圖最終如何被實現，完全交給渲染它的一方決定。
+分頁切換器不是一個帶 JavaScript 的 `<div>`。圖表也不是恰好標了 `mermaid` 的 fenced code block。每個節點的定義來自它「是什麼」，而不是某個 Renderer 今天剛好怎麼畫它。

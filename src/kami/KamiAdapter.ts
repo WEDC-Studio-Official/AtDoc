@@ -125,6 +125,33 @@ function resolveMarkTint(styles: string[] | undefined): string {
 }
 
 // ----------------------------------------------------------------------------
+// Phase 3b: @color 具名 token 對照表 — 深色系、給文字前景色用途。
+// ----------------------------------------------------------------------------
+// 與 MARK_COLOR_TO_KAMI_TINT 是兩張獨立的表：mark 的那份是淺色高亮背景 tint，
+// 直接當文字色會對比度不足、難以閱讀，所以 @color 維護自己這份色調較深的對照表，
+// 兩者共用同一組 token 名稱（yellow/red/green/blue/orange/purple/gray），
+// 但對應的實際色值不同。優先權規則與 resolveMarkTint 相同：
+//  1. 省略 {styles}（@color[content]）→ 套用 DEFAULT_MARK_TINT（跟 @mark 共用同一個預設）。
+//  2. 顯式指定 hex（@color{#3366ff}[...]）→ 直接使用，不重新映射。
+//  3. 顯式指定具名 token（@color{blue}[...]）→ 對照下表解析成實色。
+//  4. token 無法識別 → fallback 為 DEFAULT_MARK_TINT（同規則 1），不拋出錯誤。
+const COLOR_PRESETS: Record<string, string> = {
+  yellow: '#9A7B00',
+  red: '#A33A3A',
+  green: '#3F7A4A',
+  blue: '#3569A8',
+  orange: '#A9652A',
+  purple: '#76509A',
+  gray: '#666666',
+};
+
+function resolveColorValue(token: string | undefined): string {
+  if (!token) return DEFAULT_MARK_TINT;
+  if (/^#[0-9a-fA-F]{6}$/.test(token)) return token;
+  return COLOR_PRESETS[token] ?? DEFAULT_MARK_TINT;
+}
+
+// ----------------------------------------------------------------------------
 // Phase 2: 節點映射表（AST → Kami 樣式）— 骨架
 // 對照 registry.ts 的 REGISTRY 清單順序；每個節點先列出 TODO，
 // 待逐一補上實際 CSS class / inline style。
@@ -132,6 +159,14 @@ function resolveMarkTint(styles: string[] | undefined): string {
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** Same URI scheme inference as Adapters.ts resolveUri() (Inline Syntax Specification §8) — kept local to avoid a cross-Route dependency. */
+function resolveUri(raw: string): string {
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) return raw; // explicit scheme: MUST be used as-is
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) return `mailto:${raw}`;
+  if (/^\+?[0-9][0-9\- ]*$/.test(raw)) return `tel:${raw.replace(/[\s-]/g, '')}`;
+  return `https://${raw}`;
 }
 
 /** Same trust-boundary stripping as Adapters.ts sanitizeSvg() — kept local to avoid a cross-Route dependency. */
@@ -142,8 +177,28 @@ function sanitizeSvg(raw: string): string {
     .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '');
 }
 
+/**
+ * True for a text child that's pure formatting whitespace — the author
+ * pretty-printed a nested node onto its own indented line, and the Parser
+ * (deliberately, per spec — no implicit trimming) kept that indentation as
+ * a literal text node. Rendered as-is, it becomes a real, visible space
+ * sitting right against the adjacent node's tag boundary (CSS only trims
+ * collapsible whitespace at a *line* edge, not at an inline element's inner
+ * edge), which is especially obvious once that node has a background or
+ * border (@mark, @bordered). A same-line run of spaces with no newline is
+ * left untouched — that's the author actually asking for a visible gap.
+ */
+function isIndentationWhitespace(s: string): boolean {
+  return s.includes('\n') && /^\s*$/.test(s);
+}
+
 function renderChildren(content: (DocASTNode | string)[]): string {
-  return content.map(c => (typeof c === 'string' ? escapeHtml(c) : renderKamiNode(c))).join('');
+  return content
+    .map(c => {
+      if (typeof c !== 'string') return renderKamiNode(c);
+      return isIndentationWhitespace(c) ? '' : escapeHtml(c);
+    })
+    .join('');
 }
 
 export function renderKamiNode(node: DocASTNode): string {
@@ -153,12 +208,12 @@ export function renderKamiNode(node: DocASTNode): string {
       return ''; // 不渲染可見 HTML，同 Adapters.ts 現有行為
 
     // --- Structural Blocks --- (TODO: 補齊 Kami class/style)
-    case 'h': {
+    case 'heading': {
       const level = node.level ?? 1;
       // TODO: Display/H1/H2/H3 依 level 對應 KamiTokens.type
       return `<h${level} data-kami="heading" data-level="${level}">${renderChildren(node.content)}</h${level}>`;
     }
-    case 'p':
+    case 'paragraph':
       // TODO: KamiTokens.type.body
       return `<p data-kami="body">${renderChildren(node.content)}</p>`;
     case 'quote':
@@ -249,15 +304,14 @@ export function renderKamiNode(node: DocASTNode): string {
       return `<mark data-kami="mark" style="background-color:${tint};">${renderChildren(node.content)}</mark>`;
     }
     case 'color': {
-      // Unlike @mark's named-token palette (resolveMarkTint() above, tuned
-      // for pale tint backgrounds), @color is a precise text color — the
-      // Kami tint table would be nearly unreadable as foreground text, so
-      // only literal hex resolves here; anything else falls back to no
-      // explicit color rather than throwing (Inline Spec §6).
-      const colorToken = node.color;
-      const isHex = !!colorToken && /^#[0-9a-fA-F]{6}$/.test(colorToken);
-      const style = isHex ? ` style="color:${colorToken};"` : '';
-      return `<span data-kami="color"${style}>${renderChildren(node.content)}</span>`;
+      // 優先權規則已實作：見上方 resolveColorValue()
+      const resolved = resolveColorValue(node.color);
+      return `<span data-kami="color" style="color:${resolved};">${renderChildren(node.content)}</span>`;
+    }
+    case 'bordered': {
+      // 與 @color 共用同一套色票（resolveColorValue）——套用在外框而非文字色。
+      const resolved = resolveColorValue(node.color);
+      return `<span data-kami="bordered" style="border:1px solid ${resolved};">${renderChildren(node.content)}</span>`;
     }
     case 'raw':
       return escapeHtml(node.raw ?? '');
@@ -270,7 +324,7 @@ export function renderKamiNode(node: DocASTNode): string {
     case 'kbd':
       return `<kbd data-kami="kbd">${escapeHtml(node.raw ?? '')}</kbd>`;
     case 'link':
-      return `<a data-kami="link" href="${escapeHtml(node.uri ?? '')}">${renderChildren(node.content)}</a>`;
+      return `<a data-kami="link" href="${escapeHtml(resolveUri(node.uri ?? ''))}">${renderChildren(node.content)}</a>`;
 
     // --- Footnotes ---
     case 'defn':

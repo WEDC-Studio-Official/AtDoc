@@ -59,14 +59,22 @@ keywords = parser,ast,dsl
 ```
 
 ```ebnf
-metadata = "@meta" , block-content ;
+metadata = "@meta" , meta-content ;
 ```
 
-`@meta` takes no modifier and no title — just `block-content`, the same generic content rule every plain block node uses (see [Block Syntax Specification §4](../../Block-Syntax-Specification.md#4-shared-components)).
+`@meta` takes no modifier and no title — and unlike every other block node, its content isn't `block-content` either. It has its own dedicated grammar production, `meta-content` (see [Block Syntax Specification §3](../../Block-Syntax-Specification.md#3-ebnf)): the `"["`/`"]"` pair lexes the same way `block-content`'s does (an unregistered `@word` still falls back to plain text per [Unknown Command Fallback](../../Inline-Syntax-Specification.md#6-unknown-command-fallback)), but the Parser is semantically stricter here than anywhere else in the grammar — it rejects **every** registered node inside `@meta`, not just structural ones. Not `@bold`, not `@n`, not even `@raw`:
 
-That's worth pausing on: **the `key = value` lines are not their own grammar production.** There is no `meta-entry` or `key-value-pair` rule anywhere in the EBNF — `@meta`'s content is parsed exactly like `@p`'s: as generic text and inline-stream. Splitting each line on `=` into a key and a value is a semantic-level convention, not a syntax-level one, the same relationship `@mark`'s style tokens have to their `{styles}` slot (see [Inline Syntax Specification §7](../../Inline-Syntax-Specification.md#7-mark-styles-semantics)): the bracket's shape is defined by the grammar, but what's meaningful *inside* it is left to the renderer or a later semantic pass.
+```text
+@meta[
+title = @bold[Something]
+]
+```
 
-One practical consequence: the value `@Doc` in the example above is only safe because `Doc` isn't a registered inline command name. Per the [Unknown Command Fallback rule](../../Inline-Syntax-Specification.md#6-unknown-command-fallback), `@Doc` falls back to plain text — but an author writing `title = @bold[Something]` as a metadata value would trigger real inline parsing inside what's meant to be a flat key-value line, since `@meta`'s content is ordinary `block-content`, not `raw-block-content`. Authors who need a value containing `@`-prefixed text should escape it (`@@`, see [Inline Syntax Specification §5](../../Inline-Syntax-Specification.md#5-escape-rule)) or keep it plain.
+throws `` `@meta` only accepts plain text in its content slot — found an unexpected `@bold` node `` — there is no case where a recognized node is silently accepted or dropped inside `@meta`.
+
+That's worth pausing on: **the `key = value` lines *are* real structure, just not one expressed as a separate EBNF production.** Once the Parser has collected `@meta`'s plain-text content, it immediately splits it on `"\n"` and the first `"="` on each line and stores the result as actual key-value data on the AST node itself (`MetaNode.meta`, a plain `{ [key]: value }` map) — see §6 below. This is different from `@mark`'s `{styles}` slot (see [Inline Syntax Specification §7](../../Inline-Syntax-Specification.md#7-mark-styles-semantics)), where the comma-token splitting is left entirely to the Renderer: for `@meta`, the key-value structuring happens during parsing, before any Renderer ever sees the AST.
+
+One practical consequence: the value `@Doc` in the example above is only safe because `Doc` isn't a registered inline command name — it falls back to plain text per Unknown Command Fallback and becomes part of the value, unchanged. Authors who need a value containing the literal text of a *registered* command name (`@bold`, `@n`, etc.) must escape the `@` (`@@`, see [Inline Syntax Specification §5](../../Inline-Syntax-Specification.md#5-escape-rule)) — writing it unescaped throws, it does not fall back or get silently dropped the way an unregistered name does.
 
 ---
 
@@ -79,6 +87,9 @@ document = [ metadata ] , { block-node } ;
 ```
 
 `@meta` may appear **at most once**, and only **before** every block-node — never in the middle of a document, never nested inside a `@card` or `@details`. This is a different kind of restricted-context node than `@tab` (see [Widget Blocks § Tabs](../Block-Nodes/Widget-Blocks/Widget-Blocks.md#tabs)): `@tab`'s restriction is about *parent* — it's only valid inside `@tabs`, wherever that appears — while `@meta`'s restriction is about *document position* — it's only valid once, and only first.
+
+> [!NOTE]
+> **Not currently enforced by the Parser.** The rule above is the intended contract, not something `Parser.ts` currently checks: its top-level loop accepts `@meta` anywhere among the document's block nodes, any number of times, and generic content parsing (the same path `@card`/`@details` use for their children) will happily parse a nested `@meta` too — `@card[@meta[title=Nested]]` parses without error today. Treat "at most once, only first, never nested" as what authors should write, not a guarantee the Parser rejects violations of.
 
 ---
 
@@ -114,11 +125,10 @@ author = WEDC
 Document
 └── Metadata
     └── MetaNode
-        └── Content
-            └── "title = @Doc\nauthor = WEDC"
+        └── meta: { title: "@Doc", author: "WEDC" }
 ```
 
-Note there is no `MetaEntry` or `KeyValuePair` node — as §3 explains, the grammar doesn't structure the key/value lines at all. A tool that wants `{ title: "@Doc", author: "WEDC" }` as actual key-value data has to parse `MetaNode.Content` itself; the AST only guarantees that the block exists and is metadata, not that its contents are already structured.
+The key-value pairs are **not** left as an unstructured raw string for a tool to re-parse — `MetaNode.meta` is already a plain `{ [key]: value }` map by the time the Parser returns the AST. There's no separate `MetaEntry`/`KeyValuePair` *node* (it's a plain object property, not a child in the `content` tree the way `@table`'s columns/rows are structured extras), but the data itself is fully structured: a consumer reads `node.meta.title` directly — it never has to split lines or `=` signs itself.
 
 ---
 

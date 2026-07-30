@@ -26,13 +26,12 @@ export type ContentMode =
 export type ParenMode = 'none' | 'optional' | 'required';
 
 export type ParenRole =
-  | 'level'    // @h
+  | 'level'    // @heading
   | 'title'    // @details, @card, callouts, @tab
   | 'language' // @code
   | 'options'  // @img
   | 'uri'      // @link
   | 'id'       // @defn
-  | 'color'    // @color
   | 'ordered'; // @list
 
 export interface NodeDef {
@@ -41,7 +40,7 @@ export interface NodeDef {
   content: ContentMode;
   paren: ParenMode;
   parenRole?: ParenRole;
-  styles?: boolean;       // "{styles}" slot allowed — @mark only
+  styles?: boolean;       // "{styles}" slot allowed — @mark, @color, @bordered, styled Container/Callout Blocks
   restrictedTo?: string;  // only valid as a direct child of this node type
 }
 
@@ -54,8 +53,8 @@ const REGISTRY: NodeDef[] = [
   def({ name: 'meta', kind: 'meta', content: 'meta', paren: 'none' }),
 
   // Structural Blocks — §5
-  def({ name: 'h', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'level' }),
-  def({ name: 'p', kind: 'block', content: 'generic', paren: 'none' }),
+  def({ name: 'heading', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'level' }),
+  def({ name: 'paragraph', kind: 'block', content: 'generic', paren: 'none' }),
   def({ name: 'quote', kind: 'block', content: 'generic', paren: 'none' }),
   def({ name: 'list', kind: 'block', content: 'generic', paren: 'optional', parenRole: 'ordered' }),
   def({ name: 'code', kind: 'block', content: 'raw', paren: 'optional', parenRole: 'language' }),
@@ -88,7 +87,11 @@ const REGISTRY: NodeDef[] = [
   def({ name: 'underline', kind: 'inline', content: 'generic', paren: 'none' }),
   def({ name: 'del', kind: 'inline', content: 'generic', paren: 'none' }),
   def({ name: 'mark', kind: 'inline', content: 'generic', paren: 'none', styles: true }),
-  def({ name: 'color', kind: 'inline', content: 'generic', paren: 'required', parenRole: 'color' }),
+  def({ name: 'color', kind: 'inline', content: 'generic', paren: 'none', styles: true }),
+  // Text outline/border — shares @color's exact {styles} slot (named color
+  // token or literal hex) and swatch table, just painted onto a border
+  // instead of a foreground color.
+  def({ name: 'bordered', kind: 'inline', content: 'generic', paren: 'none', styles: true }),
   def({ name: 'raw', kind: 'inline', content: 'raw-escaped', paren: 'none' }),
 
   // Semantic Inline — Inline §4, §8
@@ -111,12 +114,48 @@ const REGISTRY: NodeDef[] = [
 
 const BY_NAME = new Map<string, NodeDef>(REGISTRY.map(d => [d.name, d]));
 
+/**
+ * Short aliases for high-frequency commands — resolve transparently to the
+ * same NodeDef as their canonical name (so `@h[...]` and `@heading[...]`
+ * parse to the identical AST shape, `node.type` always canonical — see
+ * Parser.ts's parseNode). `label` is the human-readable name an editor's
+ * hover UI can pair with "Alias of @canonical".
+ */
+interface AliasDef {
+  alias: string;
+  canonical: string;
+  label: string;
+}
+
+const ALIASES: AliasDef[] = [
+  { alias: 'h', canonical: 'heading', label: 'Heading' },
+  { alias: 'p', canonical: 'paragraph', label: 'Paragraph' },
+  { alias: 'b', canonical: 'bold', label: 'Bold' },
+  { alias: 'i', canonical: 'italic', label: 'Italic' },
+  { alias: 'u', canonical: 'underline', label: 'Underline' },
+];
+
+const ALIAS_BY_NAME = new Map<string, AliasDef>(ALIASES.map(a => [a.alias, a]));
+
 export function getNodeDef(name: string): NodeDef | undefined {
-  return BY_NAME.get(name);
+  const direct = BY_NAME.get(name);
+  if (direct) return direct;
+  const alias = ALIAS_BY_NAME.get(name);
+  return alias ? BY_NAME.get(alias.canonical) : undefined;
 }
 
 export function isKnownCommand(name: string): boolean {
-  return BY_NAME.has(name);
+  return BY_NAME.has(name) || ALIAS_BY_NAME.has(name);
+}
+
+/** Alias metadata for `name`, or undefined if `name` isn't a short alias (including if it's already canonical). */
+export function getAliasInfo(name: string): AliasDef | undefined {
+  return ALIAS_BY_NAME.get(name);
+}
+
+/** The full alias table, for consumers that need to derive keyword lists including short aliases (e.g. src/editor/monarch.ts). */
+export function getAllAliasDefs(): readonly AliasDef[] {
+  return ALIASES;
 }
 
 /**
@@ -145,7 +184,7 @@ export function getAllNodeDefs(): readonly NodeDef[] {
  * carve-out so @fn gets parsed as a real node instead of dumped as bare digits.
  */
 const CELL_ALLOWED_INLINE: ReadonlySet<string> = new Set([
-  'bold', 'italic', 'underline', 'del', 'mark', 'color', 'sup', 'sub', 'link', 'fn',
+  'bold', 'italic', 'underline', 'del', 'mark', 'color', 'bordered', 'sup', 'sub', 'link', 'fn',
 ]);
 
 export function isCellAllowedNode(name: string): boolean {

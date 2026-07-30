@@ -137,7 +137,7 @@ That's why the grammar is fixed and formal, not organic:
 @node(modifier){styles}[content]<action>
 ```
 
-Every slot carries exactly one meaning, and that meaning never shifts with context.
+Every slot carries exactly one meaning, and that meaning never shifts with context. (The trailing `<action>` slot is the long-term target, not current grammar — see the note in [README § Core Syntax](../../README.md#核心語法--core-syntax) for what's actually implemented today.)
 
 @Doc is not a Markdown replacement, and it is not HTML shorthand. It sits between three readers — the AI that generates it, the parser that reads it, and the renderer that draws it — as the intermediate representation none of the formats above were built to be.
 

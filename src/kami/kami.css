@@ -173,7 +173,27 @@ body {
 
 [data-kami="callout"] strong { font-weight: 500; margin-right: 4px; }
 
-[data-kami="mark"] { padding: 1px 4px; border-radius: 3px; }
+/* Tight highlighter look (Word/Google Docs convention) — the mark hugs its
+   text exactly, no padding/rounding, so it never shows the parent's
+   background peeking through at its edges when @mark sits next to other
+   inline content with no matching background of its own (e.g. nested
+   inside @bordered, or directly beside plain text). */
+[data-kami="mark"] { padding: 0; border-radius: 0; }
+
+/* @bordered's rounded corners (inline "border-radius" set per-instance in
+   KamiAdapter.ts) don't clip nested content by default — a nested @mark's
+   sharp-cornered background box can visually poke past the rounded border
+   at the corners. `overflow` has no effect on a plain `display: inline`
+   element per spec, so this also switches it to `inline-block` (still wraps
+   like inline content in normal flow) purely so the `overflow: hidden`
+   actually clips. `line-height: 1` removes the inline-block's half-leading —
+   a browser reserves extra vertical space above/below inline-block content
+   based on the font's line-height, which otherwise shows up as a small gap
+   between the border and its content even with zero padding.
+   `vertical-align: middle` keeps the box centered against surrounding text
+   instead of sitting on the text baseline (which would leave visible room
+   below it for descenders). */
+[data-kami="bordered"] { display: inline-block; overflow: hidden; line-height: 1; vertical-align: middle; }
 
 [data-kami="table"] {
   width: 100%;

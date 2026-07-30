@@ -466,10 +466,16 @@ test@example.com
 代表額外的視覺或語意修飾，非顏色本身：
 
 ```text
-underline   (加底線)
-strikethrough (加刪除線)
 bordered    (加外框)
 ```
+
+> [!NOTE]
+> **`underline`／`strikethrough` 已停用。** 語法裡已經有 `@underline`、`@del`
+> 專門處理底線與刪除線，`@mark{styles}` 再提供一次同樣效果只是多一條容易被
+> 忽略的重複路徑（Kami Renderer 分支——見 `src/kami/KamiAdapter.ts`——
+> 就從未實作過這兩個 token，這個落差本身也說明了它們不該混在 `{styles}`
+> 裡）。需要底線或刪除線效果，改用 `@underline[@mark{red}[...]]` 這種巢狀
+> 組合。`bordered` 沒有對應的獨立節點，予以保留。
 
 ---
 
@@ -478,7 +484,6 @@ bordered    (加外框)
 ```text
 @mark[預設高亮]
 @mark{yellow}[黃色高亮]
-@mark{red,underline}[紅色並加底線]
 @mark{blue,bordered}[藍色並加外框]
 @mark{#3366ff}[16 進位背景色]
 ```

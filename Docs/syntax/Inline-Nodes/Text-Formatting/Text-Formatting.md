@@ -133,10 +133,10 @@ Marks a fragment as removed, retracted, or no longer applicable — the semantic
 ```text
 @mark[預設高亮]
 @mark{yellow}[黃色高亮]
-@mark{red,underline}[紅色並加底線]
+@mark{blue,bordered}[藍色並加外框]
 ```
 
-A node with a second slot: an optional `{styles}` token list (named colors, hex colors, `underline`, `strikethrough`, `bordered`). Full semantics — the two token categories, renderer fallback rules for unrecognized tokens, and why `styles` is a lexical-only production (a brace-wrapped character run, with token splitting left to the semantic/renderer layer) — are covered in dedicated detail at [Inline Syntax Specification §7](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics); this document does not repeat that content.
+A node with a second slot: an optional `{styles}` token list (named colors, hex colors, `bordered` — `underline`/`strikethrough` were retired, since `@underline`/`@del` already cover exactly that). Full semantics — the two token categories, renderer fallback rules for unrecognized tokens, and why `styles` is a lexical-only production (a brace-wrapped character run, with token splitting left to the semantic/renderer layer) — are covered in dedicated detail at [Inline Syntax Specification §7](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics); this document does not repeat that content.
 
 Note that `@mark`'s color tokens set a *background* — that's what the named palette (`yellow`, `red`, `green`, …) is tuned for. See [Color](#color) below for actual text-color.
 

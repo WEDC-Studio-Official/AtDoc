@@ -133,10 +133,10 @@ raw       = "@raw" , raw-content ;
 ```text
 @mark[預設高亮]
 @mark{yellow}[黃色高亮]
-@mark{red,underline}[紅色並加底線]
+@mark{blue,bordered}[藍色並加外框]
 ```
 
-擁有第二個槽位的節點之一：一個選填的 `{styles}` token 列表(具名顏色、hex 顏色、`underline`、`strikethrough`、`bordered`)。完整語意——兩類 token 的定義、Renderer 對無法識別 token 的 fallback 規則，以及為何 `styles` 只是一個詞法層級的產生式(花括號包裹的字元序列，token 切分留給語意層／Renderer 處理)——都已在 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics) 詳細說明，本文不再重複。
+擁有第二個槽位的節點之一：一個選填的 `{styles}` token 列表(具名顏色、hex 顏色、`bordered`——`underline`／`strikethrough` 已停用，因為 `@underline`／`@del` 本來就處理同樣的效果)。完整語意——兩類 token 的定義、Renderer 對無法識別 token 的 fallback 規則，以及為何 `styles` 只是一個詞法層級的產生式(花括號包裹的字元序列，token 切分留給語意層／Renderer 處理)——都已在 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color-styles-semantics) 詳細說明，本文不再重複。
 
 要注意 `@mark` 的顏色 token 改變的是**背景色**——這正是那組具名色階(`yellow`、`red`、`green`……)調校的用途。真正的文字改色請見下方 [Color](#color)。
 

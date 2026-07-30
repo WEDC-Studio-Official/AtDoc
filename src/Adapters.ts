@@ -37,7 +37,12 @@ const MARK_COLORS: Record<string, string> = {
   purple: '#e8d2ff',
   gray: '#e0e0e0',
 };
-const MARK_MODIFIERS = ['underline', 'strikethrough', 'bordered'];
+// 'underline'/'strikethrough' were retired from @mark's {styles} — @underline
+// and @del already cover exactly that, so the token would just be a second,
+// easy-to-miss way to write the same thing (and the Kami Renderer branch
+// never implemented them at all — see KamiAdapter.ts). 'bordered' has no
+// dedicated node equivalent, so it stays.
+const MARK_MODIFIERS = ['bordered'];
 
 // @color's own named-token palette — deliberately a separate table from
 // MARK_COLORS: those are pale shades tuned for @mark's highlight background,
@@ -112,8 +117,6 @@ function renderMark(node: DocASTNode, route: Route): string {
   if (route === 'inline') {
     const styleParts: string[] = [];
     if (resolvedColor) styleParts.push(`background-color: ${resolvedColor};`);
-    if (modifierTokens.includes('underline')) styleParts.push('text-decoration: underline;');
-    if (modifierTokens.includes('strikethrough')) styleParts.push('text-decoration: line-through;');
     if (modifierTokens.includes('bordered')) styleParts.push('border: 1px solid currentColor;');
     const styleAttr = styleParts.length ? ` style="${styleParts.join(' ')}"` : '';
     return `<mark${styleAttr}>${inner}</mark>`;

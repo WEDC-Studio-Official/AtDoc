@@ -173,7 +173,12 @@ body {
 
 [data-kami="callout"] strong { font-weight: 500; margin-right: 4px; }
 
-[data-kami="mark"] { padding: 1px 4px; border-radius: 3px; }
+/* Tight highlighter look (Word/Google Docs convention) — the mark hugs its
+   text exactly, no padding/rounding, so it never shows the parent's
+   background peeking through at its edges when @mark sits next to other
+   inline content with no matching background of its own (e.g. nested
+   inside @bordered, or directly beside plain text). */
+[data-kami="mark"] { padding: 0; border-radius: 0; }
 
 [data-kami="table"] {
   width: 100%;

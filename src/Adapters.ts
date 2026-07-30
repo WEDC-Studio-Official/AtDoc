@@ -80,8 +80,28 @@ function resolveUri(raw: string): string {
   return `https://${raw}`;
 }
 
+/**
+ * True for a text child that's pure formatting whitespace — the author
+ * pretty-printed a nested node onto its own indented line, and the Parser
+ * (deliberately, per spec — no implicit trimming) kept that indentation as
+ * a literal text node. Rendered as-is, it becomes a real, visible space
+ * sitting right against the adjacent node's tag boundary (CSS only trims
+ * collapsible whitespace at a *line* edge, not at an inline element's inner
+ * edge), which is especially obvious once that node has a background or
+ * border (@mark, @bordered). A same-line run of spaces with no newline is
+ * left untouched — that's the author actually asking for a visible gap.
+ */
+function isIndentationWhitespace(s: string): boolean {
+  return s.includes('\n') && /^\s*$/.test(s);
+}
+
 function renderChildren(content: (DocASTNode | string)[], route: Route): string {
-  return content.map(c => (typeof c === 'string' ? escapeHtml(c) : renderNode(c, route))).join('');
+  return content
+    .map(c => {
+      if (typeof c !== 'string') return renderNode(c, route);
+      return isIndentationWhitespace(c) ? '' : escapeHtml(c);
+    })
+    .join('');
 }
 
 /**

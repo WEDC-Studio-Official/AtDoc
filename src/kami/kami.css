@@ -244,6 +244,12 @@ sup[data-kami="footnote-ref"] a:hover,
 a[data-kami="footnote-back"]:hover {
   text-decoration: underline;
 }
+ol[data-kami="footnotes"] {
+  list-style: none;
+  margin: 32px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--kami-border-soft);
+}
 li[data-kami="footnote"] {
   font-size: 13px;
   color: var(--kami-dark-warm);

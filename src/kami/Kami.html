@@ -12,7 +12,7 @@ Ownership is Rust's most unique feature.
 </blockquote>
 <hr data-kami="hr">
 <h2 data-kami="heading" data-level="2">三條基本規則</h2>
-<ul data-kami="list" data-kami-marker="bullet"><li>每個值都有一個擁有者（owner）</li><li>同一時間只能有一個擁有者</li><li>擁有者離開作用域時，值即被釋放</li></ul>
+<ul data-kami="list" data-kami-marker="bullet"><li>每個值都有一個擁有者（owner）</li><li>同一時間只能有一個擁有者</li><li>擁有者離開作用域時，值即被釋放</li></ul>
 <aside data-kami="callout" data-variant="important"><span data-kami="callout-label">IMPORTANT</span><strong>核心觀察</strong> 
 所有權規則在<u data-kami="underline">編譯期</u>完成檢查，執行期<em data-kami="italic">零成本</em>。這是 Rust 與 GC 語言的根本差異。
 </aside>
@@ -35,12 +35,8 @@ fn main() {
 <p data-kami="body">
 借用檢查器（borrow checker）確保引用永遠有效<sup data-kami="footnote-ref" id="fnref1"><a href="#fn1">1</a></sup>。規則很簡單：同一時間可以有多個不可變借用，<strong data-kami="bold">或</strong>一個可變借用，<mark data-kami="mark" style="background-color:#F1DCDC;">但不能同時存在</mark><sup data-kami="footnote-ref" id="fnref2"><a href="#fn2">2</a></sup>。
 </p>
-<p data-kami="body"><li data-kami="footnote" id="fn1">
-See <a data-kami="link" href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html">The Rust Book, Ch. 4.2</a>.
- <a data-kami="footnote-back" href="#fnref1">↩</a></li></p>
-<p data-kami="body"><li data-kami="footnote" id="fn2">
-這條規則在編譯期防止了資料競爭（data race），無需執行期鎖。
- <a data-kami="footnote-back" href="#fnref2">↩</a></li></p>
+<p data-kami="body"></p>
+<p data-kami="body"></p>
 <hr data-kami="hr">
 <h2 data-kami="heading" data-level="2">與其他語言比較</h2>
 <table data-kami="table"><thead><tr><th>language</th><th>strategy</th><th>cost</th></tr></thead><tbody><tr><td>C/C++</td><td>手動管理</td><td>懸空指標與洩漏風險</td></tr><tr><td>Java/Go</td><td>垃圾回收</td><td>GC 暫停與記憶體開銷</td></tr><tr><td>Rust</td><td>所有權系統</td><td>編譯期學習成本</td></tr></tbody></table>
@@ -53,6 +49,14 @@ See <a data-kami="link" href="https://doc.rust-lang.org/book/ch04-02-references-
         </p></div><div data-kami="tab-panel" id="kami-tab-1"><p data-kami="body"><pre data-kami="code"><code class="language-text">cargo build</code></pre> 會執行完整的借用檢查，錯誤訊息包含修正建議。
         </p></div><div data-kami="tab-panel" id="kami-tab-2"><p data-kami="body">
         遇到 E0382（value moved）時，優先考慮借用而非 clone。
+        </p></div></div>
+<h3 data-kami="heading" data-level="3">各平台安裝差異</h3>
+<div data-kami="tabs"><div role="tablist"><button data-kami="tab-trigger" aria-controls="kami-tab-0">Windows</button><button data-kami="tab-trigger" aria-controls="kami-tab-1">macOS</button><button data-kami="tab-trigger" aria-controls="kami-tab-2">Linux</button></div><div data-kami="tab-panel" id="kami-tab-0"><p data-kami="body">
+        透過官方安裝程式或 winget 安裝，需另外安裝 MSVC Build Tools 作為連結器。
+        </p></div><div data-kami="tab-panel" id="kami-tab-1"><p data-kami="body">
+        透過 rustup 或 Homebrew 安裝，需先安裝 Xcode Command Line Tools。
+        </p></div><div data-kami="tab-panel" id="kami-tab-2"><p data-kami="body">
+        透過發行版套件管理器或 rustup 安裝，通常已內建 gcc 可直接作為連結器。
         </p></div></div>
 <pre data-kami="mermaid">
 graph TD
@@ -83,5 +87,10 @@ C --&gt;|否| E[繼續持有]
 </article>
 <aside data-kami="callout" data-variant="note"><span data-kami="callout-label">NOTE</span>
 本文件為 @Doc 節點覆蓋測試用途，內容涵蓋全部 Block 與 Inline 節點。
-</aside></div></body>
+</aside>
+<ol data-kami="footnotes"><li data-kami="footnote" id="fn1">
+See <a data-kami="link" href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html">The Rust Book, Ch. 4.2</a>.
+ <a data-kami="footnote-back" href="#fnref1">↩</a></li><li data-kami="footnote" id="fn2">
+這條規則在編譯期防止了資料競爭（data race），無需執行期鎖。
+ <a data-kami="footnote-back" href="#fnref2">↩</a></li></ol></div></body>
 </html>

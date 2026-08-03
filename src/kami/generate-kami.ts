@@ -11,10 +11,11 @@ const tokens = tokenize(sourceCode);
 try {
   const ast = new DocParser(tokens).parse();
   const bodyHTML = ast.map(node => KamiTranspiler.toKamiHTML(node)).join('\n');
+  const footnotesHTML = KamiTranspiler.renderFootnotes(ast);
   const fullHTML = `<!DOCTYPE html>
 <html lang="zh-Hant">
 <head><meta charset="UTF-8"><link rel="stylesheet" href="kami.css"></head>
-<body><div class="page">${bodyHTML}</div></body>
+<body><div class="page">${bodyHTML}${footnotesHTML ? `\n${footnotesHTML}` : ''}</div></body>
 </html>`;
   writeFileSync(new URL('./Kami.html', import.meta.url), fullHTML, 'utf-8');
   console.log('Generated Kami.html');

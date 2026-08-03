@@ -177,8 +177,9 @@ export function getAllNodeDefs(): readonly NodeDef[] {
  * concern — Parser.ts's parseInlineCellList() throws for it rather than
  * silently dropping it.
  *
- * @defn is deliberately excluded: it renders as `<li data-kami="footnote">`,
- * meant to live inside a collected footnotes list, not loose inside a `<td>`.
+ * @defn is deliberately excluded: it's collected document-wide and rendered
+ * once as a real `<li>` inside the footnotes `<ol>` (see Adapters.ts's/
+ * KamiAdapter.ts's renderFootnotes()), not loose inside a `<td>`.
  * @fn (the footnote *reference*, a self-contained `<sup><a>` back-link) is
  * fine and included — Parser.ts checks this set before its raw-family
  * carve-out so @fn gets parsed as a real node instead of dumped as bare digits.

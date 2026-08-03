@@ -322,8 +322,18 @@ function renderNode(node: DocASTNode, route: Route): string {
       return `<a href="${escapeHtml(resolveUri(node.uri ?? ''))}">${renderChildren(node.content, route)}</a>`;
 
     // Footnotes
+    // @defn is a plain inline-node (Footnotes.md §4) — an author writing it
+    // as its own line at the document's end (the documented convention) gets
+    // it wrapped in an implicit <p> by the Parser's paragraph aggregation.
+    // Rendering it here as `<li>` (as this case used to) put flow content
+    // inside phrasing-only content, which browsers "fix" by force-closing
+    // the <p> right before it, splitting it into two empty <p></p>. So
+    // @defn renders as nothing in place; DocTranspiler.renderFootnotes()
+    // collects every @defn in the document and renders them together as one
+    // real <ol> — the "collected footnotes list" registry.ts already assumed
+    // existed (see its CELL_ALLOWED_INLINE comment).
     case 'defn':
-      return `<li id="fn${escapeHtml(node.id ?? '')}">${renderChildren(node.content, route)} <a href="#fnref${escapeHtml(node.id ?? '')}">↩</a></li>`;
+      return '';
     case 'fn':
       return `<sup id="fnref${node.number}"><a href="#fn${node.number}">${node.number}</a></sup>`;
 
@@ -337,6 +347,50 @@ function renderNode(node: DocASTNode, route: Route): string {
   }
 }
 
+/**
+ * Renders a single @defn as a real footnotes-list item — unlike the 'defn'
+ * case in renderNode() (which renders nothing in-place, see there for why),
+ * this is only ever called on nodes already inside the <ol> built by
+ * DocTranspiler.renderFootnotes(), where a bare <li> is legal HTML.
+ */
+function renderFootnoteItem(node: DocASTNode, route: Route): string {
+  return `<li id="fn${escapeHtml(node.id ?? '')}">${renderChildren(node.content, route)} <a href="#fnref${escapeHtml(node.id ?? '')}">↩</a></li>`;
+}
+
+/**
+ * Walks the whole document (recursively — @defn is a plain inline-node, so
+ * it can appear nested inside @quote/@list/@table cells/etc., not just at
+ * the top level) collecting every @defn in document order. A @defn's own
+ * content isn't walked any further once collected — nesting a @defn inside
+ * another @defn isn't a meaningful/supported pattern (Footnotes.md §4 only
+ * documents ordinary inline content there), so there's nothing useful to
+ * find by recursing past it.
+ */
+function collectFootnoteDefns(nodes: (DocASTNode | string)[]): DocASTNode[] {
+  const found: DocASTNode[] = [];
+  const visit = (n: DocASTNode) => {
+    if (n.type === 'defn') {
+      found.push(n);
+      return;
+    }
+    for (const c of n.content ?? []) {
+      if (typeof c !== 'string') visit(c);
+    }
+    for (const col of n.columns ?? []) {
+      for (const c of col) if (typeof c !== 'string') visit(c);
+    }
+    for (const row of n.rows ?? []) {
+      for (const cell of row) for (const c of cell) if (typeof c !== 'string') visit(c);
+    }
+    for (const t of n.tabs ?? []) visit(t);
+    for (const item of n.items ?? []) visit(item);
+  };
+  for (const n of nodes) {
+    if (typeof n !== 'string') visit(n);
+  }
+  return found;
+}
+
 export class DocTranspiler {
   /** Route A — class-driven (Tailwind-style) output. */
   public static toTailwindHTML(node: DocASTNode): string {
@@ -346,5 +400,19 @@ export class DocTranspiler {
   /** Route B — inline-style output, for universal/legacy targets. */
   public static toInlineStyleHTML(node: DocASTNode): string {
     return renderNode(node, 'inline');
+  }
+
+  /**
+   * Collects every @defn in the document and renders them as one real
+   * <ol> at the call site's choosing (normally once, after the full
+   * document body) — see the 'defn' case in renderNode() for why in-place
+   * rendering isn't an option. Returns '' when the document has no
+   * footnotes, so callers can append unconditionally.
+   */
+  public static renderFootnotes(nodes: DocASTNode[], route: Route): string {
+    const defns = collectFootnoteDefns(nodes);
+    if (defns.length === 0) return '';
+    const items = defns.map(n => renderFootnoteItem(n, route)).join('');
+    return route === 'tailwind' ? `<ol class="footnotes">${items}</ol>` : `<ol>${items}</ol>`;
   }
 }

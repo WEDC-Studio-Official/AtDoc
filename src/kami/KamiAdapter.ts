@@ -102,11 +102,15 @@ export const KamiTokens = {
 // ----------------------------------------------------------------------------
 // 規則：
 //  1. 使用者省略 styles（@mark[content]）→ 套用 Kami 預設 tint（0.14 / ink-blue）。
-//  2. 使用者顯式指定 color token（@mark{red}[...]）→ 尊重意圖，
+//  2. 使用者顯式指定具名 color token（@mark{red}[...]）→ 尊重意圖，
 //     但把顏色收斂進 Kami 的實色 tint 表，而非任意色值，
 //     維持「暖調克制、禁 rgba」的視覺一致性。
-//  3. 若 color token 不在下列對照表中 → fallback 為 Kami 預設 tint（同規則 1），
-//     不拋出錯誤（呼應 Inline Spec §6 Unknown Command Fallback 的容錯精神）。
+//  3. 使用者顯式指定 16 進位 hex token（@mark{#3366ff}[...]）→ 依 Inline Spec §7
+//     「hex token 則 MUST 直接使用指定值，不得重新映射」，直接採用該色值，
+//     不收斂進下方對照表（hex 本身即是明確意圖，沒有「收斂」的必要）。
+//  4. 若 color token 不在下列對照表中、也不是合法 hex → fallback 為 Kami 預設
+//     tint（同規則 1），不拋出錯誤（呼應 Inline Spec §6 Unknown Command
+//     Fallback 的容錯精神）。
 const MARK_COLOR_TO_KAMI_TINT: Record<string, string> = {
   yellow: '#F3E9C7',
   red: '#F1DCDC',
@@ -117,10 +121,12 @@ const MARK_COLOR_TO_KAMI_TINT: Record<string, string> = {
   gray: '#E6E4DA',
 };
 const DEFAULT_MARK_TINT = KamiTokens.color.tagTint.default;
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
 function resolveMarkTint(styles: string[] | undefined): string {
-  const colorToken = styles?.find(t => t in MARK_COLOR_TO_KAMI_TINT);
+  const colorToken = styles?.find(t => t in MARK_COLOR_TO_KAMI_TINT || HEX_COLOR.test(t));
   if (!colorToken) return DEFAULT_MARK_TINT;
+  if (HEX_COLOR.test(colorToken)) return colorToken;
   return MARK_COLOR_TO_KAMI_TINT[colorToken] ?? DEFAULT_MARK_TINT;
 }
 

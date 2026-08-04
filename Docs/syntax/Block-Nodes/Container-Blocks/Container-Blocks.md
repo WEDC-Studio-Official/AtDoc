@@ -86,12 +86,12 @@ Examples:
 ```
 
 ```text
-@card(API Key){blue,bordered}[
+@card(API Key){#3366ff,radius-12}[
 這裡放說明內容。
 ]
 ```
 
-`title` is optional for both nodes (see [Block Syntax Specification §4](../../../Block-Syntax-Specification.md#4-shared-components)); when omitted, the renderer supplies its own default presentation. `styles` is likewise optional and, as of Block Syntax Specification v1.4, formally part of both nodes' EBNF — token semantics (named color tokens, hex tokens) reuse [Inline Syntax Specification §7](../../../Inline-Syntax-Specification.md#7-mark--color--bordered-styles-semantics) verbatim; whether/how a given renderer maps them to visual output is still a renderer decision (see §5 note below).
+`title` is optional for both nodes (see [Block Syntax Specification §4](../../../Block-Syntax-Specification.md#4-shared-components)); when omitted, the renderer supplies its own default presentation. `styles` is likewise optional and, as of Block Syntax Specification v1.4, formally part of both nodes' EBNF — but **token semantics are per-node, not one shared table**: `@details` reuses [Inline Syntax Specification §7](../../../Inline-Syntax-Specification.md#7-mark--color--bordered-styles-semantics)'s named-color-token rules (though no current renderer maps `@details`'s `styles` to output yet), while `@card` has its own closed token set — **Card Style v1**, see §4 below — that has nothing to do with §7's named-color palette. Whether/how a given renderer maps a resolved token to visual output is still a renderer decision (see §5 note below).
 
 **Omitted vs. empty title.** The EBNF marks the whole `[ title ]` group optional, but `text = { any-unicode-char }` also permits zero characters, so `@card()[content]` isn't explicitly ruled out by the grammar alone. This reference treats the two as equivalent: an omitted `(title)` and an empty or whitespace-only `()` both normalize to *no title*. Parsers MAY additionally flag `()` as a Strict Mode lint (see [Inline Syntax Specification §11](../../../Inline-Syntax-Specification.md#11-parser-recovery-strategy)), but semantically neither carries a title.
 
@@ -134,7 +134,24 @@ A bounded, always-visible grouping of related content — a discrete information
 
 Use for: grouping a title, description, and related content into one unit — a preview panel, a summary block, a labeled section. When `title` is omitted, the card has no heading, only grouped content.
 
-> **Scope note (updated for v1.4):** the [README](../../../README.md) introductory example shows `@card(featured){w-300px bg-f8f9fa text-sm}[...]`. The `{styles}` slot is now formal grammar (Block Syntax Specification §6, v1.4) — see §3 above. The `(title)` slot, however, is still specifically a title (`parenRole: 'title'` in `registry.ts`), not a free-form `(modifier)` slot for arbitrary Tailwind-style class strings like `featured` in that README example; `@card`'s paren always resolves to `node.title`. Treat the README's `(modifier)` reading of that slot as forward-looking, not the current grammar — only the `{styles}` half of that example is real today.
+> **Scope note (updated for v1.4):** the [README](../../../README.md) introductory example shows `@card(featured){w-300px bg-f8f9fa text-sm}[...]`. The `{styles}` slot is now formal grammar (Block Syntax Specification §6, v1.4) — see §3 above — but its actual token grammar is **Card Style v1** (below), not an arbitrary Tailwind-class string like the README example's `w-300px bg-f8f9fa text-sm`. The `(title)` slot, likewise, is still specifically a title (`parenRole: 'title'` in `registry.ts`), not a free-form `(modifier)` slot for arbitrary class strings like `featured`; `@card`'s paren always resolves to `node.title`. Treat the README's reading of both slots as forward-looking, not the current grammar.
+
+#### Card Style v1
+
+`@card`'s `{styles}` deliberately allows only a small, cross-platform, high-value set of styles — not an escape hatch into arbitrary CSS. Exactly two token shapes are recognized, each optional, combinable in either order (comma-separated):
+
+| Token shape | Meaning | Example |
+|---|---|---|
+| `#RRGGBB` (hex) | Background color, used verbatim | `@card{#3366ff}[...]` → `background-color: #3366ff` |
+| `radius-N` (N = non-negative integer) | Border radius, `N` as pixels | `@card{radius-12}[...]` → `border-radius: 12px` |
+
+```text
+@card{#3366ff,radius-12}[
+同時設定背景色與圓角。
+]
+```
+
+Any other token (including Inline Syntax Specification §7's named color tokens, which `@card` does **not** recognize) is unrecognized and MUST be ignored by the renderer rather than rejected, per [Inline Syntax Specification §6 Unknown Command Fallback](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback). Both `Adapters.ts` (both routes) and `KamiAdapter.ts` implement this resolution; an unresolved or omitted `{styles}` falls back to each renderer's own default card appearance.
 
 ---
 

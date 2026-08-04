@@ -86,12 +86,12 @@ styles  = "{" , { text-char - "}" } , "}" ;
 ```
 
 ```text
-@card(API Key){blue,bordered}[
+@card(API Key){#3366ff,radius-12}[
 這裡放說明內容。
 ]
 ```
 
-`title` 對兩個節點都是選填欄位(參見 [Block Syntax Specification 第 4 節](../../../Block-Syntax-Specification.md#4-shared-components))；省略時，由 Renderer 決定預設呈現方式。`styles` 同樣是選填欄位，自 Block Syntax Specification v1.4 起已正式納入兩個節點的 EBNF——token 語意(具名色彩 token、hex token、修飾 token)完全沿用 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color--bordered-styles-semantics)；個別 Renderer 是否／如何把它們映射成視覺樣式，仍是 Renderer 自行決定(見下方第 5 節說明)。
+`title` 對兩個節點都是選填欄位(參見 [Block Syntax Specification 第 4 節](../../../Block-Syntax-Specification.md#4-shared-components))；省略時，由 Renderer 決定預設呈現方式。`styles` 同樣是選填欄位，自 Block Syntax Specification v1.4 起已正式納入兩個節點的 EBNF——但**token 語意是各節點自己的規則，不是單一共用表**：`@details` 沿用 [Inline Syntax Specification 第 7 節](../../../Inline-Syntax-Specification.md#7-mark--color--bordered-styles-semantics)的具名色彩 token 規則(雖然目前還沒有任何 Renderer 把 `@details` 的 `styles` 映射成視覺樣式)；`@card` 則有自己獨立、封閉的 token 集合——**Card Style v1**，見下方第 4 節——與第 7 節的具名色票無關。個別 Renderer 是否／如何把已解析的 token 映射成視覺樣式，仍是 Renderer 自行決定(見下方第 5 節說明)。
 
 **完全省略 vs. 空括號。** EBNF 將整個 `[ title ]` 標示為可省略，但 `text = { any-unicode-char }` 本身也允許零個字元——因此單就文法而言，`@card()[content]`(空括號)並未被明確排除。本文件將兩者視為等價：完全省略 `(title)`，與括號內為空白或空字串的 `()`，都應正規化為「沒有標題」。Parser 可以選擇在 Strict Mode 下將 `()` 標示為需要提示的寫法(參見 [Inline Syntax Specification 第 11 節](../../../Inline-Syntax-Specification.md#11-parser-recovery-strategy))，但就語義而言，兩者都不帶標題。
 
@@ -134,7 +134,24 @@ HTML：
 
 適用於：將標題、說明與相關內容組合成一個單元——預覽面板、摘要區塊、帶標籤的段落。當 `title` 省略時，卡片沒有標題，只保留分組後的內容。
 
-> **範圍說明(v1.4 更新)：**[README](../../../README.md) 開頭的範例展示了 `@card(featured){w-300px bg-f8f9fa text-sm}[...]`。`{styles}` 槽位現在已是正式文法(Block Syntax Specification 第 6 節，v1.4)——見上方第 3 節。不過 `(title)` 槽位仍然specifically 是標題欄位(`registry.ts` 中的 `parenRole: 'title'`)，並不是可以隨意塞入 Tailwind 樣式字串(像該 README 範例裡的 `featured`)的通用 `(modifier)` 槽位；`@card` 的括號內容一律解析為 `node.title`。請將 README 範例中把該槽位當成 `(modifier)` 的讀法視為前瞻性示意，而非現行文法——該範例只有 `{styles}` 那一半是真實的。
+> **範圍說明(v1.4 更新)：**[README](../../../README.md) 開頭的範例展示了 `@card(featured){w-300px bg-f8f9fa text-sm}[...]`。`{styles}` 槽位現在已是正式文法(Block Syntax Specification 第 6 節，v1.4)——見上方第 3 節——但它實際的 token 文法是下方的 **Card Style v1**，並不是像該 README 範例裡 `w-300px bg-f8f9fa text-sm` 那樣任意的 Tailwind 樣式字串。同樣地，`(title)` 槽位仍然specifically 是標題欄位(`registry.ts` 中的 `parenRole: 'title'`)，並不是可以隨意塞入 `featured` 這類字串的通用 `(modifier)` 槽位；`@card` 的括號內容一律解析為 `node.title`。請將 README 範例中這兩個槽位的讀法都視為前瞻性示意，而非現行文法。
+
+#### Card Style v1
+
+`@card` 的 `{styles}` 只允許少量、跨平台且高價值的樣式，而不是變成通用 CSS 的逃生口。目前只認以下兩種 token 形狀，各自選填，可以任意順序併用(逗號分隔)：
+
+| Token 形狀 | 語意 | 範例 |
+|---|---|---|
+| `#RRGGBB`(16 進位 hex) | 背景色，直接採用該色值 | `@card{#3366ff}[...]` → `background-color: #3366ff` |
+| `radius-N`(N 為非負整數) | 圓角，`N` 為像素值 | `@card{radius-12}[...]` → `border-radius: 12px` |
+
+```text
+@card{#3366ff,radius-12}[
+同時設定背景色與圓角。
+]
+```
+
+其他 token(包括 Inline Syntax Specification 第 7 節的具名色彩 token——`@card` **不**支援這些)一律視為無法識別，Renderer MUST 忽略而非拋錯，呼應 [Inline Syntax Specification 第 6 節 Unknown Command Fallback](../../../Inline-Syntax-Specification.md#6-unknown-command-fallback) 的容錯精神。`Adapters.ts`(兩條 Route)與 `KamiAdapter.ts` 皆已實作這套解析邏輯；無法識別或省略 `{styles}` 時，沿用各自 Renderer 自己的預設卡片外觀。
 
 ---
 

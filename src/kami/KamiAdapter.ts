@@ -158,6 +158,26 @@ function resolveColorValue(token: string | undefined): string {
 }
 
 // ----------------------------------------------------------------------------
+// Phase 3c: @card {styles} 語意 — Card Style v1（背景色 + 圓角）。
+// ----------------------------------------------------------------------------
+// 與 @mark／@color／@bordered 不同，@card 沒有具名 token 對照表——只認兩種形狀：
+//  1. 16 進位 hex token（@card{#3366ff}[...]）→ 套用為背景色，直接採用該色值，
+//     覆蓋下方 kami.css [data-kami="card"] 的預設 ivory 底。
+//  2. `radius-N` token（@card{radius-12}[...]）→ 套用為 border-radius: Npx，
+//     覆蓋預設的 12px 圓角。
+//  3. 兩者可同時出現、順序不拘（@card{#3366ff,radius-12}[...]）。
+//  4. 無法識別的 token、或省略 {styles} → 忽略，沿用 kami.css 的靜態預設值，
+//     不拋出錯誤（呼應 Inline Spec §6 Unknown Command Fallback 的容錯精神）。
+const CARD_RADIUS = /^radius-(\d+)$/;
+
+function resolveCardStyles(tokens: string[] | undefined): { background?: string; radius?: string } {
+  const background = tokens?.find(t => HEX_COLOR.test(t));
+  const radiusToken = tokens?.find(t => CARD_RADIUS.test(t));
+  const radius = radiusToken ? `${radiusToken.match(CARD_RADIUS)![1]}px` : undefined;
+  return { background, radius };
+}
+
+// ----------------------------------------------------------------------------
 // Phase 2: 節點映射表（AST → Kami 樣式）— 骨架
 // 對照 registry.ts 的 REGISTRY 清單順序；每個節點先列出 TODO，
 // 待逐一補上實際 CSS class / inline style。
@@ -266,9 +286,16 @@ export function renderKamiNode(node: DocASTNode): string {
     // --- Container Blocks --- (TODO)
     case 'details':
       return `<details data-kami="details"><summary>${escapeHtml(node.title ?? '')}</summary>${renderChildren(node.content)}</details>`;
-    case 'card':
-      // TODO: ivory 底 + 16px 圓角 + whisper shadow（Kami Featured Card）
-      return `<article data-kami="card">${node.title ? `<header>${escapeHtml(node.title)}</header>` : ''}${renderChildren(node.content)}</article>`;
+    case 'card': {
+      // 優先權規則已實作：見上方 resolveCardStyles()。未指定的樣式沿用 kami.css 的
+      // ivory 底 + 12px 圓角 + whisper shadow（Kami Featured Card）靜態預設值。
+      const { background, radius } = resolveCardStyles(node.styles);
+      const styleParts: string[] = [];
+      if (background) styleParts.push(`background:${background};`);
+      if (radius) styleParts.push(`border-radius:${radius};`);
+      const styleAttr = styleParts.length ? ` style="${styleParts.join('')}"` : '';
+      return `<article data-kami="card"${styleAttr}>${node.title ? `<header>${escapeHtml(node.title)}</header>` : ''}${renderChildren(node.content)}</article>`;
+    }
 
     // --- Callout Blocks --- (TODO: border-left 3px 或 solid brand border)
     case 'note':

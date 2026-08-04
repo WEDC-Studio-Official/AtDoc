@@ -413,10 +413,15 @@ text =
 > 语法層仍只定義「花括號包裹的任意字元序列」；Container Blocks（`@details`、`@card`）與
 > Callout Blocks（`@note`、`@tip`、`@important`、`@warning`、`@caution`）現在正式將其
 > 列入各自的產生式中（見上方第 5–7 節），而不再只是 Parser 端未經 EBNF 明文允許的
-> 附帶行為。Token 語意（color token 與 modifier token 的辨識、hex 支援）沿用
-> Inline Spec 第 7 節 `@mark Styles Semantics` 的既有規則，Renderer 是否／如何把
-> Container／Callout 的 `styles` 映射成視覺樣式由 Renderer 自行決定
-> （例如 KamiAdapter.ts 的獨立 Renderer 分支）。
+> 附帶行為。
+>
+> **Token 語意是各節點自己的規則，不是單一共用表。** `@note`／`@tip`／`@important`／
+> `@warning`／`@caution`／`@details` 沿用 Inline Spec 第 7 節 `@mark Styles Semantics`
+> 的既有 color token 規則（具名 token 對照表 + hex 支援）；`@card` 則是獨立的封閉
+> token 集合——`Card Style v1`（見下方第 6 節「Card Style v1」小節），只認 hex
+> 背景色 token 與 `radius-N` 圓角 token，並不沿用 Inline Spec 第 7 節的具名色票。
+> Renderer 是否／如何把 Container／Callout 的 `styles` 映射成視覺樣式由 Renderer
+> 自行決定（例如 KamiAdapter.ts 的獨立 Renderer 分支）。
 
 ---
 
@@ -742,17 +747,19 @@ HTML:
 
 ## 6. Container Blocks
 
-`@details`／`@card` 現在也接受**選填**的 `{styles}`（定義與 token 語意見第 4 節與
-Inline Spec 第 7 節），置於 `(title)` 之後、`block-content` 之前：
+`@details`／`@card` 現在也接受**選填**的 `{styles}`（語法定義見第 4 節），置於
+`(title)` 之後、`block-content` 之前：
 
 ```text
-@card(API Key){blue,bordered}[
+@card(API Key){#3366ff,radius-12}[
 這裡放說明內容。
 ]
 ```
 
 省略時維持純內容形式，兩者皆合法。Renderer MAY 忽略無法識別的 token
-（與 Inline Spec §6 Unknown Command Fallback 精神一致）。
+（與 Inline Spec §6 Unknown Command Fallback 精神一致）。`@card` 的 `{styles}`
+token 語意是自己的一套封閉規則（`Card Style v1`），與 Inline Spec 第 7 節的具名
+color token 對照表無關——見下方「Card Style v1」小節。
 
 ### Details
 
@@ -780,6 +787,28 @@ HTML:
 這裡放說明內容。
 ]
 ```
+
+#### Card Style v1
+
+`@card` 的 `{styles}` 只允許少量、跨平台且高價值的樣式，刻意不做成通用 CSS
+逃生口——目前只認以下兩種 token 形狀，可各自單獨出現、兩者併用（逗號分隔、
+順序不拘），或整段省略：
+
+| Token 形狀 | 語意 | 範例 |
+|---|---|---|
+| `#RRGGBB`（16 進位 hex） | 背景色，直接採用該色值 | `@card{#3366ff}[...]` → `background-color: #3366ff` |
+| `radius-N`（N 為非負整數） | 圓角，`N` 為像素值 | `@card{radius-12}[...]` → `border-radius: 12px` |
+
+```text
+@card{#3366ff,radius-12}[
+同時設定背景色與圓角。
+]
+```
+
+不在上表中的 token（例如具名色彩詞、Inline Spec 第 7 節的 color token）一律
+視為無法識別，Renderer MUST 忽略而非拋錯（與 Inline Spec §6 Unknown Command
+Fallback 精神一致），並沿用 Renderer 自己的預設外觀。`radius-N` 的 `N` 若不是
+純數字（例如 `radius-lg`）同樣視為無法識別。
 
 ---
 

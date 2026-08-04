@@ -8,9 +8,10 @@
 //
 // Two routes, differing only where the grammar actually has something to
 // differ on — @mark's, @color's, and @bordered's color tokens (Inline Syntax
-// Specification §7, Block Syntax Specification §4) are the only per-instance
-// style slots this Adapter maps to output, so they're the only place Route A
-// (class-driven) and Route B (inline CSS) genuinely diverge. Container and
+// Specification §7, Block Syntax Specification §4) and @card's Card Style v1
+// tokens (Block Syntax Specification §6) are the only per-instance style
+// slots this Adapter maps to output, so they're the only place Route A
+// (class-driven) and Route B (inline CSS) genuinely diverge. @details and the
 // Callout Blocks also carry a parsed `styles` slot (registry.ts `styles: true`)
 // but this Adapter doesn't yet map it to visual output — see KamiAdapter.ts
 // for the Renderer branch that does. Everything else renders identically on
@@ -52,6 +53,7 @@ const COLOR_PRESETS: Record<string, string> = {
 };
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+const CARD_RADIUS = /^radius-(\d+)$/;
 
 /**
  * @mark's {styles} color-token resolver — accepts either a named token
@@ -70,6 +72,23 @@ function resolveColorPreset(token: string | undefined): string | undefined {
   if (!token) return undefined;
   if (HEX_COLOR.test(token)) return token;
   return COLOR_PRESETS[token];
+}
+
+/**
+ * @card's {styles} resolver — Card Style v1 (Container-Blocks.md §4 Card).
+ * Deliberately a closed, cross-platform set of two token shapes, not a CSS
+ * escape hatch: a literal "#RRGGBB" hex token for background-color, and a
+ * "radius-N" token for a border-radius of N pixels. No named-token palette
+ * like @mark/@color have — either token may be present, absent, or both
+ * (comma-separated, order doesn't matter); anything else in the list is
+ * silently ignored, per §6 Unknown Command Fallback's ignore-don't-throw
+ * spirit.
+ */
+function resolveCardStyles(tokens: string[] | undefined): { background?: string; radiusToken?: string; radius?: string } {
+  const background = tokens?.find(t => HEX_COLOR.test(t));
+  const radiusToken = tokens?.find(t => CARD_RADIUS.test(t));
+  const radius = radiusToken ? `${radiusToken.match(CARD_RADIUS)![1]}px` : undefined;
+  return { background, radiusToken, radius };
 }
 
 /** URI scheme inference — Inline Syntax Specification §8 @link URI Semantics. */
@@ -182,6 +201,31 @@ function renderColor(node: DocASTNode, route: Route): string {
 }
 
 /**
+ * @card — Card Style v1's two per-instance styles (see resolveCardStyles()).
+ * A hex background has no Tailwind-style class equivalent, so it always
+ * falls back to inline style on both routes; radius-N is already a valid
+ * class-name fragment, so the tailwind route gets a "card-radius-N" modifier
+ * class instead, the same way @mark gets "mark-<token>".
+ */
+function renderCard(node: DocASTNode, route: Route): string {
+  const { background, radiusToken, radius } = resolveCardStyles(node.styles);
+  const header = node.title ? `<header>${escapeHtml(node.title)}</header>` : '';
+  const inner = renderChildren(node.content, route);
+
+  if (route === 'inline') {
+    const styleParts: string[] = [];
+    if (background) styleParts.push(`background-color: ${background};`);
+    if (radius) styleParts.push(`border-radius: ${radius};`);
+    const styleAttr = styleParts.length ? ` style="${styleParts.join(' ')}"` : '';
+    return `<article${styleAttr}>${header}${inner}</article>`;
+  }
+
+  const classes = ['card', ...(radiusToken ? [`card-${radiusToken}`] : [])];
+  const styleAttr = background ? ` style="background-color: ${background};"` : '';
+  return `<article class="${classes.join(' ')}"${styleAttr}>${header}${inner}</article>`;
+}
+
+/**
  * @svg is a raw pass-through node (Widget-Blocks-style raw content, like
  * @mermaid) — its content is trusted markup the Renderer emits unescaped so
  * the browser actually draws the vector graphic instead of printing source.
@@ -274,7 +318,7 @@ function renderNode(node: DocASTNode, route: Route): string {
     case 'details':
       return `<details><summary>${escapeHtml(node.title ?? 'Details')}</summary>${renderChildren(node.content, route)}</details>`;
     case 'card':
-      return `<article>${node.title ? `<header>${escapeHtml(node.title)}</header>` : ''}${renderChildren(node.content, route)}</article>`;
+      return renderCard(node, route);
 
     // Callout Blocks
     case 'note':

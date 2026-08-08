@@ -1,0 +1,20 @@
+{
+  "name": "atdoc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "@Doc — Lexer/Parser/Adapters/registry for the @Doc document language, plus the Monarch editor tokenizer.",
+  "exports": {
+    "./registry": "./src/registry.ts",
+    "./types": "./src/types.ts",
+    "./Lexer": "./src/Lexer.ts",
+    "./Parser": "./src/Parser.ts",
+    "./Adapters": "./src/Adapters.ts",
+    "./editor/monarch": "./src/editor/monarch.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,1 @@
+@met[This node name is missing the letter "a" (it should be the metadata node, but isn't). Per Inline Syntax Specification §6 (Unknown Command Fallback), "met" is not a registered command, so this whole line falls back to plain text instead of throwing.]

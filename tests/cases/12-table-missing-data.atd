@@ -1,0 +1,3 @@
+@table[
+    @cols[id,name,price]
+]

@@ -1,0 +1,7 @@
+@table[
+    @data[
+        [1,Alice,100]
+    ]
+
+    @cols[id,name,price]
+]

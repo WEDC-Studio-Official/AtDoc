@@ -1,0 +1,7 @@
+@table[
+    @cols[id,@card[name],price]
+
+    @data[
+        [1,Alice,100]
+    ]
+]

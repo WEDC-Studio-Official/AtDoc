@@ -1,0 +1,7 @@
+@h(1)[Before the unclosed mermaid block]
+
+@mermaid[
+graph TD
+A --> B
+
+@h(2)[This heading text gets silently swallowed as raw Mermaid content instead of parsing as a real heading. No error is thrown, because the raw content scanner just runs to end of file looking for a closing bracket that never arrives.

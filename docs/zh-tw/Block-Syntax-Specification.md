@@ -1,5 +1,7 @@
 # @Doc Block Syntax Specification v1.4
 
+> 🌐 其他語言版本：[English](../en/Block-Syntax-Specification.md) ・ [简体中文](../zh-cn/Block-Syntax-Specification.md) ・ [日本語（AI 翻譯，可能有誤）](../ja/Block-Syntax-Specification.md) ・ [한국어（AI 번역，可能有誤）](../ko/Block-Syntax-Specification.md)
+
 ## 0. Table of Contents
 
 * [1. Design Philosophy](#1-design-philosophy)

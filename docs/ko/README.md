@@ -98,7 +98,7 @@ MDX는 문서와 코드를 융합해 인간 개발자에게 매우 높은 표현
 | `<action>` | 후행 액션 | `<submit>`, `<install>` |
 
 > [!NOTE]
-> **계획 중이며, 현재 문법이 아닙니다**: `<action>` 후행 슬롯은 현재 전혀 구현되어 있지 않습니다 — `src/Lexer.ts`에는 대응하는 Token 타입이 없고, Block/Inline Syntax Specification의 정식 EBNF에도 이 산출식은 없습니다. 위 표의 `{styles}`에 나온 `{w-300px bg-fff}` 같은 Tailwind class 문자열 예시 또한 미래를 내다본 예시일 뿐, 현재 문법이 아닙니다. 현재 `{styles}`는 쉼표로 구분된 색상 토큰(구체적 이름 또는 hex)만 허용하며, `@mark`/`@color`/`@bordered`에서 사용됩니다(자세히는 [Inline Syntax Specification 7절](./Inline-Syntax-Specification.md#7-mark--color--bordered-styles-semantics) 참고). 현재 파싱 가능하고 테스트로 커버되는 것은 `@node(modifier){styles}[content]` 4개 슬롯 중 앞의 세 슬롯뿐입니다.
+> **계획 중이며, 현재 문법이 아닙니다**: `<action>` 후행 슬롯은 현재 전혀 구현되어 있지 않습니다 — `src/Lexer.ts`에는 대응하는 Token 타입이 없고, Block/Inline Syntax Specification의 정식 EBNF에도 이 산출식은 없습니다. 위 표의 `{styles}`에 나온 `{w-300px bg-fff}` 같은 Tailwind class 문자열 예시 또한 미래를 내다본 예시일 뿐, 현재 문법이 아닙니다. 현재 `{styles}`는 쉼표로 구분된 색상 토큰(구체적 이름 또는 hex)만 허용하며, `@mark`/`@color`/`@bordered`에서 사용됩니다(자세히는 [Inline Syntax Specification 7절](./Inline-Syntax-Specification.md#7-mark--color--bordered-스타일-시맨틱스) 참고). 현재 파싱 가능하고 테스트로 커버되는 것은 `@node(modifier){styles}[content]` 4개 슬롯 중 앞의 세 슬롯뿐입니다.
 
 `[]`는 @Doc에서 오직 하나의 의미만 가집니다: **콘텐츠**. 예외 없고, 탈출 지옥도 없습니다.
 

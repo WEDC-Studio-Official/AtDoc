@@ -6,7 +6,7 @@
 import type { Token } from './Lexer.ts';
 import { DocSyntaxError } from './types.ts';
 import type { DocASTNode } from './types.ts';
-import { getNodeDef, isCellAllowedNode } from './registry.ts';
+import { getNodeDef, isCellAllowedNode, deriveParenFields } from './registry.ts';
 import type { NodeDef } from './registry.ts';
 
 /** Content modes the Lexer scans opaquely into a single RAW token (@raw, @code, @mermaid, @kbd, @fn). */
@@ -14,29 +14,8 @@ function isRawFamilyContent(content: NodeDef['content'] | undefined): boolean {
   return content === 'raw' || content === 'raw-escaped' || content === 'key' || content === 'integer';
 }
 
-function parseImgOptions(raw: string): Record<string, string> {
-  const options: Record<string, string> = {};
-  const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
-  parts.forEach((part, idx) => {
-    const eq = part.indexOf('=');
-    if (eq === -1) {
-      if (idx === 0) options.src = part; // first bare option defaults to src — Block Syntax Spec §5 Image
-      return;
-    }
-    const key = part.slice(0, eq).trim();
-    const value = part.slice(eq + 1).trim();
-    if (key) options[key] = value;
-  });
-  return options;
-}
-
-function clampLevel(raw: string | undefined): number {
-  const lvl = parseInt(raw ?? '1', 10);
-  return Number.isFinite(lvl) && lvl >= 1 && lvl <= 6 ? lvl : 1;
-}
-
-const LIST_DASH_RE = /^[ \t]*-[ \t]+/;
-const LIST_NUM_RE = /^[ \t]*(\d+)[.)][ \t]+/;
+const LIST_DASH_RE = /^[ \t]*-[ \t]+([\s\S]*)$/;
+const LIST_NUM_RE = /^[ \t]*(\d+)[.)][ \t]+([\s\S]*)$/;
 
 /**
  * @list item semantics (Structural-Blocks.md §5 List): every non-empty line
@@ -55,49 +34,52 @@ const LIST_NUM_RE = /^[ \t]*(\d+)[.)][ \t]+/;
  */
 function buildListItems(content: (DocASTNode | string)[]): DocASTNode[] {
   const lines: (DocASTNode | string)[][] = [[]];
-
-  for (const part of content) {
-    if (typeof part !== 'string') {
-      lines[lines.length - 1].push(part);
+  for (const seg of content) {
+    if (typeof seg !== 'string') {
+      lines[lines.length - 1].push(seg);
       continue;
     }
-    const segments = part.split('\n');
-    segments.forEach((seg, idx) => {
-      if (idx > 0) lines.push([]);
-      if (seg !== '') lines[lines.length - 1].push(seg);
-    });
+    const parts = seg.split('\n');
+    lines[lines.length - 1].push(parts[0]);
+    for (let k = 1; k < parts.length; k++) lines.push([parts[k]]);
   }
 
   const items: DocASTNode[] = [];
+
   for (const line of lines) {
-    const meaningful = line.filter(part => typeof part !== 'string' || part.trim() !== '');
-    if (meaningful.length === 1 && typeof meaningful[0] !== 'string' && (meaningful[0] as DocASTNode).type === 'list') {
-      const prev = items[items.length - 1];
-      if (prev) {
-        prev.content.push(meaningful[0]);
-        continue;
-      }
-    }
-
-    let marker: number | undefined;
-    if (line.length && typeof line[0] === 'string') {
-      const first = line[0] as string;
-      const numMatch = first.match(LIST_NUM_RE);
-      if (numMatch) {
-        marker = parseInt(numMatch[1], 10);
-        line[0] = first.slice(numMatch[0].length);
-      } else {
-        line[0] = first.replace(LIST_DASH_RE, '');
-      }
-    }
-
-    const isBlank = line.every(part => typeof part === 'string' && part.trim() === '');
+    const nodeSegs = line.filter((s): s is DocASTNode => typeof s !== 'string');
+    const textSegs = line.filter((s): s is string => typeof s === 'string');
+    const isBlank = nodeSegs.length === 0 && textSegs.every(t => t.trim() === '');
     if (isBlank) continue;
 
-    const item: DocASTNode = { type: 'list-item', content: line };
+    const isSoleNestedList = nodeSegs.length === 1 && nodeSegs[0].type === 'list' && textSegs.every(t => t.trim() === '');
+    if (isSoleNestedList && items.length > 0) {
+      items[items.length - 1].content.push(nodeSegs[0]);
+      continue;
+    }
+
+    const rest = line.slice();
+    let marker: number | undefined;
+    const first = rest[0];
+    if (typeof first === 'string') {
+      const dashMatch = first.match(LIST_DASH_RE);
+      const numMatch = !dashMatch ? first.match(LIST_NUM_RE) : null;
+      if (dashMatch) {
+        rest[0] = dashMatch[1];
+      } else if (numMatch) {
+        marker = parseInt(numMatch[1], 10);
+        rest[0] = numMatch[2];
+      }
+      // A line that was nothing but its marker leaves an empty leading string;
+      // dropping it keeps `content` free of segments that render to nothing.
+      if (rest[0] === '') rest.shift();
+    }
+
+    const item: DocASTNode = { type: 'list-item', content: rest };
     if (marker !== undefined) item.marker = marker;
     items.push(item);
   }
+
   return items;
 }
 
@@ -228,15 +210,7 @@ export class DocParser {
       throw new DocSyntaxError(`\`@color\` no longer accepts a parenthesized value — use \`@color{${node.paren}}\` instead of \`@color(${node.paren})\`.`);
     }
 
-    switch (nodeDef.parenRole) {
-      case 'level': node.level = clampLevel(node.paren); break;
-      case 'title': node.title = node.paren; break;
-      case 'language': node.language = node.paren; break;
-      case 'uri': node.uri = node.paren; break;
-      case 'id': node.id = node.paren; break;
-      case 'options': node.imgOptions = parseImgOptions(node.paren ?? ''); break;
-      case 'ordered': node.ordered = /^\s*ordered\s*$/i.test(node.paren ?? ''); break;
-    }
+    Object.assign(node, deriveParenFields(nodeDef.parenRole, node.paren));
 
     if (this.tokens[this.cursor]?.type === 'STYLES') {
       const raw = this.tokens[this.cursor].value;
@@ -366,8 +340,14 @@ export class DocParser {
         this.expectSlotOpen(node.type);
         node.content = this.parseSlotContent(node.type);
         this.expectSlotClose(node.type);
+        // @list's items *replace* its content rather than sitting alongside it
+        // in a second field. Keeping both meant `content` held the raw,
+        // pre-item text that nothing ever read, free to drift out of step with
+        // the items derived from it — the same store-it-twice trap as `paren`
+        // and its convenience fields. `content` now uniformly means "this
+        // node's children" for every generic node.
         if (node.type === 'list') {
-          node.items = buildListItems(node.content);
+          node.content = buildListItems(node.content);
         }
         return node;
       }
@@ -507,7 +487,7 @@ export class DocParser {
         // Checked before the raw-family carve-out below: @fn is content:'integer'
         // (raw-family) but needs the real-node path so it renders as its actual
         // `<sup><a>` back-link instead of being dumped as bare digit text.
-        if (nodeDef && isCellAllowedNode(cur.value)) {
+        if (nodeDef && isCellAllowedNode(nodeDef.name)) {
           const child = this.parseNode(ownerName);
           if (child) currentCell().push(child);
           continue;

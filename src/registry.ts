@@ -44,6 +44,78 @@ export type StyleSet =
   | 'card'   // Card Style v1: "#RRGGBB" background + "radius-N" (Block Spec §6)
   | 'image'; // Image Style v1: "#RRGGBB" border color + "radius-N" (Block Spec §5)
 
+/**
+ * How a "(...)" slot's raw text becomes the convenience field its `parenRole`
+ * implies. Lives here rather than in the Parser because `parenRole` does —
+ * the Serializer needs the same mapping to check that a hand-built node's
+ * `level`/`imgOptions`/... actually agree with its `paren`, and a second copy
+ * of the rules is exactly how the two would drift apart.
+ */
+export function parseImgOptions(raw: string): Record<string, string> {
+  const options: Record<string, string> = {};
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+  parts.forEach((part, idx) => {
+    const eq = part.indexOf('=');
+    if (eq === -1) {
+      if (idx === 0) options.src = part; // first bare option defaults to src — Block Syntax Spec §5 Image
+      return;
+    }
+    const key = part.slice(0, eq).trim();
+    const value = part.slice(eq + 1).trim();
+    if (key) options[key] = value;
+  });
+  return options;
+}
+
+/** @heading's level, defaulting a missing or out-of-range "(...)" to 1. */
+export function clampLevel(raw: string | undefined): number {
+  const lvl = parseInt(raw ?? '1', 10);
+  return Number.isFinite(lvl) && lvl >= 1 && lvl <= 6 ? lvl : 1;
+}
+
+/** @list's "(ordered)" flag. */
+export function isOrderedParen(raw: string | undefined): boolean {
+  return /^\s*ordered\s*$/i.test(raw ?? '');
+}
+
+/** The convenience fields a `parenRole` derives from its "(...)" text. */
+export interface DerivedParenFields {
+  level?: number;
+  title?: string;
+  language?: string;
+  uri?: string;
+  id?: string;
+  imgOptions?: Record<string, string>;
+  ordered?: boolean;
+}
+
+/**
+ * What a "(...)" slot implies, in exactly the shape the Parser records it.
+ *
+ * Note which keys are *present with an undefined value*: the Parser assigns
+ * `title`/`language`/`uri`/`id` unconditionally, so `@card[x]` really does
+ * carry `title: undefined` rather than no key at all. Reproducing that
+ * faithfully is what lets a canonicalized node compare deep-equal to a parsed
+ * one — `{ title: undefined }` and `{}` are different objects to
+ * assert.deepStrictEqual.
+ *
+ * `ordered` is the exception the Parser sets only when true, per DocASTNode's
+ * own documentation ("unset/false renders as a bullet list"), so a non-ordered
+ * @list has no key at all.
+ */
+export function deriveParenFields(role: ParenRole | undefined, paren: string | undefined): DerivedParenFields {
+  switch (role) {
+    case 'level': return { level: clampLevel(paren) };
+    case 'title': return { title: paren };
+    case 'language': return { language: paren };
+    case 'uri': return { uri: paren };
+    case 'id': return { id: paren };
+    case 'options': return { imgOptions: parseImgOptions(paren ?? '') };
+    case 'ordered': return isOrderedParen(paren) ? { ordered: true } : {};
+    default: return {};
+  }
+}
+
 export interface NodeDef {
   name: string;
   kind: NodeKind;
@@ -188,8 +260,8 @@ export function getAllNodeDefs(): readonly NodeDef[] {
  * silently dropping it.
  *
  * @defn is deliberately excluded: it's collected document-wide and rendered
- * once as a real `<li>` inside the footnotes `<ol>` (see Adapters.ts's
- * renderFootnotes()), not loose inside a `<td>`.
+ * once as a real `<li>` inside the footnotes `<ol>` (see Adapters.ts's/
+ * Adapters.ts's renderFootnotes()), not loose inside a `<td>`.
  * @fn (the footnote *reference*, a self-contained `<sup><a>` back-link) is
  * fine and included — Parser.ts checks this set before its raw-family
  * carve-out so @fn gets parsed as a real node instead of dumped as bare digits.

@@ -34,7 +34,6 @@ export interface DocASTNode {
   tabs?: DocASTNode[];       // @tabs (its @tab children)
   meta?: Record<string, string>; // @meta
   /** @list only — one entry per non-empty line (Structural-Blocks.md §4 List), each a 'list-item' node. */
-  items?: DocASTNode[];
   /** 'list-item' only — explicit numeric marker from a leading "N. "/"N)" prefix, letting @list(ordered) restart/resume numbering via `<li value>`. Ignored when the parent @list isn't ordered. */
   marker?: number;
 }

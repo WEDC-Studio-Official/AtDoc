@@ -266,7 +266,7 @@ function renderList(node: DocASTNode, route: Route): string {
   // nested inline nodes (e.g. @bold) inside an item render correctly instead
   // of being flattened to text first. A nested @list is just another content
   // node inside an item, so renderChildren recurses back into renderList for it.
-  const items = node.items ?? [];
+  const items = node.content.filter((c): c is DocASTNode => typeof c !== 'string' && c.type === 'list-item');
   const tag = node.ordered ? 'ol' : 'ul';
   if (items.length === 0) return `<${tag}></${tag}>`;
   const li = items.map(i => {
@@ -462,7 +462,6 @@ function collectFootnoteDefns(nodes: (DocASTNode | string)[]): DocASTNode[] {
       for (const cell of row) for (const c of cell) if (typeof c !== 'string') visit(c);
     }
     for (const t of n.tabs ?? []) visit(t);
-    for (const item of n.items ?? []) visit(item);
   };
   for (const n of nodes) {
     if (typeof n !== 'string') visit(n);

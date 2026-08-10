@@ -767,6 +767,17 @@ Input (escaping used where it shouldn't be — **counter-example**):
 > [!WARNING]
 > **Don't write it this way**: the `[` in `@mark[hello` has already increased the depth by +1; the author's original intent was simply to have `@mark[hello]` output as-is (just like the first example above, where the brackets are already paired and no escaping is needed at all), but an extra escape character `@]` was typed at the end. The escape consumes that `]` without participating in depth counting, so the +1 depth caused by `@mark[` can never find a matching `]` to cancel it out — the Parser keeps searching forward, swallowing more and more of the outer content (potentially the entire document) before it finally errors out. The correct way to write it is to remove the extra `@` and simply write `@raw[Here, @mark[hello] stays as-is]` — the brackets are paired, and the Parser can match them correctly on its own, with no manual intervention needed.
 
+### Rendering semantics: inline code
+
+The rules above define **Parser behavior** (content is not parsed; it is kept verbatim). The corresponding rendering semantics are **inline code** — the same thing Markdown's backticks `` `code` `` express:
+
+* A Renderer **SHOULD** present `@raw` as a monospace inline element. The HTML Route uses `<code>`.
+* This is distinct from `@code`, which is a **block** (`<pre><code>` in HTML); `@raw` is **inline**.
+* It is also distinct from `@kbd`, which denotes a physical key and conventionally carries a border and key-cap look; `@raw` is code text and needs only a monospace font and a tint.
+* This does not license a Renderer to parse the content — adding rendering semantics does not change the opaque domain's parsing rules.
+
+> Why `@raw` rather than a separate node: `raw-escaped` is the only content mode in the language with a real escape mechanism (`@]` / `@[` plus bracket-depth counting), and "the content must not be parsed" is precisely the defining requirement of inline code. The two use cases overlap almost entirely — every example above in this section is showing code.
+
 ---
 
 ## 10. Nested Parsing

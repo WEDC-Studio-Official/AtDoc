@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@Doc Full Syntax Test</title>
+<link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<h1>@Doc Full Syntax Coverage Test</h1>
+<h2>Simplified Syntax Aliases</h2>
+<p>
+以下每一組都是同一個 AST 節點的兩種寫法——正典名稱與簡化別名——Parser 會把兩者正規化成同一個 node.type，Renderer 完全看不出差別。
+</p>
+<h3>Heading</h3>
+<p>
+正典：@heading，別名：@h。
+</p>
+<h2>Canonical form</h2>
+<h2>Alias form</h2>
+<h3>Paragraph</h3>
+<p>
+正典：@paragraph，別名：@p。
+</p>
+<p>Canonical form</p>
+<p>Alias form</p>
+<h3>Bold</h3>
+<p>
+正典：@bold，別名：@b。<strong>粗體文字</strong>（canonical）與 <strong>粗體文字</strong>（alias）渲染結果相同。
+</p>
+<h3>Italic</h3>
+<p>
+正典：@italic，別名：@i。<em>斜體文字</em>（canonical）與 <em>斜體文字</em>（alias）渲染結果相同。
+</p>
+<h3>Underline</h3>
+<p>
+正典：@underline，別名：@u。<u>底線文字</u>（canonical）與 <u>底線文字</u>（alias）渲染結果相同。
+</p>
+<hr>
+<h2>Structural Blocks</h2>
+<h3>Heading</h3>
+<h1>Heading Level 1</h1>
+<h2>Heading Level 2</h2>
+<h3>Heading Level 3</h3>
+<h4>Heading Level 4</h4>
+<h5>Heading Level 5</h5>
+<h6>Heading Level 6</h6>
+<h3>Paragraph</h3>
+<p>
+This is a plain paragraph with <strong>bold</strong> and <em>italic</em> text mixed in.
+</p>
+<h3>Quote</h3>
+<blockquote>
+Talk is cheap.
+Show me the code.
+</blockquote>
+<h3>List</h3>
+<ul><li>Apple</li><li>Banana</li><li>Orange</li></ul>
+<ul><li>Pear</li><li>Peach</li></ul>
+<h4>Ordered List</h4>
+<ol><li>Apple</li><li>Banana</li><li value="3">Cherry</li><li>Date</li></ol>
+<h4>Nested List</h4>
+<ul><li>Fruits<ul><li>Apple</li><li>Banana</li></ul></li><li>Vegetables</li></ul>
+<h3>Code</h3>
+<pre><code class="language-ts">
+const x: number = 1;
+console.log(x);
+</code></pre>
+<h3>Image</h3>
+<img src="https://example.com/logo.png" alt="WEDC Logo" width="200" style="display:block;margin:0 auto;border-radius:8px;border:1px solid #ccc;">
+<h3>SVG</h3>
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>
+
+<h3>Table</h3>
+<table><thead><tr><th>id</th><th>name</th><th>price</th></tr></thead><tbody><tr><td>1</td><td>早餐</td><td>60</td></tr><tr><td>2</td><td>午餐</td><td>80</td></tr><tr><td>3</td><td>晚餐</td><td>90</td></tr></tbody></table>
+<h3>Horizontal Rule</h3>
+<hr>
+<h2>Container Blocks</h2>
+<h3>Details</h3>
+<details><summary>展開更多資訊</summary>
+這裡是隱藏內容，讀者可以依需求展開查看。
+</details>
+<h3>Card</h3>
+<article class="card"><header>API Key</header>
+請將您的 API 金鑰存放在環境變數中，而不是寫死在程式碼裡。
+</article>
+<hr>
+<h2>Callout Blocks</h2>
+<aside class="note">
+這是一般補充資訊，非必要閱讀。
+</aside>
+<aside class="tip">
+啟用快取可以加速重複建置。
+</aside>
+<aside class="important">
+API v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。
+</aside>
+<aside class="warning"><strong>資料保留政策</strong> 
+此 API 端點將於 3.0 版本移除。
+</aside>
+<aside class="caution">
+此操作為不可逆，將永久刪除使用者資料。
+</aside>
+<hr>
+<h2>Widget Blocks</h2>
+<h3>Tabs</h3>
+<div class="tabs"><div role="tablist"><button role="tab" aria-controls="tab-panel-0">JavaScript</button><button role="tab" aria-controls="tab-panel-1">Python</button><button role="tab" aria-controls="tab-panel-2">Rust</button></div><div role="tabpanel" id="tab-panel-0"><pre><code class="language-js">console.log(&quot;hi&quot;);</code></pre></div><div role="tabpanel" id="tab-panel-1"><pre><code class="language-py">print(&quot;hi&quot;)</code></pre></div><div role="tabpanel" id="tab-panel-2"><pre><code class="language-rust">println!(&quot;hi&quot;);</code></pre></div></div>
+<h3>Mermaid</h3>
+<pre class="mermaid">
+graph TD
+A --&gt; B
+B --&gt; C
+</pre>
+<hr>
+<h2>Inline Nodes</h2>
+<h3>Text Formatting</h3>
+<p><strong>粗體文字</strong>、<em>斜體文字</em>、<u>底線文字</u>、<del>刪除線文字</del>。
+</p>
+<p><mark class="mark">預設高亮</mark><mark class="mark mark-yellow">黃色高亮</mark><mark class="mark mark-red">紅色高亮</mark><mark class="mark" style="background-color: #3366ff;">16 進位背景色</mark></p>
+<p><span class="color" style="color: #ff0000;">這段文字是紅色的</span>，<span class="color color-blue">這段文字是深藍色的</span>，<span class="color">這段沒有指定顏色，優雅地退回預設色</span>。
+</p>
+<p><span class="bordered bordered-blue">藍色外框</span>，<span class="bordered" style="border: 1px solid #3366ff;">16 進位外框色</span>。
+</p>
+<p>
+Raw domain 範例：<code>這裡的 @mark[hello] 不會被解析，只會照字面輸出。</code></p>
+<h3>Semantic Inline</h3>
+<p>
+E = mc<sup>2</sup>，H<sub>2</sub>O。
+</p>
+<p>
+按下<kbd>Ctrl</kbd>+<kbd>C</kbd>複製。
+</p>
+<p>
+詳見<a href="https://example.com">官方網站</a>，或寄信至<a href="mailto:test@example.com">聯絡我們</a>。
+</p>
+<h3>Footnotes</h3>
+<p>
+Rust 的所有權系統<sup id="fnref1"><a href="#fn1">1</a></sup>從根本上消除了資料競爭。
+</p>
+<p></p>
+<h3>Special Nodes</h3>
+<p>
+第一行<br>第二行。
+</p>
+<p>
+輸出字面指令名稱本身：@mark 與 @bold[hello] 不會被解析成節點。
+</p>
+<hr>
+<h2>Nested Parsing Example</h2>
+<p><strong>這是粗體，裡面有<mark class="mark mark-yellow">重要高亮</mark>與<u>底線</u></strong></p>
+<ol><li id="fn1">
+See <a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html">The Rust Programming Language, Ch. 4</a>.
+ <a href="#fnref1">↩</a></li></ol>
+<script>
+(function () {
+  function activate(widget, panelId) {
+    widget.querySelectorAll('[role="tab"]').forEach(function (btn) {
+      btn.setAttribute('aria-selected', String(btn.getAttribute('aria-controls') === panelId));
+    });
+    widget.querySelectorAll('[role="tabpanel"]').forEach(function (panel) {
+      panel.setAttribute('data-active', String(panel.id === panelId));
+    });
+  }
+  document.querySelectorAll('.tabs').forEach(function (widget) {
+    var first = widget.querySelector('[role="tabpanel"]');
+    if (!first) return;
+    widget.setAttribute('data-enhanced', 'true');
+    activate(widget, first.id);
+  });
+  document.addEventListener('click', function (e) {
+    var trigger = e.target.closest('[role="tab"]');
+    if (!trigger) return;
+    var widget = trigger.closest('.tabs');
+    if (!widget) return;
+    e.preventDefault();
+    activate(widget, trigger.getAttribute('aria-controls'));
+  });
+})();
+</script>
+</body>
+</html>

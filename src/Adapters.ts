@@ -381,8 +381,14 @@ function renderNode(node: DocASTNode, route: Route): string {
       return renderColor(node, route);
     case 'bordered':
       return renderBordered(node, route);
+    // Inline code. `@raw`'s opaque domain (Inline Syntax Specification §9) is
+    // the same thing Markdown's backticks are: content that must not be
+    // parsed, shown literally. `<code>` is the semantic tag for exactly that,
+    // and its browser default already supplies the monospace font — index.css
+    // only adds the tint on top. Distinct from `@code`, which is a block and
+    // renders as `<pre><code>`; `pre code` resets the inline decoration.
     case 'raw':
-      return escapeHtml(node.raw ?? '');
+      return `<code>${escapeHtml(node.raw ?? '')}</code>`;
 
     // Semantic Inline
     case 'sup':

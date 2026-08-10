@@ -61,5 +61,44 @@ for (const c of URI_CASES) {
   check(`Adapters @link ${c.label}: resolves to ${c.expect}`, inlineHtml.includes(`href="${c.expect}"`), inlineHtml);
 }
 
+// --- @raw renders as inline code (Inline Syntax Specification §9) ---
+// The opaque domain's *parsing* rules were always specified; its rendering
+// semantics were not, so every renderer emitted bare escaped text — @raw was
+// the one inline node with no element around it at all. It is Markdown's
+// backtick: content that must not be parsed, shown literally, monospace.
+{
+  const node = parseSoleChild('@raw[@mark[hello]]');
+  for (const [label, html] of [
+    ['tailwind', DocTranspiler.toTailwindHTML(node)],
+    ['inline', DocTranspiler.toInlineStyleHTML(node)],
+  ] as const) {
+    check(`Adapters @raw (${label}): wraps content in <code>`, html === '<code>@mark[hello]</code>', html);
+  }
+}
+{
+  // The content stays literal — the <code> element must not tempt a renderer
+  // into parsing what the opaque domain deliberately kept whole.
+  const node = parseSoleChild('@raw[a < b && c > d]');
+  const html = DocTranspiler.toTailwindHTML(node);
+  check(
+    'Adapters @raw: content is HTML-escaped, not interpreted',
+    html === '<code>a &lt; b &amp;&amp; c &gt; d</code>',
+    html,
+  );
+}
+{
+  // @code is the block form and keeps its <pre><code class="language-...">;
+  // index.css resets the inline chip styling for `pre code` so they don't
+  // stack. Locks the two apart so a future change to one doesn't silently
+  // collapse the distinction.
+  const ast = new DocParser(tokenize('@code(js)[let x = 1;]')).parse();
+  const html = DocTranspiler.toTailwindHTML(ast[0]);
+  check(
+    'Adapters @code stays a block, distinct from @raw',
+    html.startsWith('<pre><code class="language-js">') && html.endsWith('</code></pre>'),
+    html,
+  );
+}
+
 console.log(`\n${pass} passed, ${fail} failed, ${pass + fail} total.`);
 process.exitCode = fail > 0 ? 1 : 0;

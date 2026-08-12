@@ -115,6 +115,14 @@ code {
   padding: .12em .38em;
   background: var(--atd-surface);
   border-radius: 4px;
+  /* @raw's content can contain newlines. It usually doesn't — inline code is
+     one line by nature — but @code defines no escape mechanism at all (Inline
+     Spec §9), so a fenced block whose brackets don't balance can only be kept
+     by degrading it to @raw. The default `white-space: normal` collapses those
+     newlines into spaces, turning a 165-line EBNF grammar into one run-on
+     line; pre-wrap keeps the structure, and single-line inline code is
+     unaffected either way. */
+  white-space: pre-wrap;
 }
 
 pre code { padding: 0; background: none; border-radius: 0; font-size: inherit; }

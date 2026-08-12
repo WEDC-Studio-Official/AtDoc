@@ -268,6 +268,12 @@ export function getAllNodeDefs(): readonly NodeDef[] {
  */
 const CELL_ALLOWED_INLINE: ReadonlySet<string> = new Set([
   'bold', 'italic', 'underline', 'del', 'mark', 'color', 'bordered', 'sup', 'sub', 'link', 'fn',
+  // @raw was left out while it was purely an escape mechanism with no visual
+  // identity of its own. Now that it renders as inline code (Inline Syntax
+  // Specification §9), excluding it means an API table — the single most
+  // common kind — silently loses the monospace on every identifier in it, the
+  // node being dropped and its text dumped in as a bare string.
+  'raw',
 ]);
 
 export function isCellAllowedNode(name: string): boolean {

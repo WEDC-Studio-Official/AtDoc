@@ -134,6 +134,38 @@ function check(name: string, cond: boolean, detail?: string) {
   check('unknown/non-command "@word" never tokenized as keyword', keywordHits.length === 0, JSON.stringify(keywordHits));
 }
 
+// 6b. Strong quote — "{[" ... "]}" (Inline Syntax Specification §9). The
+//     region is opaque like rawPlain, but terminates on the two-character
+//     "]}" instead of on bracket depth, so a lone "]" inside must NOT close
+//     it and must not pop the stack.
+{
+  const src = '@code(ebnf){[\nraw-char = any-unicode-char - "]" - "[" ;\n]}';
+  const { tokens, finalStack } = tokenizeAll(src);
+  const strong = tokens.filter(t => t.state === 'rawStrong');
+  // The closing "]}" is itself a keyword token (it's the delimiter); anything
+  // *else* keyworded inside would mean the region stopped being opaque.
+  const insideKeywords = strong.filter(t => t.token === 'keyword.control.doc' && t.text !== ']}');
+  check('strong-quoted content stays opaque (no keyword tokens inside)', insideKeywords.length === 0, JSON.stringify(insideKeywords));
+  // The lone "]" in `- "]" -` must be ordinary content, and scanning must
+  // continue past it — the text after it is still inside the region.
+  const loneClose = strong.find(t => t.text === ']');
+  check('lone "]" inside a strong quote is content, not the closer', loneClose?.token === 'string.unparsed.doc', JSON.stringify(strong.map(t => [t.text, t.token])));
+  check('scanning continues past a lone "]"', strong.some(t => t.text.includes('"[" ;')), JSON.stringify(strong.map(t => t.text)));
+  check('stack fully unwinds after @code(...){[...]}', finalStack.length === 1 && finalStack[0] === 'root', finalStack.join('>'));
+}
+
+// 6c. The strong quote is gated on the node being raw-family, not on the
+//     "{[" spelling alone — "{" after a non-raw node is still a styles slot,
+//     which is what keeps `@heading{...}` diagnosable rather than silently
+//     turning into text.
+{
+  const src = '@card{#123456,radius-12}[body]';
+  const { tokens, finalStack } = tokenizeAll(src);
+  const styleTokens = tokens.filter(t => t.token === 'support.type.property-value.styles.doc');
+  check('non-raw node still gets a {styles} slot', styleTokens.some(t => t.text.includes('radius-12')), JSON.stringify(styleTokens.map(t => t.text)));
+  check('stack fully unwinds after @card{...}[...]', finalStack.length === 1 && finalStack[0] === 'root', finalStack.join('>'));
+}
+
 // 7. The full test.atd fixture tokenizes without throwing and ends balanced.
 {
   const { readFileSync } = await import('fs');

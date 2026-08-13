@@ -4,7 +4,11 @@
   "specialRules": {
     "voidNodes":       ["hr", "n"],
     "contextNodes":    ["tab", "cols", "data"],
-    "escapeSymbols":   ["@@"]
+    "rawNodes":        ["code", "mermaid", "svg", "raw", "kbd", "fn"],
+    "escapeSymbols":   ["@@"],
+    "rawEscapeNodes":   ["raw"],
+    "rawEscapeSymbols": ["@@]", "@@[", "@]", "@["],
+    "strongQuote":     { "open": "{[", "close": "]}" }
   },
   "tokenGroups": {
     "Metadata": {

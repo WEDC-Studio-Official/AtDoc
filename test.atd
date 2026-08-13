@@ -62,6 +62,8 @@ keywords = test,syntax,coverage,aliases
 @heading(5)[Heading Level 5]
 @heading(6)[Heading Level 6]
 
+@heading[(level) 是選填的，省略時等同 Level 1]
+
 @heading(3)[Paragraph]
 
 @paragraph[
@@ -115,12 +117,37 @@ const x: number = 1;
 console.log(x);
 ]
 
+@code[
+語言標籤是選填的——這個區塊沒有 (language)。
+]
+
+@paragraph[
+方括號成對時直接照抄，@@code 不需要（也沒有）任何跳脫機制：
+]
+
+@code(js)[
+const pairs = [[1, 2], [3, 4]];
+console.log(pairs[0][1]);
+]
+
 @heading(3)[Image]
+
+@paragraph[
+舊式的 @@img 選項（radius=／border= 接受任意 CSS 值），與新的 Image Style v1 @@img{styles} 並存；{styles} 存在時覆蓋同名的舊選項。
+]
 
 @img(
 https://example.com/logo.png,width=200,align=center,radius=8px,border=1px solid #ccc
 )[
 WEDC Logo
+]
+
+@img(src=https://example.com/logo.png,width=200){#ff0000,radius-12}[
+Image Style v1：hex 是外框色（套用為 1px 實線），radius-N 是圓角像素值
+]
+
+@img(https://example.com/logo.png){radius-8}[
+只給圓角，不給外框——兩個 token 都是選填
 ]
 
 @heading(3)[SVG]
@@ -141,6 +168,33 @@ WEDC Logo
     ]
 ]
 
+@paragraph[
+儲存格接受一組受限的行內節點（見 registry.ts 的 isCellAllowedNode）：格式化類的 @@bold／@@italic／@@mark 等，以及 @@raw——API 表格幾乎都是後者的形狀。
+]
+
+@table[
+    @cols[@bold[Browser],ID,Core]
+
+    @data[
+        [Chrome,@raw[chrome],@raw[true]]
+        [Edge,@raw[edge],@raw[true]]
+        [@italic[Safari],@raw[safari],MDN @raw[browser-compat-data]]
+    ]
+]
+
+@paragraph[
+儲存格以半形逗號分隔，因此儲存格內容本身不能含逗號；空儲存格是合法的。
+]
+
+@table[
+    @cols[A,B]
+
+    @data[
+        [1,]
+        [,2]
+    ]
+]
+
 @heading(3)[Horizontal Rule]
 
 @hr
@@ -153,10 +207,22 @@ WEDC Logo
 這裡是隱藏內容，讀者可以依需求展開查看。
 ]
 
+@details(帶顏色的摺疊區塊){gray}[
+@@details 的 {styles} 走 color token set（具名色或 #RRGGBB），與 @@mark／@@color 同一組。
+]
+
 @heading(3)[Card]
 
 @card(API Key)[
 請將您的 API 金鑰存放在環境變數中，而不是寫死在程式碼裡。
+]
+
+@card(Card Style v1){#123456,radius-12}[
+@@card 的 {styles} 是自己的 token set：hex 是背景色，radius-N 是圓角像素值，順序不拘、各自選填。
+]
+
+@card{radius-24}[
+標題也是選填的——這張卡沒有 (title)，只給了圓角。
 ]
 
 @hr
@@ -181,6 +247,18 @@ API v2 將於 2027 年 1 月 1 日成為預設端點，請提前更新整合。
 
 @caution[
 此操作為不可逆，將永久刪除使用者資料。
+]
+
+@paragraph[
+五個 Callout 都同時接受選填的 (title) 與選填的 {styles}（color token set）。
+]
+
+@note(自訂標題與顏色){blue}[
+(title) 與 {styles} 可以同時出現，順序固定是 (title) 在前、{styles} 在後。
+]
+
+@tip{green}[
+只給 {styles}、不給 (title) 也合法。
 ]
 
 @hr
@@ -239,6 +317,38 @@ B --> C
 @paragraph[
 Raw domain 範例：@raw[這裡的 @mark[hello] 不會被解析，只會照字面輸出。]
 ]
+
+@paragraph[
+@@raw 的終止規則是方括號深度計數，不是「遇到第一個 ]」——所以成對的方括號直接照抄，完全不需要跳脫：@raw[arr[0]]、@raw[obj["key"]]、@raw[x[[nested]]y]。
+]
+
+@paragraph[
+只有真正不成對的方括號才需要跳脫（四條規則長度優先）：@raw[單獨的右括號 @] 與左括號 @[]、@raw[字面的 @@] 與 @@[ 需要三字元形式]。
+]
+
+@heading(3)[Strong Quote]
+
+@paragraph[
+強引用 {[ ... ]} 是 raw-family 節點共用的替代開啟形式：讀到第一個 ]} 為止，不做深度計數、沒有任何跳脫規則。
+]
+
+@code(ebnf){[
+raw-char =
+    any-unicode-char - "]" - "[" ;
+]}
+
+@paragraph[
+上面這段 EBNF 把 "]" 與 "[" 當字面終結符引用，方括號天生不成對——@@code 沒有跳脫機制，用 [...] 形式完全表示不了，強引用是唯一寫法。
+]
+
+@paragraph[
+強引用不限 @@code：@raw{[行內也可以，裡面的 ] 與 [ 都是普通字元]}，@kbd{[Ctrl+]]} 更是第一次讓 key 內容能表示含 ] 的鍵名。
+]
+
+@mermaid{[
+graph TD
+A["節點 [含括號]"] --> B
+]}
 
 @heading(3)[Semantic Inline]
 

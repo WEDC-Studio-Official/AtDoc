@@ -100,6 +100,17 @@ const rawPlainWithParenRegex = rawPlainWithParenNames.length
   ? re(`@(?:${alternation(rawPlainWithParenNames)})(?:\\([^)]*\\))?\\[`)
   : null;
 const rawPlainNoParenRegex = rawPlainNoParenNames.length ? re(`@(?:${alternation(rawPlainNoParenNames)})\\[`) : null;
+// Strong quote — "{[" ... "]}" (Inline Syntax Specification §9). Every
+// raw-family node accepts it, escaped or not, because the Lexer gates it on
+// the same isRawFamily() check rather than on the individual node, so the two
+// buckets above collapse into one regex here. Must be tried before the "\\["
+// forms: those require "[" immediately (optionally after a paren) and would
+// simply fail on "{[", but keeping the more specific pattern first means a
+// future loosening of either regex can't silently reorder the match.
+const rawStrongNames = [...rawEscapedNames, ...rawPlainAllNames];
+const rawStrongRegex = rawStrongNames.length
+  ? re(`@(?:${alternation(rawStrongNames)})(?:\\([^)]*\\))?\\{\\[`)
+  : null;
 const bracketRegex = bracketNames.length ? re(`@(?:${alternation(bracketNames)})${IDENT_BOUNDARY}`) : null;
 
 // Minimal local shape of Monaco's `languages.IMonarchLanguage` — declared by
@@ -118,6 +129,7 @@ const rules: MonarchRule[] = [];
 
 rules.push([/@@/, 'constant.character.escape.doc']);
 if (voidRegex) rules.push([voidRegex, 'keyword.control.doc']);
+if (rawStrongRegex) rules.push([rawStrongRegex, { token: 'keyword.control.doc', next: '@rawStrong' }]);
 if (rawEscapedRegex) rules.push([rawEscapedRegex, { token: 'keyword.control.doc', next: '@rawEscaped' }]);
 if (rawPlainWithParenRegex) rules.push([rawPlainWithParenRegex, { token: 'keyword.control.doc', next: '@rawPlain' }]);
 if (rawPlainNoParenRegex) rules.push([rawPlainNoParenRegex, { token: 'keyword.control.doc', next: '@rawPlain' }]);
@@ -156,6 +168,16 @@ const rawPlain: MonarchRule[] = [
   [/[^[\]]+/, 'string.unparsed.doc'],
 ];
 
+// Strong-quoted content — verbatim to the first "]}" (Inline Syntax
+// Specification §9). No bracket depth and no escapes, so unlike rawPlain
+// there is nothing to push: a lone "]" or "{" inside is ordinary content, and
+// only the two-character "]}" ends the region.
+const rawStrong: MonarchRule[] = [
+  [/\]\}/, { token: 'keyword.control.doc', next: '@pop' }],
+  [/[^\]]+/, 'string.unparsed.doc'],
+  [/\]/, 'string.unparsed.doc'],
+];
+
 // Same opaque scan, plus @raw's two local escape exceptions (Inline Syntax
 // Specification §9): "@]" -> literal "]", "@@]" -> literal "@]".
 const rawEscaped: MonarchRule[] = [
@@ -175,6 +197,7 @@ export const atDocMonarchLanguage: MonarchLanguage = {
     styles,
     rawPlain,
     rawEscaped,
+    rawStrong,
   },
 };
 

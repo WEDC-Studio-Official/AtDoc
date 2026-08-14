@@ -4,8 +4,15 @@
 // Mirrors `configs/atdoc-setting.json`'s tokenGroups / specialRules groupings
 // (structuralKeywords, containerKeywords, calloutKeywords, widgetKeywords,
 // formatKeywords, semanticKeywords, footnoteKeywords, specialKeywords,
-// metaKeywords, contextNodes, voidNodes) — keep the two in sync by hand if
-// either changes. Content-mode/paren/styles details below come from
+// metaKeywords, contextNodes, voidNodes, rawNodes, rawEscapeNodes,
+// escapeSymbols, rawEscapeSymbols, strongQuote). JSON carries no comments, so
+// what those last few mean lives here: `rawNodes` is every node whose content
+// the Lexer scans opaquely (the four raw-family ContentModes below), which is
+// also exactly the set that accepts the `strongQuote` delimiters;
+// `rawEscapeNodes` is the subset that additionally honours
+// `rawEscapeSymbols` (only @raw — @code/@mermaid/@svg define no escapes at
+// all). tests/config-sync.test.ts enforces all of this rather than trusting
+// the hand-sync. Content-mode/paren/styles details below come from
 // Block-Syntax-Specification.md §3 and Inline-Syntax-Specification.md §4.
 
 export type NodeKind = 'block' | 'inline' | 'meta';
@@ -261,7 +268,7 @@ export function getAllNodeDefs(): readonly NodeDef[] {
  *
  * @defn is deliberately excluded: it's collected document-wide and rendered
  * once as a real `<li>` inside the footnotes `<ol>` (see Adapters.ts's/
- * Adapters.ts's renderFootnotes()), not loose inside a `<td>`.
+ * KamiAdapter.ts's renderFootnotes()), not loose inside a `<td>`.
  * @fn (the footnote *reference*, a self-contained `<sup><a>` back-link) is
  * fine and included — Parser.ts checks this set before its raw-family
  * carve-out so @fn gets parsed as a real node instead of dumped as bare digits.

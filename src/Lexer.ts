@@ -9,14 +9,31 @@
 // Lexer to switch into an opaque scan mode for their bracket content — see
 // Inline Syntax Specification §9 (@raw Opaque Domain) and Special-Nodes.md §6.
 
-import { getNodeDef } from './registry.ts';
-import type { ContentMode } from './registry.ts';
+import { getNodeDef } from './registry';
+import type { ContentMode } from './registry';
 
 export type TokenType = 'NODE' | 'PAREN' | 'STYLES' | 'SLOT_OPEN' | 'SLOT_CLOSE' | 'RAW' | 'TEXT';
 
 export interface Token {
   type: TokenType;
   value: string;
+  /** Source character offsets — lets consumers (e.g. editor diagnostics) map a token back to a range. */
+  start: number;
+  end: number;
+  /** RAW tokens only — false if the scan ran out of input before finding the closing "]" (mid-typing, or a genuinely unterminated block). Lets consumers (e.g. the editor's completion provider) tell "caret still inside raw content" apart from "raw content already closed". */
+  closed?: boolean;
+  /** raw-escaped RAW tokens only — each local escape sequence the scan consumed ("@]", "@[", "@@]", "@@["), with its source range. Lets the Parser point an editor marker at the exact escape when one looks like it swallowed the intended closing bracket. */
+  escapes?: RawEscape[];
+}
+
+/** One consumed local escape inside @raw's content — see scanDepthRaw. */
+export interface RawEscape {
+  start: number;
+  end: number;
+  /** The literal source characters, e.g. "@]" or "@@[". */
+  seq: string;
+  /** True when the next source character after the escape is a newline — the signature of an escape that consumed a "]" the author meant as the node's end-of-line closer (see Parser.diagnoseRawEscapes). */
+  atLineEnd: boolean;
 }
 
 const IDENT_CHAR = /[a-zA-Z0-9_-]/;
@@ -49,48 +66,43 @@ function isRawFamily(mode: ContentMode): boolean {
  * Scans raw, unparsed content starting right after the opening "[".
  * Tracks nested "[" / "]" depth so literal brackets inside code/diagram
  * content don't prematurely terminate the slot (see Text-Formatting.md §4 Raw
- * and Widget-Blocks.md §4 Mermaid for why this matters in practice) — the
- * termination rule is bracket-depth counting, not "stop at the first
- * unescaped ]" (Inline Syntax Specification §9).
+ * and Widget-Blocks.md §4 Mermaid for why this matters in practice).
  *
- * `localEscape` enables @raw's four local exceptions (Inline Spec §9), two
- * symmetric pairs for unpaired literal brackets that would otherwise desync
- * the depth counter:
- *   "@]"  → literal "]"   (an unpaired ] that must NOT decrement depth)
+ * `localEscape` enables @raw's four local exceptions (Inline Spec §9):
+ *   "@]"  → literal "]"
  *   "@@]" → literal "@]"
- *   "@["  → literal "["   (an unpaired [ that must NOT increment depth)
+ *   "@["  → literal "["
  *   "@@[" → literal "@["
- * These do NOT apply to @code/@mermaid, which define no escape mechanism at
- * all. Escaping a bracket that's already part of a balanced pair (e.g.
- * writing "@mark[hello@]" instead of "@mark[hello]") is a misuse — the
- * escaped "]" stops counting toward depth, so the "[" from "@mark[" never
- * finds its balancing close and the scan overruns into the surrounding
- * document. Balanced brackets need no escaping at all; only genuinely
- * unpaired ones do.
+ * These do NOT apply to @code/@mermaid, which define no escape mechanism at all.
  */
-function scanDepthRaw(source: string, start: number, localEscape: boolean): { text: string; endPos: number } {
+function scanDepthRaw(source: string, start: number, localEscape: boolean): { text: string; endPos: number; closed: boolean; escapes: RawEscape[] } {
   let depth = 1;
   let buf = '';
   let i = start;
   const n = source.length;
+  const escapes: RawEscape[] = [];
 
   while (i < n) {
     if (localEscape && source[i] === '@' && source[i + 1] === '@' && source[i + 2] === ']') {
+      escapes.push({ start: i, end: i + 3, seq: '@@]', atLineEnd: source[i + 3] === '\n' });
       buf += '@]';
       i += 3;
       continue;
     }
     if (localEscape && source[i] === '@' && source[i + 1] === '@' && source[i + 2] === '[') {
+      escapes.push({ start: i, end: i + 3, seq: '@@[', atLineEnd: source[i + 3] === '\n' });
       buf += '@[';
       i += 3;
       continue;
     }
     if (localEscape && source[i] === '@' && source[i + 1] === ']') {
+      escapes.push({ start: i, end: i + 2, seq: '@]', atLineEnd: source[i + 2] === '\n' });
       buf += ']';
       i += 2;
       continue;
     }
     if (localEscape && source[i] === '@' && source[i + 1] === '[') {
+      escapes.push({ start: i, end: i + 2, seq: '@[', atLineEnd: source[i + 2] === '\n' });
       buf += '[';
       i += 2;
       continue;
@@ -106,7 +118,7 @@ function scanDepthRaw(source: string, start: number, localEscape: boolean): { te
     if (ch === ']') {
       depth--;
       i++;
-      if (depth === 0) break;
+      if (depth === 0) return { text: buf, endPos: i, closed: true, escapes };
       buf += ch;
       continue;
     }
@@ -114,11 +126,14 @@ function scanDepthRaw(source: string, start: number, localEscape: boolean): { te
     i++;
   }
 
-  return { text: buf, endPos: i };
+  // Ran out of input before depth reached 0 — genuinely unterminated (or, for
+  // the editor's incremental re-tokenize of `textBeforeCaret`, just not typed
+  // that far yet). See Token.closed.
+  return { text: buf, endPos: i, closed: false, escapes };
 }
 
 /** Flat scan for @kbd's `key` and @fn's `integer` — no nesting, no escapes. */
-function scanFlatRaw(source: string, start: number): { text: string; endPos: number } {
+function scanFlatRaw(source: string, start: number): { text: string; endPos: number; closed: boolean } {
   let i = start;
   const n = source.length;
   let buf = '';
@@ -126,10 +141,11 @@ function scanFlatRaw(source: string, start: number): { text: string; endPos: num
     buf += source[i];
     i++;
   }
-  return { text: buf, endPos: i + 1 };
+  if (i >= n) return { text: buf, endPos: i, closed: false }; // ran out before finding "]"
+  return { text: buf, endPos: i + 1, closed: true };
 }
 
-function scanRawContent(source: string, start: number, mode: ContentMode): { text: string; endPos: number } {
+function scanRawContent(source: string, start: number, mode: ContentMode): { text: string; endPos: number; closed: boolean; escapes?: RawEscape[] } {
   if (mode === 'key' || mode === 'integer') return scanFlatRaw(source, start);
   return scanDepthRaw(source, start, mode === 'raw-escaped');
 }
@@ -173,11 +189,18 @@ export function tokenize(source: string): Token[] {
   const n = source.length;
   let i = 0;
   let textBuf = '';
+  let textStart = -1;
+
+  const appendText = (s: string, pos: number) => {
+    if (textBuf === '') textStart = pos;
+    textBuf += s;
+  };
 
   const flushText = () => {
     if (textBuf) {
-      tokens.push({ type: 'TEXT', value: textBuf });
+      tokens.push({ type: 'TEXT', value: textBuf, start: textStart, end: textStart + textBuf.length });
       textBuf = '';
+      textStart = -1;
     }
   };
 
@@ -188,11 +211,12 @@ export function tokenize(source: string): Token[] {
       // Step 1 (Inline Spec §2): "@@" is checked first, purely by pattern —
       // before any Command Registry lookup. See Special-Nodes.md §5.
       if (source[i + 1] === '@') {
-        textBuf += '@';
+        appendText('@', i);
         i += 2;
         continue;
       }
 
+      const nodeStart = i;
       // Step 2: maximal-munch identifier, then registry lookup.
       let j = i + 1;
       while (j < n && IDENT_CHAR.test(source[j])) j++;
@@ -201,13 +225,13 @@ export function tokenize(source: string): Token[] {
 
       if (!nodeDef) {
         // Step 3: unknown command → literal text (Inline Spec §6).
-        textBuf += source.slice(i, j);
+        appendText(source.slice(i, j), i);
         i = j;
         continue;
       }
 
       flushText();
-      tokens.push({ type: 'NODE', value: ident });
+      tokens.push({ type: 'NODE', value: ident, start: nodeStart, end: j });
       i = j;
 
       // Optional "(...)" and "{...}" — modifier/level/title/language/uri/id/
@@ -225,10 +249,12 @@ export function tokenize(source: string): Token[] {
       let sawStyles = false;
       while (!sawParen || !sawStyles) {
         if (!sawParen && source[i] === '(') {
+          const parenStart = i;
           const close = source.indexOf(')', i + 1);
           const end = close === -1 ? n : close;
-          tokens.push({ type: 'PAREN', value: source.slice(i + 1, end) });
-          i = (close === -1 ? n : close + 1);
+          const parenEnd = close === -1 ? n : close + 1;
+          tokens.push({ type: 'PAREN', value: source.slice(i + 1, end), start: parenStart, end: parenEnd });
+          i = parenEnd;
           sawParen = true;
         } else if (!sawStyles && source[i] === '{' && !(isRawFamily(nodeDef.content) && source[i + 1] === '[')) {
           // "{[" is the strong-quote content opener, not a styles slot — see
@@ -236,9 +262,11 @@ export function tokenize(source: string): Token[] {
           // scanStylesEnd() already treats "[" as a terminator because no
           // styles value ever contains one, so "{[" could never have opened a
           // valid styles slot anyway.
+          const stylesStart = i;
           const { end, closed } = scanStylesEnd(source, i + 1);
-          tokens.push({ type: 'STYLES', value: source.slice(i + 1, end) });
-          i = closed ? end + 1 : end;
+          const stylesEnd = closed ? end + 1 : end;
+          tokens.push({ type: 'STYLES', value: source.slice(i + 1, end), start: stylesStart, end: stylesEnd });
+          i = stylesEnd;
           sawStyles = true;
         } else {
           break;
@@ -256,18 +284,22 @@ export function tokenize(source: string): Token[] {
       // block whose brackets don't balance — an EBNF grammar quoting "[" and
       // "]" as terminals, say — simply had no representation and had to be
       // degraded to an inline @raw, losing both its language tag and its block
-      // rendering.
+      // rendering. Carrying no escapes, it also emits no escape notices.
       if (isRawFamily(nodeDef.content) && source[i] === '{' && source[i + 1] === '[') {
-        const { text, endPos } = scanStrongRaw(source, i + 2);
-        tokens.push({ type: 'RAW', value: text });
+        const slotStart = i;
+        const { text, endPos, closed } = scanStrongRaw(source, i + 2);
+        tokens.push({ type: 'RAW', value: text, start: slotStart, end: endPos, closed });
         i = endPos;
       } else if (source[i] === '[') {
         if (isRawFamily(nodeDef.content)) {
-          const { text, endPos } = scanRawContent(source, i + 1, nodeDef.content);
-          tokens.push({ type: 'RAW', value: text });
+          const slotStart = i;
+          const { text, endPos, closed, escapes } = scanRawContent(source, i + 1, nodeDef.content);
+          const rawTok: Token = { type: 'RAW', value: text, start: slotStart, end: endPos, closed };
+          if (escapes && escapes.length > 0) rawTok.escapes = escapes;
+          tokens.push(rawTok);
           i = endPos;
         } else {
-          tokens.push({ type: 'SLOT_OPEN', value: '[' });
+          tokens.push({ type: 'SLOT_OPEN', value: '[', start: i, end: i + 1 });
           i++;
         }
       }
@@ -276,18 +308,18 @@ export function tokenize(source: string): Token[] {
 
     if (ch === '[') {
       flushText();
-      tokens.push({ type: 'SLOT_OPEN', value: '[' });
+      tokens.push({ type: 'SLOT_OPEN', value: '[', start: i, end: i + 1 });
       i++;
       continue;
     }
     if (ch === ']') {
       flushText();
-      tokens.push({ type: 'SLOT_CLOSE', value: ']' });
+      tokens.push({ type: 'SLOT_CLOSE', value: ']', start: i, end: i + 1 });
       i++;
       continue;
     }
 
-    textBuf += ch;
+    appendText(ch, i);
     i++;
   }
 

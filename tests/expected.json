@@ -64,7 +64,7 @@
   },
   "17-unknown-node-in-comma-list.atd": {
     "shouldThrow": true,
-    "messageContains": "only accepts plain text and inline formatting",
+    "messageContains": "only plain text and inline formatting",
     "note": "@card isn't in registry.ts's cell-formatting allowlist (unlike @bold/@link/etc.) — Strict Mode throws rather than silently dropping it."
   },
   "18-svg-node-valid.atd": {

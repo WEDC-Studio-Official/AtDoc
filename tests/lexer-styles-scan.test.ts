@@ -51,12 +51,17 @@ fn main() {
   check('@code keeps its full body, braces and all', !!raw && raw.value.includes('println!("{}", s2);'), JSON.stringify(raw?.value));
 }
 
-// The Parser's own view: @heading has no {styles} slot, so it throws — but on
-// the slot itself, not because the rest of the document went missing.
+// The Parser's own view: @heading has no {styles} slot. Editor Mode doesn't
+// throw for this (see run-tests.ts's note on Strict Mode vs Editor Mode) — it
+// pushes an error-severity diagnostic instead, pointed at the slot itself,
+// not because the rest of the document went missing.
 {
   let message = '';
   try {
-    new DocParser(tokenize(MID_TYPING_DOC)).parse();
+    const parser = new DocParser(tokenize(MID_TYPING_DOC));
+    parser.parse();
+    const errorDiagnostic = parser.diagnostics.find(d => d.severity === undefined || d.severity === 'error');
+    if (errorDiagnostic) message = errorDiagnostic.message;
   } catch (err) {
     message = err instanceof DocSyntaxError ? err.message : String(err);
   }

@@ -268,7 +268,7 @@ export function getAllNodeDefs(): readonly NodeDef[] {
  *
  * @defn is deliberately excluded: it's collected document-wide and rendered
  * once as a real `<li>` inside the footnotes `<ol>` (see Adapters.ts's/
- * Adapters.ts's renderFootnotes()), not loose inside a `<td>`.
+ * KamiAdapter.ts's renderFootnotes()), not loose inside a `<td>`.
  * @fn (the footnote *reference*, a self-contained `<sup><a>` back-link) is
  * fine and included — Parser.ts checks this set before its raw-family
  * carve-out so @fn gets parsed as a real node instead of dumped as bare digits.

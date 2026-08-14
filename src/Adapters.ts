@@ -15,11 +15,11 @@
 // mapped, but always as inline style on both routes — same as the pre-existing
 // "(radius=...,border=...)" image options it layers on top of, no Tailwind
 // class equivalent attempted. @details and the Callout Blocks also carry a
-// parsed `styles` slot (registry.ts's `styles` StyleSet) that this Adapter
-// doesn't yet map to visual output. Everything else renders identically on
-// both routes.
+// parsed `styles` slot (registry.ts `styles: true`) but this Adapter doesn't
+// yet map it to visual output — see KamiAdapter.ts for the Renderer branch
+// that does. Everything else renders identically on both routes.
 
-import type { DocASTNode } from './types.ts';
+import type { DocASTNode } from './types';
 
 type Route = 'tailwind' | 'inline';
 
@@ -101,9 +101,9 @@ function resolveCardStyles(tokens: string[] | undefined): { background?: string;
  * here rather than background — an image already has its own pixel content,
  * so "paint a background behind it" isn't the useful knob a border is. Both
  * radius and border are opt-in (no styles at all → a bare, undecorated
- * <img>, unlike @card whose default radius/background comes from the
- * Renderer's own stylesheet) — that's the point of putting this behind
- * {styles} rather than giving @img the same always-on treatment as @card.
+ * <img>, unlike @card which always has a default radius/background from
+ * kami.css) — that's the point of putting this behind {styles} rather than
+ * giving @img the same always-on treatment as @card.
  */
 function resolveImageStyles(tokens: string[] | undefined): { borderColor?: string; radiusToken?: string; radius?: string } {
   const borderColor = tokens?.find(t => HEX_COLOR.test(t));

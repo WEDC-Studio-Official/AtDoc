@@ -1,3 +1,11 @@
+// Ported from AtDoc-Internal's Strict Mode Parser test set (now archived).
+// That Parser threw DocSyntaxError on every case below; this package's
+// Parser is Editor Mode — it recovers and pushes a non-fatal diagnostic
+// instead of throwing, so an interactive editor doesn't lose the whole
+// document over one syntax error. `expected.json`'s `shouldThrow` therefore
+// now means "produces an error-severity diagnostic" rather than "throws" —
+// checked against both, since a genuinely unrecoverable case (Parser.ts's
+// "Internal error: ..." path) still throws.
 import { readFileSync, readdirSync } from 'fs';
 import { tokenize } from '../src/Lexer.ts';
 import { DocParser } from '../src/Parser.ts';
@@ -30,30 +38,36 @@ for (const file of files) {
     continue;
   }
 
-  let threw = false;
+  let flagged = false;
   let message = '';
   try {
-    new DocParser(tokenize(source)).parse();
+    const parser = new DocParser(tokenize(source));
+    parser.parse();
+    const errorDiagnostic = parser.diagnostics.find(d => d.severity === undefined || d.severity === 'error');
+    if (errorDiagnostic) {
+      flagged = true;
+      message = errorDiagnostic.message;
+    }
   } catch (err) {
     if (err instanceof DocSyntaxError) {
-      threw = true;
+      flagged = true;
       message = err.message;
     } else {
-      // A non-DocSyntaxError is always a real bug — let it crash the run.
+      // Anything else is always a real bug — let it crash the run.
       throw err;
     }
   }
 
-  const ok = threw === exp.shouldThrow && (!exp.messageContains || message.includes(exp.messageContains));
+  const ok = flagged === exp.shouldThrow && (!exp.messageContains || message.includes(exp.messageContains));
 
   if (ok) {
     pass++;
-    console.log(`PASS ${file}${threw ? ` — threw: ${message}` : ' — parsed OK'}`);
+    console.log(`PASS ${file}${flagged ? ` — flagged: ${message}` : ' — parsed clean'}`);
   } else {
     fail++;
     console.log(`FAIL ${file}`);
     console.log(`     expected: shouldThrow=${exp.shouldThrow}${exp.messageContains ? `, messageContains="${exp.messageContains}"` : ''}`);
-    console.log(`     actual:   threw=${threw}${message ? `, message="${message}"` : ''}`);
+    console.log(`     actual:   flagged=${flagged}${message ? `, message="${message}"` : ''}`);
   }
 }
 

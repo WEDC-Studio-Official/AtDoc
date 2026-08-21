@@ -1,6 +1,6 @@
 # @Doc — AI-Native Semantic Document Notation
 
-<img src="https://wedc.cc/atd.png" width="64"/>
+<img src="https://wedc.dev/atd.png" width="64"/>
 
 ---
 

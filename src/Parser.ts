@@ -23,7 +23,7 @@ function isRawFamilyContent(content: NodeDef['content'] | undefined): boolean {
 
 // Known @color/@bordered {styles} tokens (Inline Syntax Specification §7) —
 // the same seven named colors @mark's {styles} accepts, plus the hex pattern
-// — used only for the editor diagnostic below. KamiAdapter.ts owns the actual
+// — used only for the editor diagnostic below. Adapters.ts owns the actual
 // color *resolution* logic; this list exists purely to flag typos in the Playground.
 const KNOWN_COLOR_TOKENS = new Set(['yellow', 'red', 'green', 'blue', 'orange', 'purple', 'gray']);
 const HEX_STYLE_TOKEN = /^#[0-9a-fA-F]{6}$/;
@@ -185,7 +185,7 @@ export class DocParser {
     // named token), not a comma-separated token list like @mark — so they
     // share `node.color` instead of the generic split-into-array handling
     // below. @bordered applies that same value as a border instead of a
-    // foreground color (see KamiAdapter.ts).
+    // foreground color (see Adapters.ts).
     const isColorSwatch = nodeDef.name === 'color' || nodeDef.name === 'bordered';
 
     if (this.tokens[this.cursor]?.type === 'STYLES') {
@@ -212,9 +212,8 @@ export class DocParser {
       this.cursor++;
     } else if (isColorSwatch) {
       // No {styles} slot at all — grammatically optional, but flagged all
-      // the same, since @color with no explicit value falls back to a
-      // rainbow rendering (KamiAdapter.ts) rather than a plain color; @bordered
-      // likewise has no meaningful "default" border color to fall back to.
+      // the same, so authors can choose an explicit foreground or border color
+      // instead of relying on the renderer's fallback appearance.
       this.diagnose(token.start, token.end, `\`@${nodeDef.name}\` has no {styles} value — add \`{#hex}\` or \`{colorname}\` to pick an explicit color.`);
     }
 
@@ -377,7 +376,7 @@ export class DocParser {
    *   stripped when present, purely for backward compatibility with the old
    *   dash-required style; it was never required to make something an item.
    * - A leading "N. " / "N)" is also optional; when present it's stripped and
-   *   kept as `marker` (only meaningful for @list(ordered), see KamiAdapter,
+   *   kept as `marker` (only meaningful for @list(ordered), see Adapters.ts,
    *   letting the numbering jump/resume via <li value>).
    * - A line that's nothing but a single nested `@list[...]` (plus surrounding
    *   whitespace) isn't a new item — it's folded into the previous item's
@@ -549,7 +548,6 @@ export class DocParser {
    * the call site above).
    */
   private diagnoseUnknownColorValue(nodeName: string, token: string, raw: string, stylesStart: number): void {
-    if (nodeName === 'color' && token === 'rainbow') return; // intentionally undocumented — see KamiAdapter.ts's color case
     if (token && (KNOWN_COLOR_TOKENS.has(token) || HEX_STYLE_TOKEN.test(token))) return;
     const leadingWs = raw.length - raw.trimStart().length;
     const tokenStart = stylesStart + 1 + leadingWs; // +1 skips the "{" itself

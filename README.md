@@ -4,17 +4,17 @@
 
 @Doc is a notation designed for three readers: humans who write content, AI that generates content, and compilers that render content. It is not the next Markdown — it's the missing notation layer between LLM-generated content and render targets.
 
-This documentation is split by language. Pick one:
+Start with the [English documentation](docs/en/README.md). Chinese translations and other language editions are also available:
 
 | Language | README | Block Syntax Spec | Inline Syntax Spec |
 |:---|:---|:---|:---|
-| 🇹🇼 繁體中文 | [README](docs/zh-tw/README.md) | [Block-Syntax-Specification](docs/zh-tw/Block-Syntax-Specification.md) | [Inline-Syntax-Specification](docs/zh-tw/Inline-Syntax-Specification.md) |
 | 🇺🇸 English | [README](docs/en/README.md) | [Block-Syntax-Specification](docs/en/Block-Syntax-Specification.md) | [Inline-Syntax-Specification](docs/en/Inline-Syntax-Specification.md) |
-| 🇨🇳 简体中文 | [README](docs/zh-cn/README.md) | [Block-Syntax-Specification](docs/zh-cn/Block-Syntax-Specification.md) | [Inline-Syntax-Specification](docs/zh-cn/Inline-Syntax-Specification.md) |
-| 🇯🇵 日本語 <sub>(AI 翻訳、誤りがある可能性があります)</sub> | [README](docs/ja/README.md) | [Block-Syntax-Specification](docs/ja/Block-Syntax-Specification.md) | [Inline-Syntax-Specification](docs/ja/Inline-Syntax-Specification.md) |
-| 🇰🇷 한국어 <sub>(AI 번역, 부정확할 수 있습니다)</sub> | [README](docs/ko/README.md) | [Block-Syntax-Specification](docs/ko/Block-Syntax-Specification.md) | [Inline-Syntax-Specification](docs/ko/Inline-Syntax-Specification.md) |
+| 🇹🇼 Traditional Chinese | [README](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-tw/README.md) | [Block-Syntax-Specification](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-tw/Block-Syntax-Specification.md) | [Inline-Syntax-Specification](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-tw/Inline-Syntax-Specification.md) |
+| 🇨🇳 Simplified Chinese | [README](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-cn/README.md) | [Block-Syntax-Specification](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-cn/Block-Syntax-Specification.md) | [Inline-Syntax-Specification](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-cn/Inline-Syntax-Specification.md) |
+| 🇯🇵 Japanese <sub>(AI translation; may contain errors)</sub> | [README](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ja/README.md) | [Block-Syntax-Specification](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ja/Block-Syntax-Specification.md) | [Inline-Syntax-Specification](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ja/Inline-Syntax-Specification.md) |
+| 🇰🇷 Korean <sub>(AI translation; may contain errors)</sub> | [README](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ko/README.md) | [Block-Syntax-Specification](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ko/Block-Syntax-Specification.md) | [Inline-Syntax-Specification](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ko/Inline-Syntax-Specification.md) |
 
-`docs/zh-tw/` is the authoritative source language; the other versions are translated from it. The two `*-Specification.md` files in each language folder are the authoritative grammar (EBNF + semantic rules) for that language edition.
+English is the primary language for the package and its documentation; Chinese is secondary. The two `*-Specification.md` files in each language folder describe the grammar (EBNF + semantic rules) for that language edition.
 
 ---
 

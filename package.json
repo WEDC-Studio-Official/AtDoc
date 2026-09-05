@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "license": "MIT",
+  "files": [
+    "src/",
+    "configs/",
+    "docs/en/"
+  ],
   "description": "@Doc — Lexer/Parser/Adapters/registry for the @Doc document language, plus the Monarch editor tokenizer.",
   "exports": {
     "./registry": "./src/registry.ts",

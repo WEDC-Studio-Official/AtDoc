@@ -2,7 +2,7 @@
 
 <img src="https://wedc.cc/atd.png" width="64"/>
 
-> 🌐 Other languages: [繁體中文](../zh-tw/README.md) ・ [简体中文](../zh-cn/README.md) ・ [日本語（AI 翻訳、誤りがある可能性があります）](../ja/README.md) ・ [한국어（AI 번역, 부정확할 수 있습니다）](../ko/README.md)
+> 🌐 Other languages: [Traditional Chinese](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-tw/README.md) ・ [Simplified Chinese](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-cn/README.md) ・ [Japanese (AI translation; may contain errors)](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ja/README.md) ・ [Korean (AI translation; may contain errors)](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ko/README.md)
 
 ---
 

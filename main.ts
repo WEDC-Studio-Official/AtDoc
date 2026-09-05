@@ -7,18 +7,18 @@ import { DocSyntaxError } from './src/types.ts';
 const sourcePath = new URL('./test.atd', import.meta.url);
 const sourceCode = readFileSync(sourcePath, 'utf-8');
 
-// 執行詞法分析
+// Tokenize the source.
 const tokens = tokenize(sourceCode);
 console.log('--- Tokens ---', tokens.length, 'tokens');
 
-// 生成 Canonical AST
+// Build the canonical AST.
 try {
   const parser = new DocParser(tokens);
   const ast = parser.parse();
   console.log('--- AST ---');
   console.log(JSON.stringify(ast, null, 2));
 
-  // 雙線並行編譯
+  // Render through both HTML routes.
   const tailwindHTML = ast.map(node => DocTranspiler.toTailwindHTML(node)).join('\n');
   const inlineHTML = ast.map(node => DocTranspiler.toInlineStyleHTML(node)).join('\n');
 

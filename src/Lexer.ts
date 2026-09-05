@@ -1,4 +1,4 @@
-// Lexer — implements Inline Syntax Specification §2 (Lexer 行為定義) precisely:
+// Lexer — implements Inline Syntax Specification §2 (Lexer behavior definition) precisely:
 //
 //   1. "@@"                       → literal "@" (checked before any registry lookup)
 //   2. "@" + known command name   → NODE token

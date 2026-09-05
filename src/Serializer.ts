@@ -297,7 +297,7 @@ function escapeRawEscaped(text: string): string {
  *
  * scanDepthRaw terminates on depth, not on the first "]", so a matched pair
  * round-trips verbatim — Inline Spec §9 is explicit that balanced brackets
- * need no escape at all ("只要方括號成對，可以直接照抄"). Escaping them anyway
+ * need no escape at all (paired square brackets can be copied as is). Escaping them anyway
  * is correct but unreadable, and this content is source the author goes on to
  * read and edit: `arr[0]` should stay `arr[0]`, not become `arr@[0@]`.
  */

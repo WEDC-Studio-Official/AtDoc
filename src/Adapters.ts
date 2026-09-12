@@ -30,27 +30,35 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
+// Word's actual Text Highlight Color swatches (Home > Text Highlight Color),
+// not a muted/pastel reinterpretation — index.css's `.mark-<token>` classes
+// (Route A) mirror these exact values, and `mark` there forces black ink on
+// top of them the same way Word never recolors text to match the highlight
+// it sits on. orange has no Word highlighter swatch (only 15 fixed colors,
+// none named "orange") — borrowed from Word's Standard Colors row instead.
 const MARK_COLORS: Record<string, string> = {
-  yellow: '#fff3a3',
-  red: '#ffd2d2',
-  green: '#d2ffd2',
-  blue: '#d2e8ff',
-  orange: '#ffe1c2',
-  purple: '#e8d2ff',
-  gray: '#e0e0e0',
+  yellow: '#FFFF00',
+  red: '#FF0000',
+  green: '#00FF00',
+  blue: '#0000FF',
+  orange: '#FFC000',
+  purple: '#800080',
+  gray: '#808080',
 };
 // @color's own named-token palette — deliberately a separate table from
-// MARK_COLORS: those are pale shades tuned for @mark's highlight background,
-// and would read as low-contrast, barely-visible text if reused here as a
-// foreground color, so @color gets its own darker, text-appropriate values.
+// MARK_COLORS: those are Word's highlight-background swatches, and would read
+// as low-contrast, barely-visible text if reused here as a foreground color,
+// so @color gets Word's Font Color "Standard Colors" row instead — the same
+// per-key split, just Word's other palette rather than a softened one.
+// index.css's `.color-<token>`/`.bordered-<token>` classes mirror these.
 const COLOR_PRESETS: Record<string, string> = {
-  yellow: '#9A7B00',
-  red: '#A33A3A',
-  green: '#3F7A4A',
-  blue: '#3569A8',
-  orange: '#A9652A',
-  purple: '#76509A',
-  gray: '#666666',
+  yellow: '#FFFF00',
+  red: '#FF0000',
+  green: '#00B050',
+  blue: '#0070C0',
+  orange: '#FFC000',
+  purple: '#7030A0',
+  gray: '#808080',
 };
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;

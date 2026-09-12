@@ -16,9 +16,72 @@
 // "(radius=...,border=...)" image options it layers on top of, no Tailwind
 // class equivalent attempted. @details and the Callout Blocks also carry a
 // parsed `styles` slot (registry.ts `styles: true`) but this Adapter doesn't
-// yet map it to visual output. Everything else renders identically on both routes.
+// yet map it to visual output — see KamiAdapter.ts for the Renderer branch
+// that does. Everything else renders identically on both routes.
 
 import type { DocASTNode } from './types';
+import hljs from 'highlight.js/lib/core';
+import hljsTypescript from 'highlight.js/lib/languages/typescript';
+import hljsJavascript from 'highlight.js/lib/languages/javascript';
+import hljsJson from 'highlight.js/lib/languages/json';
+import hljsXml from 'highlight.js/lib/languages/xml';
+import hljsCss from 'highlight.js/lib/languages/css';
+import hljsScss from 'highlight.js/lib/languages/scss';
+import hljsPython from 'highlight.js/lib/languages/python';
+import hljsBash from 'highlight.js/lib/languages/bash';
+import hljsSql from 'highlight.js/lib/languages/sql';
+import hljsGo from 'highlight.js/lib/languages/go';
+import hljsRust from 'highlight.js/lib/languages/rust';
+import hljsJava from 'highlight.js/lib/languages/java';
+import hljsC from 'highlight.js/lib/languages/c';
+import hljsCpp from 'highlight.js/lib/languages/cpp';
+import hljsYaml from 'highlight.js/lib/languages/yaml';
+import hljsMarkdown from 'highlight.js/lib/languages/markdown';
+
+hljs.registerLanguage('typescript', hljsTypescript);
+hljs.registerLanguage('javascript', hljsJavascript);
+hljs.registerLanguage('json', hljsJson);
+hljs.registerLanguage('xml', hljsXml);
+hljs.registerLanguage('css', hljsCss);
+hljs.registerLanguage('scss', hljsScss);
+hljs.registerLanguage('python', hljsPython);
+hljs.registerLanguage('bash', hljsBash);
+hljs.registerLanguage('sql', hljsSql);
+hljs.registerLanguage('go', hljsGo);
+hljs.registerLanguage('rust', hljsRust);
+hljs.registerLanguage('java', hljsJava);
+hljs.registerLanguage('c', hljsC);
+hljs.registerLanguage('cpp', hljsCpp);
+hljs.registerLanguage('yaml', hljsYaml);
+hljs.registerLanguage('markdown', hljsMarkdown);
+
+// registry.ts's CODE_LANGUAGES convenience list uses a few short aliases hljs
+// doesn't register grammars under directly.
+const HLJS_LANGUAGE_ALIASES: Record<string, string> = {
+  ts: 'typescript',
+  tsx: 'typescript',
+  js: 'javascript',
+  jsx: 'javascript',
+  html: 'xml',
+};
+
+/**
+ * hljs-highlighted markup when `language` resolves to a registered grammar,
+ * otherwise plain escaped text — @code's language tag is "a convenience
+ * list, not a closed set" (registry.ts's CODE_LANGUAGES comment), so an
+ * unrecognized value is an expected, silent fallback, not an error.
+ * `ignoreIllegals: true` matters specifically because the Playground calls
+ * this on every keystroke — code that's mid-edit and syntactically invalid
+ * must never throw here.
+ */
+function highlightCode(code: string, language: string | undefined): string {
+  const key = HLJS_LANGUAGE_ALIASES[(language ?? '').toLowerCase()] ?? (language ?? '').toLowerCase();
+  if (!hljs.getLanguage(key)) return escapeHtml(code);
+  return hljs.highlight(code, { language: key, ignoreIllegals: true }).value;
+}
+
+const CODE_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>';
+const COPY_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
 
 type Route = 'tailwind' | 'inline';
 
@@ -30,27 +93,35 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
+// Word's actual Text Highlight Color swatches (Home > Text Highlight Color),
+// not a muted/pastel reinterpretation — index.css's `.mark-<token>` classes
+// (Route A) mirror these exact values, and `mark` there forces black ink on
+// top of them the same way Word never recolors text to match the highlight
+// it sits on. orange has no Word highlighter swatch (only 15 fixed colors,
+// none named "orange") — borrowed from Word's Standard Colors row instead.
 const MARK_COLORS: Record<string, string> = {
-  yellow: '#fff3a3',
-  red: '#ffd2d2',
-  green: '#d2ffd2',
-  blue: '#d2e8ff',
-  orange: '#ffe1c2',
-  purple: '#e8d2ff',
-  gray: '#e0e0e0',
+  yellow: '#FFFF00',
+  red: '#FF0000',
+  green: '#00FF00',
+  blue: '#0000FF',
+  orange: '#FFC000',
+  purple: '#800080',
+  gray: '#808080',
 };
 // @color's own named-token palette — deliberately a separate table from
-// MARK_COLORS: those are pale shades tuned for @mark's highlight background,
-// and would read as low-contrast, barely-visible text if reused here as a
-// foreground color, so @color gets its own darker, text-appropriate values.
+// MARK_COLORS: those are Word's highlight-background swatches, and would read
+// as low-contrast, barely-visible text if reused here as a foreground color,
+// so @color gets Word's Font Color "Standard Colors" row instead — the same
+// per-key split, just Word's other palette rather than a softened one.
+// index.css's `.color-<token>`/`.bordered-<token>` classes mirror these.
 const COLOR_PRESETS: Record<string, string> = {
-  yellow: '#9A7B00',
-  red: '#A33A3A',
-  green: '#3F7A4A',
-  blue: '#3569A8',
-  orange: '#A9652A',
-  purple: '#76509A',
-  gray: '#666666',
+  yellow: '#FFFF00',
+  red: '#FF0000',
+  green: '#00B050',
+  blue: '#0070C0',
+  orange: '#FFC000',
+  purple: '#7030A0',
+  gray: '#808080',
 };
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -100,7 +171,9 @@ function resolveCardStyles(tokens: string[] | undefined): { background?: string;
  * here rather than background — an image already has its own pixel content,
  * so "paint a background behind it" isn't the useful knob a border is. Both
  * radius and border are opt-in (no styles at all → a bare, undecorated
- * <img>). Explicit {styles} values control the image's border and radius.
+ * <img>, unlike @card which always has a default radius/background from
+ * kami.css) — that's the point of putting this behind {styles} rather than
+ * giving @img the same always-on treatment as @card.
  */
 function resolveImageStyles(tokens: string[] | undefined): { borderColor?: string; radiusToken?: string; radius?: string } {
   const borderColor = tokens?.find(t => HEX_COLOR.test(t));
@@ -273,13 +346,34 @@ function renderList(node: DocASTNode, route: Route): string {
   return `<${tag}>${li}</${tag}>`;
 }
 
+// A per-widget-local counter starting at 0 collides as soon as a document
+// has more than one @tabs block (both would emit "tab-panel-0",
+// "tab-panel-1", ...) — a document-wide-unique prefix keeps every widget's
+// trigger/panel ids resolvable on their own, which any click-to-switch
+// enhancement a consuming page adds on top needs: aria-controls on a
+// trigger has to resolve to exactly one panel's id, document-wide.
+let tabsWidgetCounter = 0;
+function nextTabsWidgetId(): number {
+  return tabsWidgetCounter++;
+}
+
+/**
+ * `aria-selected`/`data-active` default to the first tab so the widget has a
+ * correct initial state even before any enhancement JS runs — index.css's
+ * no-JS fallback (`.tabs:not([data-enhanced="true"])`) shows every panel
+ * stacked regardless, but a JS-enhanced state
+ * (`[data-enhanced="true"] [data-active="true"]`) needs these set from the
+ * start: a click-to-switch enhancement only *toggles* them from here on, it
+ * doesn't establish which tab starts active.
+ */
 function renderTabs(node: DocASTNode, route: Route): string {
   const tabs = node.tabs ?? [];
+  const widgetId = nextTabsWidgetId();
   const tablist = tabs
-    .map((t, i) => `<button role="tab" aria-controls="tab-panel-${i}">${escapeHtml(t.title ?? '')}</button>`)
+    .map((t, i) => `<button role="tab" aria-controls="tab-panel-${widgetId}-${i}" aria-selected="${i === 0}">${escapeHtml(t.title ?? '')}</button>`)
     .join('');
   const panels = tabs
-    .map((t, i) => `<div role="tabpanel" id="tab-panel-${i}">${renderChildren(t.content, route)}</div>`)
+    .map((t, i) => `<div role="tabpanel" id="tab-panel-${widgetId}-${i}" data-active="${i === 0}">${renderChildren(t.content, route)}</div>`)
     .join('');
   return `<div class="tabs"><div role="tablist">${tablist}</div>${panels}</div>`;
 }
@@ -299,8 +393,13 @@ function renderNode(node: DocASTNode, route: Route): string {
       return `<blockquote>${renderChildren(node.content, route)}</blockquote>`;
     case 'list':
       return renderList(node, route);
-    case 'code':
-      return `<pre><code class="language-${escapeHtml(node.language ?? 'text')}">${escapeHtml(node.raw ?? '')}</code></pre>`;
+    case 'code': {
+      const lang = node.language ?? 'text';
+      const raw = node.raw ?? '';
+      const header = `<div class="code-header"><span class="code-lang">${CODE_ICON}${escapeHtml(lang)}</span>`
+        + `<button type="button" class="copy-button" data-kami-copy="${escapeHtml(raw)}">${COPY_ICON}</button></div>`;
+      return `<div class="code-block">${header}<pre><code class="language-${escapeHtml(lang)}">${highlightCode(raw, lang)}</code></pre></div>`;
+    }
     case 'img': {
       const opts = node.imgOptions ?? {};
       const alt = extractPlainText(node.content).trim();

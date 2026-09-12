@@ -64,6 +64,9 @@ export class DocSyntaxError extends Error {
 }
 
 /**
- * The supported preview style: index, the neutral default presentation.
+ * Which renderer/stylesheet pair an Adapter output pairs with.
+ *   kami  — src/kami's visual identity: serif, warm parchment, fixed 720px.
+ *   index — neutral default stylesheet: system sans-serif, plain white/dark.
+ * Both render the same AST; only the Adapter and stylesheet differ.
  */
-export type PreviewStyle = 'index';
+export type PreviewStyle = 'kami' | 'index';

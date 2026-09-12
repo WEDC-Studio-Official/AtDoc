@@ -267,8 +267,8 @@ export function getAllNodeDefs(): readonly NodeDef[] {
  * silently dropping it.
  *
  * @defn is deliberately excluded: it's collected document-wide and rendered
- * once as a real `<li>` inside the footnotes `<ol>` (see Adapters.ts's
- * renderFootnotes()), not loose inside a `<td>`.
+ * once as a real `<li>` inside the footnotes `<ol>` (see Adapters.ts's/
+ * KamiAdapter.ts's renderFootnotes()), not loose inside a `<td>`.
  * @fn (the footnote *reference*, a self-contained `<sup><a>` back-link) is
  * fine and included — Parser.ts checks this set before its raw-family
  * carve-out so @fn gets parsed as a real node instead of dumped as bare digits.
@@ -317,12 +317,12 @@ const CODE_LANGUAGES: readonly string[] = [
 
 /** @img's "(image-option-list)" keys — Block Spec §5's option table. */
 const IMAGE_OPTIONS: readonly SlotSuggestion[] = [
-  { label: 'src=', insert: 'src=${1}', detail: 'Image source URL (the key is optional for the first option)' },
-  { label: 'width=', insert: 'width=${1:200}', detail: 'Display width' },
-  { label: 'height=', insert: 'height=${1:150}', detail: 'Display height' },
-  { label: 'align=', insert: 'align=${1|left,center,right|}', detail: 'Alignment' },
-  { label: 'radius=', insert: 'radius=${1:8px}', detail: 'Corner radius (any CSS value; overridden by {radius-N})' },
-  { label: 'border=', insert: 'border=${1:1px solid #ccc}', detail: 'Border (any CSS value; overridden by {#RRGGBB})' },
+  { label: 'src=', insert: 'src=${1}', detail: '圖片來源 URL（第一個選項可省略 key）' },
+  { label: 'width=', insert: 'width=${1:200}', detail: '顯示寬度' },
+  { label: 'height=', insert: 'height=${1:150}', detail: '顯示高度' },
+  { label: 'align=', insert: 'align=${1|left,center,right|}', detail: '對齊方式' },
+  { label: 'radius=', insert: 'radius=${1:8px}', detail: '圓角（任意 CSS 值；{radius-N} 會覆蓋它）' },
+  { label: 'border=', insert: 'border=${1:1px solid #ccc}', detail: '外框（任意 CSS 值；{#RRGGBB} 會覆蓋它）' },
 ];
 
 /**
@@ -335,11 +335,11 @@ export function getParenSuggestions(name: string): SlotSuggestion[] {
   if (!nodeDef || nodeDef.paren === 'none') return [];
   switch (nodeDef.parenRole) {
     case 'level':
-      return [1, 2, 3, 4, 5, 6].map(n => ({ label: String(n), detail: `Level ${n} heading` }));
+      return [1, 2, 3, 4, 5, 6].map(n => ({ label: String(n), detail: `第 ${n} 層標題` }));
     case 'ordered':
-      return [{ label: 'ordered', detail: 'Ordered list (unordered when omitted)' }];
+      return [{ label: 'ordered', detail: '有序清單（省略則為項目清單）' }];
     case 'language':
-      return CODE_LANGUAGES.map(lang => ({ label: lang, detail: 'Syntax highlighting language' }));
+      return CODE_LANGUAGES.map(lang => ({ label: lang, detail: '語法高亮語言' }));
     case 'options':
       return IMAGE_OPTIONS.map(o => ({ ...o }));
     default: // 'title' | 'uri' | 'id' — free text
@@ -357,18 +357,18 @@ export function getStyleSuggestions(name: string): SlotSuggestion[] {
   switch (nodeDef?.styles) {
     case 'color':
       return [
-        ...NAMED_COLOR_TOKENS.map(token => ({ label: token, detail: 'Named color token' })),
-        { label: '#RRGGBB', insert: '#${1:3366ff}', detail: 'Hex color value (used directly without remapping)' },
+        ...NAMED_COLOR_TOKENS.map(token => ({ label: token, detail: '具名色票' })),
+        { label: '#RRGGBB', insert: '#${1:3366ff}', detail: '16 進位色值（直接採用，不重新映射）' },
       ];
     case 'card':
       return [
-        { label: '#RRGGBB', insert: '#${1:3366ff}', detail: 'Background color (Card Style v1)' },
-        { label: 'radius-N', insert: 'radius-${1:12}', detail: 'Corner radius in pixels (Card Style v1)' },
+        { label: '#RRGGBB', insert: '#${1:3366ff}', detail: '背景色（Card Style v1）' },
+        { label: 'radius-N', insert: 'radius-${1:12}', detail: '圓角像素值（Card Style v1）' },
       ];
     case 'image':
       return [
-        { label: '#RRGGBB', insert: '#${1:3366ff}', detail: 'Border color, applied as a 1px solid line (Image Style v1)' },
-        { label: 'radius-N', insert: 'radius-${1:12}', detail: 'Corner radius in pixels (Image Style v1)' },
+        { label: '#RRGGBB', insert: '#${1:3366ff}', detail: '外框色，套用為 1px 實線（Image Style v1）' },
+        { label: 'radius-N', insert: 'radius-${1:12}', detail: '圓角像素值（Image Style v1）' },
       ];
     default:
       return [];

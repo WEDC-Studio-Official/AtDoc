@@ -28,9 +28,9 @@
 // caller decide (the Shorthand Engine's answer: leave the author's raw text
 // alone). Hence the Result shape instead of a plain string return.
 
-import { getNodeDef, getAllNodeDefs, isCellAllowedNode, deriveParenFields } from './registry';
-import type { NodeDef, DerivedParenFields } from './registry';
-import type { DocASTNode } from './types';
+import { getNodeDef, getAllNodeDefs, isCellAllowedNode, deriveParenFields } from './registry.js';
+import type { NodeDef, DerivedParenFields } from './registry.js';
+import type { DocASTNode } from './types.js';
 
 export type SerializeResult =
   | { ok: true; text: string }

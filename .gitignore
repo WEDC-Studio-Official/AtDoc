@@ -1,3 +1,5 @@
+dist/
+
 node_modules/.package-lock.json
 node_modules/@types/node/assert.d.ts
 node_modules/@types/node/async_hooks.d.ts

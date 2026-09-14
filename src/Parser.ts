@@ -10,11 +10,11 @@
 // for genuine internal invariant violations (a NODE token for an unregistered
 // name — the Lexer should never emit one), not for anything a user can type.
 
-import type { Token } from './Lexer';
-import { DocSyntaxError } from './types';
-import type { DocASTNode, DocDiagnostic } from './types';
-import { getNodeDef, isCellAllowedNode, deriveParenFields } from './registry';
-import type { NodeDef } from './registry';
+import type { Token } from './Lexer.js';
+import { DocSyntaxError } from './types.js';
+import type { DocASTNode, DocDiagnostic } from './types.js';
+import { getNodeDef, isCellAllowedNode, deriveParenFields } from './registry.js';
+import type { NodeDef } from './registry.js';
 
 /** Content modes the Lexer scans opaquely into a single RAW token (@raw, @code, @mermaid, @kbd, @fn). */
 function isRawFamilyContent(content: NodeDef['content'] | undefined): boolean {

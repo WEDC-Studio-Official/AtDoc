@@ -22,12 +22,16 @@ import type { DocASTNode } from './types.js';
 
 type Route = 'tailwind' | 'inline';
 
+// Single-pass escape instead of four chained .replace() calls — each chained
+// call allocated its own intermediate string, which showed up as a real
+// contributor to GC pressure (StringAdd_CheckNone) on large/text-heavy
+// documents (see docs/benchmark.md's Local Environment stage investigation).
+// One pass over the string with a lookup table does the same job with a
+// quarter of the intermediate allocations.
+const ESCAPE_MAP: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+const ESCAPE_RE = /[&<>"]/g;
 function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return s.replace(ESCAPE_RE, (c) => ESCAPE_MAP[c]);
 }
 
 // Word's actual Text Highlight Color swatches (Home > Text Highlight Color),

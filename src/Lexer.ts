@@ -185,6 +185,17 @@ function scanStylesEnd(source: string, start: number): { end: number; closed: bo
 }
 
 export function tokenize(source: string): Token[] {
+  // Normalize line endings before anything else — every position (`start`/
+  // `end`) recorded below, and everything downstream that trusts them
+  // (Parser diagnostics, Serializer round-tripping, Adapters' escaping),
+  // assumes "\n" is the only line-break character. Doing this here rather
+  // than expecting callers to pre-normalize means behavior doesn't depend on
+  // how the source file was checked out (a repo without a `.gitattributes`
+  // line-ending rule, or a file authored on Windows, can hand this raw
+  // "\r\n" and it's handled the same as "\n"). A lone "\r" (old Mac-style)
+  // normalizes too, on the same principle.
+  source = source.replace(/\r\n?/g, '\n');
+
   const tokens: Token[] = [];
   const n = source.length;
   let i = 0;

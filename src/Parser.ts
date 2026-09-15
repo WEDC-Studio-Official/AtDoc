@@ -9,6 +9,19 @@
 // sensible best-effort AST instead of throwing. `DocSyntaxError` is reserved
 // for genuine internal invariant violations (a NODE token for an unregistered
 // name — the Lexer should never emit one), not for anything a user can type.
+//
+// Known limitation (tracked, not yet fixed): being recursive-descent, this
+// parser costs one native call-stack frame per nesting level —
+// parseNode() -> parseContentByMode() -> parseSlotContent() -> parseNode()
+// for each level of a nested construct (confirmed: e.g. @bold nested ~2000+
+// levels deep throws "Maximum call stack size exceeded" here, before
+// rendering is ever reached). Adapters.ts's renderer was converted to an
+// explicit-stack walk specifically to survive this class of input once
+// parsed; this file hasn't been, since doing so safely — without changing
+// any of the diagnostics/recovery behavior described above — is a
+// substantially larger rewrite of the engine's most correctness-sensitive
+// part. A document nested anywhere near that deep is extremely unusual by
+// hand, but plausible from generated/templated input.
 
 import type { Token } from './Lexer.js';
 import { DocSyntaxError } from './types.js';
@@ -400,8 +413,16 @@ export class DocParser {
     const NUM_RE = /^[ \t]*(\d+)[.)][ \t]+([\s\S]*)$/;
 
     for (const line of lines) {
-      const nodeSegs = line.filter((s): s is DocASTNode => typeof s !== 'string');
-      const textSegs = line.filter((s): s is string => typeof s === 'string');
+      // Single pass instead of two separate .filter() calls (one per
+      // predicate) — same split, half the array allocations and iterations
+      // per line. Matters here because buildListItems() runs once per list
+      // in the document, and this loop runs once per line in every list.
+      const nodeSegs: DocASTNode[] = [];
+      const textSegs: string[] = [];
+      for (const s of line) {
+        if (typeof s === 'string') textSegs.push(s);
+        else nodeSegs.push(s);
+      }
       const isBlank = nodeSegs.length === 0 && textSegs.every(t => t.trim() === '');
       if (isBlank) continue;
 

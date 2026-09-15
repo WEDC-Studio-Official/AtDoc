@@ -1,0 +1,8 @@
+@table[
+    @cols[id,snippet]
+
+    @data[
+        [1,@code(js)[const x = 1;]]
+        [2,@raw[literal @text]]
+    ]
+]

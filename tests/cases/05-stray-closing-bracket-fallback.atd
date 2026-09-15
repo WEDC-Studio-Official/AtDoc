@@ -1,0 +1,5 @@
+@p[This paragraph closes normally.]
+
+Here is a stray closing bracket with no opener: ]
+
+It does not crash the parser — at the document root it just becomes a literal "]" character inside an implicit paragraph.

@@ -1,0 +1,3 @@
+@tabs[
+    @p[This is a paragraph, not a @tab — @tabs only accepts @tab children.]
+]

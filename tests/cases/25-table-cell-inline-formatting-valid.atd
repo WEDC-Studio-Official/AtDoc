@@ -1,0 +1,7 @@
+@table[
+    @cols[id,name,note]
+
+    @data[
+        [1,@bold[Alice],See @link(https://example.com)[profile]@n more info]
+    ]
+]

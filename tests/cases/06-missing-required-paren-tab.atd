@@ -1,0 +1,3 @@
+@tabs[
+    @tab[This tab has no (title) — @tab's paren is REQUIRED, not optional, unlike @details/@card.]
+]

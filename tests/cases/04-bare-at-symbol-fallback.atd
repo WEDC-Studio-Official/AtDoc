@@ -1,0 +1,4 @@
+@p[
+Contact: test@example.com, or just type a lone @ symbol like this: @ (space after).
+Even @GitHub-style mentions stay as plain text since "GitHub" isn't a registered command.
+]

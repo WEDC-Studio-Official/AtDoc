@@ -1,0 +1,3 @@
+@p[
+@cols[id,name] used outside of @table — @cols is a restricted-context node, just like @tab.
+]

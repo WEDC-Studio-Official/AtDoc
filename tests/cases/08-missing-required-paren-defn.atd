@@ -1,0 +1,7 @@
+@p[
+這裡有一個註腳@fn[1]，但下面的定義忘記寫編號。
+]
+
+@defn[
+Footnote content with no (id) — @defn requires a parenthesized identifier.
+]

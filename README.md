@@ -4,6 +4,35 @@
 
 @Doc is a notation designed for three readers: humans who write content, AI that generates content, and compilers that render content. It is not the next Markdown — it's the missing notation layer between LLM-generated content and render targets.
 
+
+> [!IMPORTANT]
+> ## AtDoc Benchmark
+>
+> - [English Benchmark](./docs/benchmark.md)
+> - [繁體中文 Benchmark](./docs/benchmark-tw.md)
+>
+> AtDoc has completed the Playground and the release of the `atdoc-core` npm package. The next step is to conduct a five-stage validation process:
+>
+> 1. **Local Environment**: Establish a baseline and refine the benchmarking tools.
+> 2. **Cloudflare**: Evaluate Parser／Renderer execution efficiency and deployment value.
+> 3. **Google Colab**: Verify reproducibility in a publicly accessible environment.
+> 4. **GPUTW**: Evaluate accuracy, generation speed, and token performance across different model sizes.
+> 5. **ChatGPT API**: Evaluate AtDoc’s compatibility with commercial large language models.
+>
+> Evaluation criteria include:
+>
+> - Semantic accuracy
+> - Structural accuracy
+> - Parsing success rate
+> - Rendering success rate
+> - Execution time
+> - Generation speed
+> - Token usage and cost
+>
+> **Progress:**
+>
+> ![]()
+
 Start with the [English documentation](docs/en/README.md). Chinese translations and other language editions are also available:
 
 | Language | README | Block Syntax Spec | Inline Syntax Spec |

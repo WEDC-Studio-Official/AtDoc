@@ -31,7 +31,7 @@
 >
 > **Progress:**
 >
-> ![]()
+> ![](https://kami-status-api.sakuna.workers.dev/schedule?url=https://kami-status-api.sakuna.workers.dev/projects/badge/1789441491124)
 
 Start with the [English documentation](docs/en/README.md). Chinese translations and other language editions are also available:
 

@@ -179,17 +179,30 @@ Token cost is also lower: `w-300px` instead of Tailwind's arbitrary-value syntax
 
 ## For Web Developers
 
+```
+npm install atdoc-core
+```
+
 ```ts
-import { tokenize } from './Lexer';
-import { DocParser } from './Parser';
-import { DocTranspiler } from './Adapters';
+import { tokenize, DocParser, DocTranspiler } from 'atdoc-core';
+// or, per-module: import { tokenize } from 'atdoc-core/Lexer';
 
 const tokens = tokenize(source);
 const ast = new DocParser(tokens).parse();
 const html = ast.map(node => DocTranspiler.toTailwindHTML(node)).join('\n');
 ```
 
-Feed in @Doc source, get a structured AST out, and render it with an adapter that matches your stack. Parser and Adapters drop straight into your pipeline with no extra dependencies.
+Feed in @Doc source, get a structured AST out, and render it with an adapter that matches your stack. The package has no runtime dependencies of its own. Plain Node ESM works (no bundler required) — every relative import in the published build carries its explicit `.js` extension, which `moduleResolution: "NodeNext"` requires.
+
+Round-tripping the AST back to @Doc source — for an editor's "safe write-back" after a structural edit — is `serializeDocument`, also exported from the root package (or `atdoc-core/Serializer`):
+
+```ts
+import { serializeDocument } from 'atdoc-core';
+
+const result = serializeDocument(ast); // { ok: true, text: string } | { ok: false, reason: string }
+```
+
+Prefer copying from source instead? `src/` has no extra dependencies either — see [What's in here](#whats-in-here) below.
 
 ---
 

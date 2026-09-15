@@ -9,8 +9,8 @@
 // Lexer to switch into an opaque scan mode for their bracket content — see
 // Inline Syntax Specification §9 (@raw Opaque Domain) and Special-Nodes.md §6.
 
-import { getNodeDef } from './registry';
-import type { ContentMode } from './registry';
+import { getNodeDef } from './registry.js';
+import type { ContentMode } from './registry.js';
 
 export type TokenType = 'NODE' | 'PAREN' | 'STYLES' | 'SLOT_OPEN' | 'SLOT_CLOSE' | 'RAW' | 'TEXT';
 

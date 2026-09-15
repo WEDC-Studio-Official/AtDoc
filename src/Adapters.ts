@@ -18,7 +18,7 @@
 // parsed `styles` slot (registry.ts `styles: true`) but this Adapter doesn't
 // yet map it to visual output. Everything else renders identically on both routes.
 
-import type { DocASTNode } from './types';
+import type { DocASTNode } from './types.js';
 
 type Route = 'tailwind' | 'inline';
 

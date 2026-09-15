@@ -42,8 +42,8 @@
 //     Monarch tokenizes one editor line at a time and @img's paren is
 //     allowed to span lines (see test.atd).
 
-import { getAllAliasDefs, getAllNodeDefs } from '../registry';
-import type { ContentMode, ParenMode } from '../registry';
+import { getAllAliasDefs, getAllNodeDefs } from '../registry.js';
+import type { ContentMode, ParenMode } from '../registry.js';
 
 const IDENT_BOUNDARY = '(?![a-zA-Z0-9_-])';
 

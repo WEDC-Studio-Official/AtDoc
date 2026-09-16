@@ -181,7 +181,7 @@ function isIndentationWhitespace(s: string): boolean {
 type Out = string[];
 
 type Frame =
-  | { t: 'str'; s: string }
+  | string
   | { t: 'children'; content: (DocASTNode | string)[]; route: Route }
   | { t: 'node'; node: DocASTNode; route: Route };
 
@@ -196,9 +196,9 @@ type Frame =
  * sequence) push their own frames directly instead of calling this once.
  */
 function pushWrap(stack: Frame[], open: string, content: (DocASTNode | string)[], close: string, route: Route): void {
-  stack.push({ t: 'str', s: close });
+  stack.push(close);
   stack.push({ t: 'children', content, route });
-  stack.push({ t: 'str', s: open });
+  stack.push(open);
 }
 
 /** Pushes `items` onto `stack` in reverse — so that popping (LIFO) restores their original forward order. Shared by every multi-item case (list, tabs, footnotes) that pushes several same-shaped groups in a row. */
@@ -210,8 +210,8 @@ function pushReversed<T>(stack: T[], items: readonly T[]): void {
 function runFrames(stack: Frame[], out: Out): void {
   while (stack.length > 0) {
     const frame = stack.pop()!;
-    if (frame.t === 'str') {
-      out.push(frame.s);
+    if (typeof frame === 'string') {
+      out.push(frame);
       continue;
     }
     if (frame.t === 'children') {
@@ -219,7 +219,7 @@ function runFrames(stack: Frame[], out: Out): void {
       for (let i = items.length - 1; i >= 0; i--) {
         const c = items[i];
         if (typeof c === 'string') {
-          if (!isIndentationWhitespace(c)) stack.push({ t: 'str', s: escapeHtml(c) });
+          if (!isIndentationWhitespace(c)) stack.push(escapeHtml(c));
         } else {
           stack.push({ t: 'node', node: c, route: frame.route });
         }
@@ -395,34 +395,33 @@ function pushList(stack: Frame[], node: DocASTNode, route: Route): void {
   const items = node.content.filter((c): c is DocASTNode => typeof c !== 'string' && c.type === 'list-item');
   const tag = node.ordered ? 'ol' : 'ul';
   if (items.length === 0) {
-    stack.push({ t: 'str', s: `<${tag}></${tag}>` });
+    stack.push(`<${tag}></${tag}>`);
     return;
   }
-  stack.push({ t: 'str', s: `</${tag}>` });
+  stack.push(`</${tag}>`);
   pushGroups(stack, items, route, (i) => ({
     open: `<li${node.ordered && i.marker !== undefined ? ` value="${i.marker}"` : ''}>`,
     content: i.content,
     close: '</li>',
   }));
-  stack.push({ t: 'str', s: `<${tag}>` });
+  stack.push(`<${tag}>`);
 }
 
 function pushTabs(stack: Frame[], node: DocASTNode, route: Route): void {
   const tabs = node.tabs ?? [];
-  stack.push({ t: 'str', s: '</div>' }); // closes the outer .tabs
+  stack.push('</div>'); // closes the outer .tabs
   pushGroups(stack, tabs, route, (t, i) => ({
     open: `<div role="tabpanel" id="tab-panel-${i}">`,
     content: t.content,
     close: '</div>',
   }));
-  stack.push({ t: 'str', s: '</div>' }); // closes [role="tablist"]
+  stack.push('</div>'); // closes [role="tablist"]
   // Triggers have no children of their own (just an escaped title) — pushed
   // as flat strings, in reverse, same as pushGroups but without a wrap.
-  pushReversed(stack, tabs.map((t, i) => ({
-    t: 'str' as const,
-    s: `<button role="tab" aria-controls="tab-panel-${i}">${escapeHtml(t.title ?? '')}</button>`,
-  })));
-  stack.push({ t: 'str', s: '<div class="tabs"><div role="tablist">' });
+  pushReversed(stack, tabs.map((t, i) =>
+    `<button role="tab" aria-controls="tab-panel-${i}">${escapeHtml(t.title ?? '')}</button>`
+  ));
+  stack.push('<div class="tabs"><div role="tablist">');
 }
 
 /**
@@ -453,7 +452,7 @@ function pushNodeFrames(stack: Frame[], node: DocASTNode, route: Route): void {
       pushList(stack, node, route);
       return;
     case 'code':
-      stack.push({ t: 'str', s: `<pre><code class="language-${escapeHtml(node.language ?? 'text')}">${escapeHtml(node.raw ?? '')}</code></pre>` });
+      stack.push(`<pre><code class="language-${escapeHtml(node.language ?? 'text')}">${escapeHtml(node.raw ?? '')}</code></pre>`);
       return;
     case 'img': {
       const opts = node.imgOptions ?? {};
@@ -477,7 +476,7 @@ function pushNodeFrames(stack: Frame[], node: DocASTNode, route: Route): void {
       if (radius) styleParts.push(`border-radius:${escapeHtml(radius)};`);
       if (border) styleParts.push(`border:${escapeHtml(border)};`);
       if (styleParts.length) attrs.push(`style="${styleParts.join('')}"`);
-      stack.push({ t: 'str', s: `<img ${attrs.join(' ')}>` });
+      stack.push(`<img ${attrs.join(' ')}>`);
       return;
     }
     case 'table': {
@@ -495,14 +494,14 @@ function pushNodeFrames(stack: Frame[], node: DocASTNode, route: Route): void {
       const bodyRows = (node.rows ?? [])
         .map(r => `<tr>${r.map(cell => `<td>${renderChildrenToString(cell, route).replace(/\n/g, '<br>')}</td>`).join('')}</tr>`)
         .join('');
-      stack.push({ t: 'str', s: `<table><thead><tr>${theadCells}</tr></thead><tbody>${bodyRows}</tbody></table>` });
+      stack.push(`<table><thead><tr>${theadCells}</tr></thead><tbody>${bodyRows}</tbody></table>`);
       return;
     }
     case 'hr':
-      stack.push({ t: 'str', s: '<hr>' });
+      stack.push('<hr>');
       return;
     case 'svg':
-      stack.push({ t: 'str', s: sanitizeSvg(node.raw ?? '') });
+      stack.push(sanitizeSvg(node.raw ?? ''));
       return;
 
     // Container Blocks
@@ -531,7 +530,7 @@ function pushNodeFrames(stack: Frame[], node: DocASTNode, route: Route): void {
       pushWrap(stack, `<section><h4>${escapeHtml(node.title ?? '')}</h4>`, node.content, '</section>', route);
       return;
     case 'mermaid':
-      stack.push({ t: 'str', s: `<pre class="mermaid">${escapeHtml(node.raw ?? '')}</pre>` });
+      stack.push(`<pre class="mermaid">${escapeHtml(node.raw ?? '')}</pre>`);
       return;
 
     // Text Formatting
@@ -563,7 +562,7 @@ function pushNodeFrames(stack: Frame[], node: DocASTNode, route: Route): void {
     // only adds the tint on top. Distinct from `@code`, which is a block and
     // renders as `<pre><code>`; `pre code` resets the inline decoration.
     case 'raw':
-      stack.push({ t: 'str', s: `<code>${escapeHtml(node.raw ?? '')}</code>` });
+      stack.push(`<code>${escapeHtml(node.raw ?? '')}</code>`);
       return;
 
     // Semantic Inline
@@ -574,7 +573,7 @@ function pushNodeFrames(stack: Frame[], node: DocASTNode, route: Route): void {
       pushWrap(stack, '<sub>', node.content, '</sub>', route);
       return;
     case 'kbd':
-      stack.push({ t: 'str', s: `<kbd>${escapeHtml(node.raw ?? '')}</kbd>` });
+      stack.push(`<kbd>${escapeHtml(node.raw ?? '')}</kbd>`);
       return;
     case 'link':
       pushWrap(stack, `<a href="${escapeHtml(resolveUri(node.uri ?? ''))}">`, node.content, '</a>', route);
@@ -594,12 +593,12 @@ function pushNodeFrames(stack: Frame[], node: DocASTNode, route: Route): void {
     case 'defn':
       return;
     case 'fn':
-      stack.push({ t: 'str', s: `<sup id="fnref${node.number}"><a href="#fn${node.number}">${node.number}</a></sup>` });
+      stack.push(`<sup id="fnref${node.number}"><a href="#fn${node.number}">${node.number}</a></sup>`);
       return;
 
     // Special Nodes
     case 'n':
-      stack.push({ t: 'str', s: '<br>' });
+      stack.push('<br>');
       return;
 
     default:

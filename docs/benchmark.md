@@ -9,7 +9,12 @@ across different environments, models, and execution platforms.
 The benchmark will compare traditional Markdown, JSON, HTML, and AtDoc
 under the same test conditions.
 
-> **Status:** Coming soon
+> **Status:** Stage 1 (Local Environment) not yet started as a formal AtDoc
+> parser/renderer benchmark. A companion project has already run
+> environment-equivalents of Stage 4 (GPUTW) and Stage 5 (ChatGPT API) —
+> local LM Studio hardware standing in for rented GPUTW infrastructure, and
+> the Gemini API standing in for ChatGPT — see the progress notes under
+> each stage below. Stages 2 (Cloudflare) and 3 (Google Colab) not started.
 
 ---
 
@@ -407,6 +412,40 @@ The GPUTW stage should show:
 
 Different hardware, model versions, and quantization formats must not be combined into one unqualified ranking.
 
+### Progress Notes (2026-09-18)
+
+A companion project (`benchmark/model-format` in the app repo that depends
+on `atdoc-core`) has run this stage's test design — Markdown/HTML/MDX/JSON/
+AtDoc generation across content briefs of three difficulty tiers, in both
+Chinese and English — on **local hardware instead of rented GPUTW
+infrastructure**: two personal machines (8GB VRAM laptop, 16GB VRAM
+desktop) running quantized models through LM Studio, not the rented
+GPU environment this stage specifies. Treat the following as an early
+signal for the stage's methodology, not a substitute for the real
+GPUTW run:
+
+- Models covered: GPT-OSS 20B, Qwen3.5 9B, Gemma 4 E4B (both machines);
+  Qwen3.8 27B and Gemma 4 26B A4B (16GB machine only).
+- AtDoc is the only format where syntax-valid rate drops meaningfully
+  below ~100% — local models ranged roughly 50%-94% depending on model
+  and hardware, versus near-100% for Markdown/HTML/JSON on the same
+  models. Markdown/JSON/HTML syntax validity was consistently high
+  across every model tested.
+- Thinking/non-thinking modes could not always be evaluated separately
+  as this stage specifies: Qwen3.5 9B's reasoning mode could not be
+  disabled via any documented parameter (`enable_thinking: false`,
+  `/no_think`, `chat_template_kwargs`), and it silently consumed the
+  entire output token budget on hidden reasoning at the model's default
+  token ceiling — required raising `max_tokens` substantially higher
+  than the non-reasoning models needed to get any visible output at
+  all. Qwen3.8 27B, by contrast, does expose a working `reasoning_effort`
+  parameter.
+- Same-model tok/s varied by up to ~19x between the two machines
+  (a 20B-class model was VRAM-bound on the 8GB machine and far less so
+  on the 16GB one) — a concrete illustration of why this stage's own
+  guidance against combining different hardware into one ranking matters
+  in practice, not just in principle.
+
 ---
 
 ## 5. ChatGPT API
@@ -469,6 +508,36 @@ The ChatGPT API stage should determine:
 - Whether AtDoc improves structural consistency
 - Whether AtDoc is suitable for AI-native document generation
 - What limitations remain in real API usage
+
+### Progress Notes (2026-09-18)
+
+The same companion project ran this stage's test design against the
+**Gemini API instead of ChatGPT** (via Google's OpenAI-compatible
+endpoint), using the same content briefs and metrics as the GPUTW-stage
+notes above. Treat this as an early signal for a commercial-API-class
+model, not a ChatGPT result specifically:
+
+- Gemini 2.5 Flash reached 100% syntax-valid AtDoc across every content
+  brief tested, with a perfect structural-accuracy score on nearly every
+  case — the strongest AtDoc generation result observed in this project
+  so far, well above any locally-hosted model.
+- Generation speed was consistently 120-190 tokens/second, roughly
+  3-30x the local models' throughput (as expected — this stage measures
+  a hosted API, not comparable hardware).
+- Reasoning mode had to be explicitly disabled (`reasoning_effort: "none"`
+  in the request body): the model's default "thinking" mode otherwise
+  consumed the entire output token budget on hidden reasoning and
+  returned empty content, the same failure class as the GPUTW-stage notes
+  above — except here every wasted call also has a real API cost, making
+  it worth calling out explicitly for this stage's "Estimated API cost"
+  metric.
+- One transient `503 Service Unavailable` occurred during testing and
+  needed a retry — worth tracking under this stage's "Retry rate" metric
+  for any real API integration, not just an AtDoc-specific concern.
+- JSON output consistently arrived wrapped in an unrequested ` ```json `
+  code fence, unlike every other format tested — a minor but consistent
+  parsing gotcha worth a "strip code fence before validating" step in any
+  real integration.
 
 ---
 

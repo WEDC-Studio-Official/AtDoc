@@ -16,8 +16,8 @@
 > 1. **Local Environment**: Establish a baseline and refine the benchmarking tools.
 > 2. **Cloudflare**: Evaluate Parser／Renderer execution efficiency and deployment value.
 > 3. **Google Colab**: Verify reproducibility in a publicly accessible environment.
-> 4. **GPUTW**: Evaluate accuracy, generation speed, and token performance across different model sizes.
-> 5. **ChatGPT API**: Evaluate AtDoc’s compatibility with commercial large language models.
+> 4. **GPUTW**: Evaluate accuracy, generation speed, and token performance across different model sizes. *Environment-equivalent progress already run on local hardware instead of rented GPUTW infrastructure — see [docs/benchmark.md](./docs/benchmark.md#4-gputw) for details.*
+> 5. **ChatGPT API**: Evaluate AtDoc’s compatibility with commercial large language models. *Environment-equivalent progress already run against the Gemini API instead of ChatGPT — see [docs/benchmark.md](./docs/benchmark.md#5-chatgpt-api) for details.*
 >
 > Evaluation criteria include:
 >

@@ -3,8 +3,8 @@
   "extensions": [".atd"],
   "specialRules": {
     "voidNodes":       ["hr", "n"],
-    "contextNodes":    ["tab", "cols", "data"],
-    "rawNodes":        ["code", "mermaid", "svg", "raw", "kbd", "fn"],
+    "contextNodes":    ["tab", "cols", "data", "span"],
+    "rawNodes":        ["code", "mermaid", "svg", "raw", "kbd", "fn", "hex"],
     "escapeSymbols":   ["@@"],
     "rawEscapeNodes":   ["raw"],
     "rawEscapeSymbols": ["@@]", "@@[", "@]", "@["],
@@ -22,7 +22,7 @@
     },
     "Inline": {
       "formatKeywords":   ["mark", "color", "bordered", "bold", "b", "italic", "i", "underline", "u", "del", "raw"],
-      "semanticKeywords": ["sup", "sub", "kbd", "link"],
+      "semanticKeywords": ["sup", "sub", "kbd", "link", "spoiler", "hex"],
       "footnoteKeywords": ["fn", "defn"],
       "specialKeywords":  ["n"]
     }

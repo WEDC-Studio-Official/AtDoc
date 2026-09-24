@@ -50,9 +50,10 @@ English is the primary language for the package and its documentation; Chinese i
 ## What's in here
 
 ```
-src/            Lexer, Parser, registry (single source of truth for nodes), Adapters (two HTML render routes)
-src/editor/     Monarch tokenizer for Monaco-style editors
-tests/          Strict Mode test cases for the Lexer/Parser, plus render verification for each node
+src/            Lexer, Parser, Serializer, registry (single source of truth for nodes), types, pipeline, markdownImport
+src/index/      Default renderer plugin: Adapters (two HTML render routes) + index.css
+src/editor/    Monarch tokenizer for Monaco-style editors
+tests/          Strict Mode test cases for the Lexer/Parser, serializer round-trips, and render verification (`npm test`)
 configs/        Node configuration for editor/tooling
 docs/<lang>/    Per-language documentation (README + the two grammar specifications)
 ```

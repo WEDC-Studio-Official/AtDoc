@@ -112,5 +112,68 @@
     "shouldThrow": true,
     "messageContains": "has no `{styles}` slot",
     "note": "The Lexer tokenizes \"{...}\" after any node name, so a {styles} slot on a node whose grammar defines none (@heading here) used to be parsed and then silently dropped. Only nodes with a `styles` StyleSet in registry.ts accept one."
+  },
+  "29-table-row-column-count-mismatch.atd": {
+    "shouldThrow": true,
+    "messageContains": "every row must match the column count exactly",
+    "note": "A thousands-separator comma (\"80,000\") silently split one cell into two, so the row parses clean at 4 cells against @cols's 2 columns. Previously accepted silently (the cells just shifted); now flagged instead of rendering misaligned columns."
+  },
+  "30-hex-node-valid.atd": {
+    "shouldThrow": false,
+    "note": "v0.1.2 (README.md §A-3) — @hex[#3366ff] displays a color swatch + its own literal code, distinct from @color{#hex}[...] which recolors other text. Both \"#RGB\" and \"#RRGGBB\" forms are accepted."
+  },
+  "31-hex-node-invalid-format.atd": {
+    "shouldThrow": true,
+    "messageContains": "must be a \"#RGB\" or \"#RRGGBB\" color code",
+    "note": "@hex's content is restricted (like @kbd's `key`, but further constrained to an actual hex color) — a named color word isn't valid content for it."
+  },
+  "32-spoiler-node-valid.atd": {
+    "shouldThrow": false,
+    "note": "v0.1.2 (README.md §A-2) — @spoiler is a nestable inline node (unlike @kbd/@hex's restricted text), so @spoiler[@bold[...]] parses as a real nested node, not flattened text."
+  },
+  "33-img-align-float-valid.atd": {
+    "shouldThrow": false,
+    "note": "v0.1.2 (README.md §A-1) — \"align=float-left\" is a new recognized @img option value alongside the existing left/center/right."
+  },
+  "34-img-align-unrecognized-value.atd": {
+    "shouldThrow": false,
+    "note": "\"align=middle\" isn't a recognized value — flagged as a warning-severity diagnostic (parser.diagnostics still records it), not an error, since the document still renders something reasonable either way. run-tests.ts's shouldThrow only counts error-severity diagnostics, so this case is expected to parse clean by that measure."
+  },
+  "35-card-style-token-unrecognized.atd": {
+    "shouldThrow": true,
+    "messageContains": "not \"#RRGGBB\" or \"radius-N\"",
+    "note": "@card{blue} — Card Style v1 only accepts \"#RRGGBB\" or \"radius-N\"; a named color token like @mark's {styles} accepts was previously accepted and silently dropped by the renderer with no signal anywhere. Message wording comes from diagnoseUnknownStyleTokens's shared allowedDesc string (\"#RRGGBB\" or \"radius-N\")."
+  },
+  "36-defn-non-integer-id.atd": {
+    "shouldThrow": true,
+    "messageContains": "isn't numeric",
+    "note": "@defn(note-a) — @fn[...] only ever accepts an integer reference, so a non-numeric @defn id can never actually be linked to from anywhere; previously accepted silently."
+  },
+  "37-img-align-bare-keyword-valid.atd": {
+    "shouldThrow": false,
+    "note": "registry.ts's parseImgOptions() recognizes a bare comma item matching a known align value (e.g. \"float-left\") without the \"align=\" key — the vocabulary is closed, so it's unambiguous. \"align=float-left\" still works too; this is purely an additive shorthand, not a replacement."
+  },
+  "38-table-pipe-delimiter-valid.atd": {
+    "shouldThrow": false,
+    "note": "v0.1.2 (README.md §3.4/§3.5) — @cols/@data using \"|\" instead of \",\" once a \"|\" appears anywhere at depth 0. Exercises the doc's own worked example in one case: a comma inside a pipe-delimited cell stays literal (\"陳大文, 林美華\"), @span(2) makes a 2-cell row satisfy 3 columns, and a genuinely empty MIDDLE cell (\"||資料工程小組\") stays a real empty column since edge-stripping only ever touches the first/last cell of a row, not a middle one."
+  },
+  "39-table-pipe-edge-leniency-valid.atd": {
+    "shouldThrow": false,
+    "note": "A leading and/or trailing \"|\" is decorative and stripped independently per edge — \"[|a|b|]\", \"[1|2|]\", and \"[|1|2]\" (2, 2, and 2 cells respectively) all parse the same as \"[a|b]\"/\"[1|2]\". There's no way to represent a genuinely empty first/last column via an edge \"|\" any more."
+  },
+  "40-span-outside-table.atd": {
+    "shouldThrow": true,
+    "messageContains": "may only appear directly inside `@data row`",
+    "note": "@span used outside a table cell — restrictedTo (registry.ts) rejects it the same way @tab is rejected outside @tabs."
+  },
+  "41-span-non-integer-count.atd": {
+    "shouldThrow": true,
+    "messageContains": "isn't a positive integer",
+    "note": "@span(two) — registry.ts's parseSpanCount() only accepts a plain positive integer; falls back to counting as width-1 for the row/@cols check (not re-flagged there too) rather than double-reporting the same root cause two ways."
+  },
+  "42-table-pipe-row-mismatch.atd": {
+    "shouldThrow": true,
+    "messageContains": "totals 2 column(s) of width",
+    "note": "A pipe-delimited row with a genuine width mismatch (no @span involved) is still flagged, same as the legacy comma-delimited check (case 29) — the new syntax doesn't relax the row/@cols invariant."
   }
 }

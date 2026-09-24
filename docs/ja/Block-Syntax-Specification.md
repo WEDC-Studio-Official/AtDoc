@@ -1,8 +1,11 @@
-# @Doc Block Syntax Specification v1.4
+# @Doc Block Syntax Specification v1.5
 
 > 🌐 他の言語版: [English](../en/Block-Syntax-Specification.md) ・ [繁體中文](../zh-tw/Block-Syntax-Specification.md) ・ [简体中文](../zh-cn/Block-Syntax-Specification.md) ・ [한국어（AI 번역, 부정확할 수 있습니다）](../ko/Block-Syntax-Specification.md)
 >
 > ⚠️ **この文書は AI による翻訳です。誤りが含まれる可能性があります。** 正確な内容を確認したい場合は、[繁體中文版](../zh-tw/Block-Syntax-Specification.md) または [English 版](../en/Block-Syntax-Specification.md) をご参照ください。
+
+> [!NOTE]
+> **変更履歴（構文 v0.1.2、仕様 v1.5）**——`@img` に `float-left`／`float-right` の配置と、`align` のキー省略形（裸のキーワード）を追加（第 5 節 Image）。`@table` のセルを `|` で区切れるようになり、`@span(n)[...]` で 1 つのセルが複数の列にまたがれるようになった（第 5 節 Table）。行の幅が `@cols` の列数と一致しない場合は diagnostic になる。認識できない `{styles}` token と数字でない `@defn` の id も diagnostic になる（第 4 節、Inline Spec 第 11 節）。`@tabs` の panel id は文書全体で一意になった（第 8 節 Tabs）。インラインノード `@spoiler` と `@hex` も新規追加——Inline Spec 第 15 節を参照。
 
 ## 0. 目次
 
@@ -37,13 +40,16 @@
 そのため @Doc は次のものを提供しない：
 
 * `@div`
-* `@span`
+* `@span`（汎用レイアウトラッパーとして）
 * `@flex`
 * `@grid`
 * `@row`
 * `@col`
 * `@class`
 * `@style`
+
+> [!NOTE]
+> **NOTE**：`@span(n)[...]` は v0.1.2 から**実際に存在する**が、HTML の `<span>`／`<div>` のような汎用レイアウトラッパーではない。これは**テーブル構造のマーカー**であり、`@data` のセルの唯一の内容としてのみ有効で、「このセルは n 列にまたがる」ことだけを表す。スタイルや表示に関する情報は一切持たない——第 5 節 Table を参照。
 
 Renderer はプラットフォームに応じて自由に決定できる：
 
@@ -278,6 +284,7 @@ image-option =
     | width-option
     | height-option
     | align-option
+    | bare-align-option
     | radius-option
     | border-option ;
 
@@ -291,7 +298,22 @@ height-option =
     "height=" , integer ;
 
 align-option =
-    "align=" , ( "left" | "center" | "right" ) ;
+    "align=" , align-value ;
+
+align-value =
+      "left"
+    | "center"
+    | "right"
+    | "float-left"
+    | "float-right" ;
+
+(* Because align-value is a closed set, a bare item that is exactly one of
+   its five values is also accepted as an align-option with no "align="
+   key (e.g. @img(src=a.png,float-left)[...]). This is checked BEFORE the
+   "first bare item is src" rule, so @img(float-left)[...] reads as align,
+   never as a URL that happens to spell "float-left". *)
+bare-align-option =
+    align-value ;
 
 radius-option =
     "radius=" , text ;
@@ -324,9 +346,14 @@ cols =
         column-list ,
     "]" ;
 
+(* Cell delimiter (v0.1.2): "|" if the row uses "|" anywhere at its own
+   top level, otherwise the legacy ",". Decided independently for @cols and
+   for each @data row. See §5 Table. *)
+cell-delimiter =
+    "|" | "," ;
+
 column-list =
-    cell ,
-    { "," , cell } ;
+    [ "|" ] , cell , { cell-delimiter , cell } , [ "|" ] ;
 
 data =
     "@data" ,
@@ -336,9 +363,18 @@ data =
 
 row =
     "[" ,
-        cell ,
-        { "," , cell } ,
+        [ "|" ] , row-cell , { cell-delimiter , row-cell } , [ "|" ] ,
     "]" ;
+
+(* A cell that is exactly one span-cell counts as n toward the row's width
+   instead of 1. A leading and/or trailing "|" is decoration and is
+   stripped, each edge independently. *)
+row-cell =
+      span-cell
+    | cell ;
+
+span-cell =
+    "@span" , "(" , integer , ")" , "[" , cell , "]" ;
 
 (* cell は単純なプレーンテキストだけではない —— 厳選された inline-node の
    サブセット（cell-inline-node）も許可されており、これは @cols のカラムと
@@ -348,7 +384,7 @@ row =
    （Inline Syntax Specification §11）に従い、黙って捨てられるのではなく
    MUST throw（必ず例外を投げる）でなければならない。 *)
 cell =
-    { cell-inline-node | any-unicode-char - "," - "]" } ;
+    { cell-inline-node | any-unicode-char - cell-delimiter - "]" } ;
 
 (* ==========================================================================
    Widget-Specific Grammar: @tabs / @tab
@@ -442,6 +478,12 @@ text =
 > どちらも Inline Spec 第 7 節の named color 対照表は踏襲しない。
 > Container／Callout／`@img` の `styles` を実際に視覚スタイルへどう
 > マッピングするか（あるいはするかどうか）は、各 Renderer が自由に決定する。
+>
+> **認識できない token は指摘される（v0.1.2）。** そのノード自身の語彙に含まれない token——たとえば
+> `@card{blue}`（`@card` は `#RRGGBB`／`radius-N` のみを受け付け、名前付きカラーは受け付けない）や
+> `@mark{bluee}`——は、これまで黙って捨てられ、ノードはスタイルなしのまま、どこにも通知がなかった。
+> Parser は現在、該当する token に対して diagnostic を報告する（Inline Spec 第 11 節 Diagnostics を参照）。
+> 文書は従来どおりパース・レンダリングされ、その token は引き続き無視される。
 
 ---
 
@@ -650,9 +692,32 @@ WEDC Logo
 | `src`（省略可） | 画像の取得元 URL                        | `src=https://...`           |
 | `width`         | 表示幅（単位は Renderer が決定）         | `width=200`                  |
 | `height`        | 表示高さ（単位は Renderer が決定）       | `height=150`                 |
-| `align`         | 配置方法                                | `align=left/center/right`    |
+| `align`         | 配置方法                                | `align=left/center/right/float-left/float-right`    |
 | `radius`        | 角丸（Renderer にそのまま渡す CSS 値）   | `radius=8px`                 |
 | `border`        | 外枠（Renderer にそのまま渡す CSS 値）   | `border=1px solid #ccc`      |
+
+#### Image の `align` 値（v0.1.2）
+
+`align` の値の集合は閉じている：
+
+| 値 | 効果 |
+|---|---|
+| `left` | 画像を左寄せ。後続の内容は画像の**下**に続く |
+| `center` | 画像を中央寄せ（従来の動作） |
+| `right` | 画像を右寄せ。後続の内容は画像の**下**に続く |
+| `float-left` | 画像を左寄せ。後続のテキストが**右側に回り込む** |
+| `float-right` | 画像を右寄せ。後続のテキストが**左側に回り込む** |
+
+```text
+@img(./a.png,align=float-left)[代替テキスト]
+```
+
+* **キー省略形。** 値の集合が閉じているため、カンマ区切りの項目がこの 5 つの値のどれか 1 つと完全に一致する場合は、`align=` というキーがなくても `align` として認識される：`@img(./a.png,float-left)[...]` は `@img(./a.png,align=float-left)[...]` と等価である。この判定は「最初のキーなし項目は `src`」という規則より**前**に行われるため、`@img(float-left)[...]`（`src` が一切ない）は、たまたま "float-left" と綴られた URL ではなく配置として読まれる。
+* **組み合わせではなく単一のオプション値。** `align=left,float=true` のような組み合わせは意図的に設けていない——無効な状態はそもそも書けず、作者（またはモデル）は 2 回ではなく 1 回の選択で済む。
+* **`center` + 回り込みはない。** 中央寄せの画像の左右両側にテキストを回り込ませることは CSS の `float` では表現できず、ほとんどの renderer も実装できない。残しておくと、各 renderer が黙ってそれぞれ異なる動作にフォールバックするだけになる。
+* **回り込みの終了位置。** 回り込みは renderer レベルの慣例であり、AST には記録されない：次の見出し、次の `@hr`、または囲んでいるコンテナの終端で終了すべき（SHOULD）である。
+* **狭い画面や、フロー配置できない出力先**（スマートフォン、terminal、一部の PDF）：renderer は配置と回り込みを無視し、中央寄せまたは全幅で表示してもよい（MAY）。配置は**位置の意味論**であり、ピクセル単位のレイアウトを約束するものではない。
+* **認識できない値**（例：`align=middle`、タイプミス）：renderer はその値を無視してデフォルト（配置なし）を使う。Parser は加えて **warning** の diagnostic を報告する——文書は引き続きレンダリングされるので error ではないが、もう黙って無視されることはない。
 
 > [!TIP]
 > **TIP**：ここでの拡張方式は、Inline Spec 第 7 節 `@mark スタイル意味論`
@@ -716,15 +781,61 @@ WEDC Photo
 ]
 ```
 
-* `@cols[...]`：カンマ区切りの列見出しリストであり、列の順序と数を定義する。各列は `@data` のセルと同じく `cell`（下記参照）であり、プレーンテキストの識別子に限定されない。
-* `@data[...]`：各行は `[...]` の中に包まれ、`cell` の数は `@cols` で定義された列数と一致すべき（SHOULD）である。数が一致しない行に対して、Parser は警告またはエラーを出してもよい（MAY）（Strict / Editor Mode のどちらかによって決まる。Inline Spec 第 11 節 Parser Recovery Strategy を参照）。
+* `@cols[...]`：区切り文字で区切られた列見出しのリストであり、列の順序と数を定義する。各列は `@data` のセルと同じく `cell`（下記参照）であり、プレーンテキストの識別子に限定されない。
+* `@data[...]`：各行は `[...]` の中に包まれ、その行の**幅**は `@cols` で定義された列数と等しくなければならない（MUST）（`@span(n)` のセルは `n`、それ以外のセルはそれぞれ 1 と数える）。幅が異なる行は diagnostic として報告される——下記「行の幅」を参照。
+
+#### セルの区切り文字：`|` または `,`（v0.1.2）
+
+`@cols` と各 `@data` 行はもともと `,` のみでセルを区切っていたため、それ自体にカンマを含むセル（`$1,500`、`Web, iOS, Android`、`DECIMAL(10,2)`）を書く方法がなく、黙って余分な列が生まれていた。v0.1.2 からは、区切り文字は**行ごと**に、次の機械的な規則で決まる：
+
+```text
+ある行の最外層に "|" が現れれば、その行は "|" で区切る。
+そうでなければ、従来どおり "," で区切る。
+```
+
+```text
+@table[
+    @cols[時間|講演|登壇者]
+
+    @data[
+        [09:00 - 10:30|開会講演|王小明]
+        [10:30 - 11:00|@span(2)[休憩]]
+        [11:00 - 12:00||データエンジニアリング分科会]
+        [13:30 - 15:00|テーブル構文の設計|陳大文, 林美華]
+    ]
+]
+```
+
+* **`|` モードでは `,` は普通のテキスト**——エスケープも制限も不要（上の最後の行の登壇者セルを参照）。
+* **`,` モードは変更なし。** `|` を含まない行は従来とまったく同じようにパースされるため、既存の文書に移行作業は不要。カンマ形式は旧式とみなされ、Editor Mode の実装は非推奨として表示してもよい（MAY）。
+* **最外層の区切り文字だけが区切る。** ネストされたノード自身の角括弧内の `|` や `,`（`@bold[a,b]`、`@raw[a|b]`）はリテラルのまま——セルの分割は角括弧の深さに従い、registry は参照しない。セルにリテラルの `|` が必要な場合は `@raw[...]` で包む。`|` が必要になる内容はたいていコードであり、意味的にもそれが正しいノードである。
+* **空のセルは書き出さなければならない。** `[11:00 - 12:00||データエンジニアリング分科会]` の中央のセルは意図的に空である。
+* **先頭や末尾の余分な `|` は装飾とみなされ除去される。両端は独立に判定される。** `[|a|b|c|]`（Markdown テーブルの習慣）、`[|a|b|c]`、`[a|b|c|]`、`[a|b|c]` はすべて同一にパースされる。代償として、端の `|` では「本当に空の最初／最後のセル」を表せなくなる——プレースホルダーを入れるか、列を組み替えること。行の途中の空セルは影響を受けない。
+* セルを `<...>` で包むのは避けること——その形は `<action>` スロット用に予約されている。
+
+#### 列をまたぐセル：`@span(n)[...]`（v0.1.2）
+
+```text
+[10:30 - 11:00|@span(2)[休憩]]
+```
+
+内容が**ちょうど 1 つ**の `@span(n)[...]` ノード（`n` は正の整数）であるセルは `n` 列にまたがり、行の幅を数えるときに 1 ではなく `n` と数えられるため、「すべての行の幅が列数と等しい」という規則に例外はない。上の例のその行は実際のセルが 2 つで、幅は 1 + 2 = 3 となり、`@cols` の 3 列と一致する。Renderer はこれを自身の colspan の概念に対応させる（HTML：`<td colspan="n">`）。
+
+* `@span` は **`@data` のセルの唯一の内容**としてのみ有効である。`@cols` の中、テーブルの外、あるいはセル内の他の内容と混在している場合は、位置を誤ったノードとして、`@tabs` の外の `@tab` と同じ方法で指摘される。
+* `n` は単純な正の整数でなければならない（MUST）。`@span(two)`、`@span(0)`、`@span(2.5)` はそれぞれ独自の diagnostic として報告される。行の幅の検査ではそのようなセルは幅 1 として数えられるため、同じ根本原因が二重に報告されることはない。
+* `@hex` と `@span` はセルの許可リストに入っている（色見本の表は `@hex` の最も一般的な用途であり、`@span` はここでしか意味を持たない）。`@spoiler` は意図的にリストに**含まれない**——クリックして開示するスパンをテーブルのセルに置くのは不適切だからである。
+* `@span` 自体にはスタイルやレイアウト上の意味はない——第 1 節の注記を参照。
+
+#### 行の幅
+
+行の幅（`@span` を含む）が `@cols` の列数と等しくない場合は、その行が**どの区切り文字を使っているかにかかわらず** diagnostic として報告される。Parser は自動的な補完や切り詰めを決して行わない：黙って不一致のままにすると、列が見出しとずれたテーブルが描画されてしまう。この diagnostic は Strict Mode では error、Editor Mode では報告されるがブロックしない diagnostic であり、問題のある行を指す。
 
 > [!TIP]
 > **TIP**：`@cols` と `@data` の順序が固定され、両方とも必須であるのは、
 > 意図的な設計上のトレードオフである——若干の柔軟性を犠牲にすることで、
 > Parser および AI がコンテンツを生成する際の高い予測可能性を得ている。
 
-各 `cell` は単純なプレーンテキストではない——テキスト本体に加えて、厳選された行内書式ノード（`@bold`、`@italic`、`@underline`、`@del`、`@mark`、`@color`、`@sup`、`@sub`、`@link`、`@fn`、そして改行に変換される `@n`）が許可されている。これらのノードはテキストの見た目だけを変え、テーブル本来の「列とデータ行を揃える」という構造には影響しないためである。この一覧は Renderer 側（`registry.ts` の `isCellAllowedNode`）で管理されており、構文レベル自体はその内容を制限しないため、将来的に拡張可能である。一覧に無いノード（例えば `@card`、`@table`、`@details` のような、自分自身のレイアウト構造を持ち込むブロックノード）は、黙って捨てられるのではなく、MUST throw（必ず構文エラーを投げる）でなければならない——これは Strict Mode（Inline Syntax Specification 第 11 節）の「エラーを投げることを厭わず、誤った内容を飲み込まない」という精神と一致する。
+各 `cell` は単純なプレーンテキストではない——テキスト本体に加えて、厳選された行内書式ノード（`@bold`、`@italic`、`@underline`、`@del`、`@mark`、`@color`、`@sup`、`@sub`、`@link`、`@fn`、`@hex`、`@span`、そして改行に変換される `@n`）が許可されている。これらのノードはテキストの見た目だけを変え、テーブル本来の「列とデータ行を揃える」という構造には影響しないためである。この一覧は Renderer 側（`registry.ts` の `isCellAllowedNode`）で管理されており、構文レベル自体はその内容を制限しないため、将来的に拡張可能である。一覧に無いノード（例えば `@card`、`@table`、`@details` のような、自分自身のレイアウト構造を持ち込むブロックノード）は、黙って捨てられるのではなく、MUST throw（必ず構文エラーを投げる）でなければならない——これは Strict Mode（Inline Syntax Specification 第 11 節）の「エラーを投げることを厭わず、誤った内容を飲み込まない」という精神と一致する。
 
 > [!NOTE]
 > **例外**：raw ファミリーのノード（`@code`、`@mermaid`、`@raw`、`@kbd`）も `isCellAllowedNode` の一覧には含まれていないが、これらは「自分自身のレイアウト構造を持ち込むブロックノード」でもなければ、上記の MUST throw 規則の対象でもない——`Parser.ts`（`parseInlineCellList`）は意図的にこれらの生の内容をセル内のプレーンテキストへとフラット化しており、エラーを投げたり、本物のノードとしてパースしたりはしない。これは `@card`/`@table`/`@details` のような構造ノードとは別に扱われる独立した挙動であり、詳細は `registry.ts`（`CELL_ALLOWED_INLINE` 直前のコメント）と `Parser.ts`（`parseInlineCellList` 直前のコメント）を参照。
@@ -972,6 +1083,9 @@ token）は一律に認識不能とみなされ、Renderer はエラーを投げ
 
 * `@tab(タイトル)[内容]`：`タイトル` はタブの表示名であり、`内容` は完全な `block-content`（任意の block-node と inline-stream を含められる）である。
 * もし `@tabs[...]` の中に `@tab` 以外のノード（例えば裸のテキストや他の block-node）が現れた場合、Parser は MUST でこれを構文エラーとみなす（Strict Mode）か、Editor Mode によって自動的に無視 / 修正を提案する。
+
+* **一意な id（v0.1.2）。** タブウィジェット用に DOM の id を出力する renderer は、それらを*文書全体*で一意にしなければならない（MUST）。各 `@tabs` ブロックの中で panel に 0 から番号を振ると、1 つの文書内の 2 つの `@tabs` がどちらも `tab-panel-0`、`tab-panel-1`、…… を出力してしまい、トリガーの `aria-controls` がただ 1 つの panel に解決されなくなる。参照実装は、文書ごとの widget カウンターを付与する（`tab-panel-<widget>-<index>`）。
+* **初期状態。** 参照実装は最初のタブを選択済みとして印を付ける（トリガーに `aria-selected="true"`、panel に `data-active="true"`）。これにより、スクリプトが実行される前からウィジェットが正しい初期状態を持つ。
 
 > [!TIP]
 > **TIP**：`@tab` が `block-node` に統合されていないのは、`@tabs` 以外の

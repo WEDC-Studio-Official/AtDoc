@@ -42,6 +42,20 @@ node tests/run-tests.ts
 | `26-color-old-paren-disabled.atd` | `@color(#ff0000)[...]`——已停用的舊語法 | **拋錯**：no longer accepts a parenthesized value（`@color` 改用 `{styles}` 後，舊的 `(hex)` 括號不再被靜默忽略，而是硬性拋錯） |
 | `27-table-cell-raw-family-paren-valid.atd` | `@code(js)[...]` 放在 table 儲存格裡 | **不拋錯**：回歸測試——`parseInlineCellList()` 原本只 consume `NODE` token 就直接找 `RAW`，帶括號的 raw 系節點（如 `@code` 的語言標籤）會拋出誤導性的「expects a content slot」錯誤；同一筆案例裡的 `@raw[...]`（無括號）確認既有的無括號 raw 系拉平行為沒被動到 |
 | `28-styles-slot-on-unstyled-node.atd` | `@heading(1){radius-12}[...]`——把 `{styles}` 寫在文法沒有授予這個欄位的節點上 | **拋錯**：has no `{styles}` slot。Lexer 對任何節點名稱後面的 `{...}` 都會產生 STYLES token，所以這種寫法原本會被解析後靜默丟棄；只有 registry.ts 裡有 `styles` StyleSet 的節點才接受 |
+| `29-table-row-column-count-mismatch.atd` | `@data` 某一列的千分位逗號（`80,000`）被當成儲存格分隔符號，切出 4 格，但 `@cols` 只定義 2 欄 | **拋錯**：every row must match the column count exactly。此前這種錯位會靜默通過解析、畫面卻跑欄；現在切出的格數與 `@cols` 欄數不符時一律拋出診斷 |
+| `30-hex-node-valid.atd` | `@hex[#3366ff]`／`@hex[#f0f]`——v0.1.2 新節點，顯示色塊＋色碼本身，與「把文字改色」的 `@color` 不同 | **不拋錯**：`#RGB` 與 `#RRGGBB` 兩種長度都接受 |
+| `31-hex-node-invalid-format.atd` | `@hex[blue]`——內容不是合法色碼格式 | **拋錯**：must be a "#RGB" or "#RRGGBB" color code |
+| `32-spoiler-node-valid.atd` | `@spoiler[...]`——v0.1.2 新節點，句子中的防雷段落，內容可巢狀（`@spoiler[@bold[...]]`） | **不拋錯**：巢狀的 `@bold` 解析成真正的節點，不是被壓平成文字 |
+| `33-img-align-float-valid.atd` | `@img(...,align=float-left)[...]`——v0.1.2 新增的環繞對齊值 | **不拋錯**：`float-left`／`float-right` 是新增的合法 `align` 值 |
+| `34-img-align-unrecognized-value.atd` | `@img(...,align=middle)[...]`——不是任何一個合法的 `align` 值 | **不拋錯（但有 warning）**：`align=middle` 會被標成 warning 層級診斷（`parser.diagnostics` 仍記錄），不是 error；`run-tests.ts` 的 `shouldThrow` 只看 error 層級，所以這個案例預期「parsed clean」 |
+| `35-card-style-token-unrecognized.atd` | `@card{blue}[...]`——`blue` 不是 Card Style v1 接受的 token | **拋錯**：Unrecognized value "blue"...not "#RRGGBB" or "radius-N"。此前這種具名顏色會被 renderer 靜默忽略，畫面上完全看不出卡片沒套上樣式 |
+| `36-defn-non-integer-id.atd` | `@defn(note-a)[...]`——識別碼不是整數，`@fn[...]` 永遠無法引用到它 | **拋錯**：isn't numeric |
+| `37-img-align-bare-keyword-valid.atd` | `@img(src=./a.png,float-left)[...]`——不寫 `align=`，直接用裸關鍵字 | **不拋錯**：`align` 詞彙是封閉集合，裸關鍵字不需要 `align=` 前綴也能唯一判定；`align=float-left` 舊寫法仍然相容 |
+| `38-table-pipe-delimiter-valid.atd` | README.md §3.4 的完整範例——`@cols`/`@data` 用 `\|` 分隔，逗號可自由出現在儲存格內、`@span(2)` 跨欄、`\|\|`（中間空格子）是真正的空欄位 | **不拋錯**：一次驗證新語法的所有規則同時成立 |
+| `39-table-pipe-edge-leniency-valid.atd` | `[\|a\|b\|]`／`[1\|2\|]`／`[\|1\|2]`——頭、尾（各自獨立）多出裝飾用的 `\|`（Markdown 表格習慣寫法） | **不拋錯**：只要 `\|` 緊接在 `[` 或 `]` 旁邊就視為裝飾並去除，兩端各自獨立判斷，不需要同時出現；因此已經沒有辦法用頭/尾的 `\|` 表示「真的留空的第一/最後一格」了（中間的空格子不受影響，見案例 38） |
+| `40-span-outside-table.atd` | `@span(2)[...]` 寫在 `@p` 裡，不在表格儲存格內 | **拋錯**：may only appear directly inside `@data row` |
+| `41-span-non-integer-count.atd` | `@span(two)[...]`——括號內容不是正整數 | **拋錯**：isn't a positive integer；為避免同一個問題被回報兩次，格數檢查會把它當成寬度 1 處理，不會額外再拋一次列格數不符的診斷 |
+| `42-table-pipe-row-mismatch.atd` | `\|` 分隔的表格裡，某列真的格數不對（沒有用 `@span` 也湊不出正確欄數） | **拋錯**：totals 2 column(s) of width...；新語法不會放寬格數必須相符的規則，訊息會建議改用 `@span(n)` |
 
 ## 已知限制：`16-unclosed-raw-domain-silent-swallow.atd`
 

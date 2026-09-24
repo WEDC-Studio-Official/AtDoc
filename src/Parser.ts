@@ -16,17 +16,16 @@
 // for each level of a nested construct (confirmed: e.g. @bold nested ~2000+
 // levels deep throws "Maximum call stack size exceeded" here, before
 // rendering is ever reached). Adapters.ts's renderer was converted to an
-// explicit-stack walk specifically to survive this class of input once
-// parsed; this file hasn't been, since doing so safely — without changing
-// any of the diagnostics/recovery behavior described above — is a
-// substantially larger rewrite of the engine's most correctness-sensitive
-// part. A document nested anywhere near that deep is extremely unusual by
-// hand, but plausible from generated/templated input.
+// explicit-stack walk specifically to survive this class of input once parsed; this file hasn't been, since doing so
+// safely — without changing any of the diagnostics/recovery behavior
+// described above — is a substantially larger rewrite of the engine's most
+// correctness-sensitive part. A document nested anywhere near that deep is
+// extremely unusual by hand, but plausible from generated/templated input.
 
 import type { Token } from './Lexer.js';
 import { DocSyntaxError } from './types.js';
 import type { DocASTNode, DocDiagnostic } from './types.js';
-import { getNodeDef, isCellAllowedNode, deriveParenFields } from './registry.js';
+import { getNodeDef, isCellAllowedNode, deriveParenFields, IMG_ALIGN_VALUES } from './registry.js';
 import type { NodeDef } from './registry.js';
 
 /** Content modes the Lexer scans opaquely into a single RAW token (@raw, @code, @mermaid, @kbd, @fn). */
@@ -36,7 +35,7 @@ function isRawFamilyContent(content: NodeDef['content'] | undefined): boolean {
 
 // Known @color/@bordered {styles} tokens (Inline Syntax Specification §7) —
 // the same seven named colors @mark's {styles} accepts, plus the hex pattern
-// — used only for the editor diagnostic below. Adapters.ts owns the actual
+// — used only for the editor diagnostic below. the renderer owns the actual
 // color *resolution* logic; this list exists purely to flag typos in the Playground.
 const KNOWN_COLOR_TOKENS = new Set(['yellow', 'red', 'green', 'blue', 'orange', 'purple', 'gray']);
 const HEX_STYLE_TOKEN = /^#[0-9a-fA-F]{6}$/;
@@ -48,6 +47,9 @@ export class DocParser {
 
   /** Non-fatal issues collected during parsing (e.g. an unclosed bracket, a node used in the wrong context). */
   public diagnostics: DocDiagnostic[] = [];
+
+  /** Out-of-band channel: the position of each row parseDataRows() just produced, read by the 'table' case right after it calls parseNode() for `@data` — safe because `@data` content only allows cell-inline nodes (registry.ts's isCellAllowedNode), so @table/@data can never nest and re-enter parseDataRows(). */
+  private lastRowSpans: { start: number; end: number }[] = [];
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
@@ -198,7 +200,7 @@ export class DocParser {
     // named token), not a comma-separated token list like @mark — so they
     // share `node.color` instead of the generic split-into-array handling
     // below. @bordered applies that same value as a border instead of a
-    // foreground color (see Adapters.ts).
+    // foreground color (see the renderer).
     const isColorSwatch = nodeDef.name === 'color' || nodeDef.name === 'bordered';
 
     if (this.tokens[this.cursor]?.type === 'STYLES') {
@@ -221,12 +223,14 @@ export class DocParser {
         this.diagnoseUnknownColorValue(nodeDef.name, node.color, raw, stylesTok.start);
       } else {
         node.styles = raw.split(',').map(s => s.trim()).filter(Boolean);
+        if (nodeDef.styles) this.diagnoseUnknownStyleTokens(nodeDef, node.styles, raw, stylesTok.start);
       }
       this.cursor++;
     } else if (isColorSwatch) {
       // No {styles} slot at all — grammatically optional, but flagged all
-      // the same, so authors can choose an explicit foreground or border color
-      // instead of relying on the renderer's fallback appearance.
+      // the same, since @color with no explicit value falls back to a
+      // rainbow rendering rather than a plain color; @bordered
+      // likewise has no meaningful "default" border color to fall back to.
       this.diagnose(token.start, token.end, `\`@${nodeDef.name}\` has no {styles} value — add \`{#hex}\` or \`{colorname}\` to pick an explicit color.`);
     }
 
@@ -245,7 +249,50 @@ export class DocParser {
       Object.assign(node, deriveParenFields(nodeDef.parenRole, node.paren));
     }
 
+    // @fn only ever accepts an integer reference (content:'integer' below
+    // enforces that on its own "[...]"), but @defn's matching "(id)" is free
+    // text — a non-numeric id can be written but can never be referenced by
+    // any @fn[...], since @fn's own grammar has no way to spell it (Footnotes
+    // spec §4). Flag it here rather than at the @fn call site, since the
+    // @defn is where the unreferenceable id was actually chosen.
+    if (nodeDef.parenRole === 'id' && node.paren !== undefined && !/^[0-9]+$/.test(node.paren)) {
+      this.diagnose(token.start, token.end, `\`@${name}\`'s id "${node.paren}" isn't numeric — \`@fn[...]\` only accepts integer references, so this footnote can never be linked to.`);
+    }
+
+    // An unrecognized "align=" value silently falls back to no alignment at
+    // all at render time — flag it instead (Editor Mode warning, not error:
+    // the document still renders something reasonable either way).
+    if (nodeDef.name === 'img' && node.imgOptions?.align !== undefined && !IMG_ALIGN_VALUES.has(node.imgOptions.align)) {
+      this.diagnose(token.start, token.end, `\`@img\`'s "align=${node.imgOptions.align}" isn't a recognized value — expected one of ${[...IMG_ALIGN_VALUES].join(', ')}.`, 'warning');
+    }
+
+    // @span(n) must be a plain positive integer — registry.ts's parseSpanCount
+    // already rejected anything else into `undefined`; a bad count here means
+    // the table-cols check below can't tell how many columns this cell
+    // actually claims, so it's flagged as its own error rather than silently
+    // treated as span-of-1 (which would hide a real row/cols mismatch).
+    if (nodeDef.name === 'span' && node.paren !== undefined && node.count === undefined) {
+      this.diagnose(token.start, token.end, `\`@span\`'s count "${node.paren}" isn't a positive integer — e.g. \`@span(2)[...]\`.`);
+    }
+
     return this.parseContentByMode(node, nodeDef);
+  }
+
+  /**
+   * A row's width for the @cols-count check — 1 per cell, except a cell
+   * whose content is exactly one @span(n) node, which counts as n (Block Syntax
+   * Specification §5 Table, point 3). Deliberately checks *only* "exactly one @span node and
+   * nothing else" — @span mixed with other content in the same cell isn't a
+   * documented pattern, so it's simplest to just not special-case it (counts
+   * as an ordinary width-1 cell, same as before @span existed).
+   */
+  private rowEffectiveWidth(row: (DocASTNode | string)[][]): number {
+    return row.reduce((total, cell) => {
+      if (cell.length === 1 && typeof cell[0] !== 'string' && cell[0].type === 'span') {
+        return total + (cell[0].count ?? 1);
+      }
+      return total + 1;
+    }, 0);
   }
 
   private parseContentByMode(node: DocASTNode, nodeDef: NodeDef): DocASTNode {
@@ -271,6 +318,14 @@ export class DocParser {
           } else {
             node.number = parseInt(node.raw, 10);
           }
+        }
+        // @hex's content is a restricted format (like @kbd's `key`, but
+        // further constrained to an actual hex color) — "#RGB" or "#RRGGBB"
+        // only; "#RRGGBBAA" alpha support is explicitly undecided (v0.1.2
+        // draft), so it's rejected here rather than silently accepted now and
+        // possibly redefined later.
+        if (nodeDef.name === 'hex' && !/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(node.raw)) {
+          this.diagnose(t.start, t.end, `\`@hex[...]\` must be a "#RGB" or "#RRGGBB" color code — got \`${node.raw}\`.`);
         }
         return node;
       }
@@ -315,12 +370,30 @@ export class DocParser {
           return node;
         }
         const dataNode = this.parseNode(node.type)!;
+        const rowSpans = this.lastRowSpans;
 
         this.skipWhitespaceText();
         this.closeSlot(node.type);
 
         node.columns = colsNode.columns ?? [];
         node.rows = dataNode.rows ?? [];
+
+        // C table / §4.1: a row's cell count silently drifting from @cols's
+        // column count renders wrong (misaligned columns) while parsing clean
+        // — flag it instead of accepting it silently (Block Syntax
+        // Specification §5 Table). A cell that's exactly one @span(n) node
+        // counts as n toward the row's width (§3.4 point 3), not 1, so a
+        // deliberate colspan doesn't get flagged as a mismatch.
+        const expectedCols = node.columns.length;
+        node.rows.forEach((row, idx) => {
+          const width = this.rowEffectiveWidth(row);
+          if (width === expectedCols) return;
+          const span = rowSpans[idx];
+          const start = span?.start ?? dataTok.start;
+          const end = span?.end ?? dataTok.end;
+          this.diagnose(start, end, `\`@table\`'s row ${idx + 1} totals ${width} column(s) of width, but \`@cols\` defines ${expectedCols} column(s) — every row must match the column count exactly (use \`@span(n)\` for a cell that intentionally covers multiple columns; Block Syntax Specification §5 Table).`);
+        });
+
         return node;
       }
 
@@ -413,10 +486,6 @@ export class DocParser {
     const NUM_RE = /^[ \t]*(\d+)[.)][ \t]+([\s\S]*)$/;
 
     for (const line of lines) {
-      // Single pass instead of two separate .filter() calls (one per
-      // predicate) — same split, half the array allocations and iterations
-      // per line. Matters here because buildListItems() runs once per list
-      // in the document, and this loop runs once per line in every list.
       const nodeSegs: DocASTNode[] = [];
       const textSegs: string[] = [];
       for (const s of line) {
@@ -569,6 +638,7 @@ export class DocParser {
    * the call site above).
    */
   private diagnoseUnknownColorValue(nodeName: string, token: string, raw: string, stylesStart: number): void {
+    if (nodeName === 'color' && (token === 'rainbow' || token === 'pastel')) return; // intentionally undocumented — see the renderer's color case
     if (token && (KNOWN_COLOR_TOKENS.has(token) || HEX_STYLE_TOKEN.test(token))) return;
     const leadingWs = raw.length - raw.trimStart().length;
     const tokenStart = stylesStart + 1 + leadingWs; // +1 skips the "{" itself
@@ -576,6 +646,33 @@ export class DocParser {
       ? `Unrecognized value "${token}" inside @${nodeName}'s {styles} — not a known named color or hex value.`
       : `\`@${nodeName}\`'s {styles} is empty — add \`{#hex}\` or \`{colorname}\` to pick an explicit color.`;
     this.diagnose(tokenStart, tokenStart + token.length, message);
+  }
+
+  /**
+   * Same purpose as diagnoseUnknownColorValue, for every node whose {styles}
+   * slot takes the array form (`node.styles`, not the single-swatch
+   * `node.color` @color/@bordered use) — @card/@img's Card/Image Style v1
+   * ("#RRGGBB" background/border plus "radius-N", Block Syntax Specification
+   * §5/§6) and @mark/@details' shared named-color-or-hex set (Inline Syntax
+   * Specification §7) were previously accepted token-by-token with zero
+   * validation: `@card{blue}` parsed silently and the renderer just dropped
+   * "blue" with no signal anywhere that the card ended up unstyled.
+   */
+  private diagnoseUnknownStyleTokens(nodeDef: NodeDef, tokens: string[], raw: string, stylesStart: number): void {
+    const isValidToken = (t: string): boolean => {
+      if (HEX_STYLE_TOKEN.test(t)) return true;
+      if (nodeDef.styles === 'color') return KNOWN_COLOR_TOKENS.has(t);
+      return /^radius-\d+$/.test(t); // 'card' | 'image' — Card/Image Style v1
+    };
+    const allowedDesc = nodeDef.styles === 'color' ? 'a known named color or hex value' : '"#RRGGBB" or "radius-N"';
+    let searchFrom = 0;
+    for (const token of tokens) {
+      if (isValidToken(token)) { searchFrom += token.length + 1; continue; }
+      const idxInRaw = raw.indexOf(token, searchFrom);
+      const tokenStart = idxInRaw >= 0 ? stylesStart + 1 + idxInRaw : stylesStart;
+      this.diagnose(tokenStart, tokenStart + token.length, `Unrecognized value "${token}" inside @${nodeDef.name}'s {styles} — not ${allowedDesc}.`);
+      searchFrom = idxInRaw >= 0 ? idxInRaw + token.length : searchFrom;
+    }
   }
 
   /**
@@ -666,20 +763,70 @@ export class DocParser {
   }
 
   /**
-   * Parses @cols/@data content as comma-separated cells, each cell holding inline
-   * content (text plus a curated set of formatting nodes — @n, @raw/@code/@kbd/...,
-   * and whatever registry.ts's isCellAllowedNode() lets through, e.g. @bold/@mark/
-   * @link). Anything else is unsupported here: fully consumed (cursor stays in
-   * sync), dropped from the output, and recorded as a diagnostic — same policy as
-   * collectRawText, just producing structured cells instead of a flat string.
+   * Peeks forward from `this.cursor` to the matching SLOT_CLOSE at depth 0,
+   * without consuming anything, to decide which delimiter parseInlineCellList
+   * should split on — Block Syntax Specification §5 Table's transition rule: a "|" anywhere at
+   * depth 0 means this row/@cols uses the new pipe-delimited syntax (§3.4);
+   * otherwise it's the legacy comma-delimited one, unchanged. Also reports
+   * whether the very first/last depth-0 TEXT token's raw value starts/ends
+   * with "|" — either edge is decorative (the Markdown-table habit of
+   * `[|a|b|]`, or just `[a|b|]`/`[|a|b]`) and stripped independently of the
+   * other (§3.4 point 4); there's no way to write a genuinely empty first/
+   * last column via an edge "|" any more — put a placeholder or restructure
+   * the columns instead.
+   */
+  private scanCellDelimiter(): { pipe: boolean; leadingPipe: boolean; trailingPipe: boolean } {
+    let depth = 0;
+    let firstTok: Token | undefined;
+    let lastTok: Token | undefined;
+    let pipe = false;
+    for (let i = this.cursor; i < this.tokens.length; i++) {
+      const t = this.tokens[i];
+      if (t.type === 'SLOT_CLOSE') {
+        if (depth === 0) break;
+        depth--;
+      } else if (t.type === 'SLOT_OPEN') {
+        depth++;
+      } else if (t.type === 'TEXT' && depth === 0) {
+        if (t.value.includes('|')) pipe = true;
+        if (firstTok === undefined) firstTok = t;
+        lastTok = t;
+      }
+    }
+    return {
+      pipe,
+      leadingPipe: firstTok !== undefined && firstTok.value.startsWith('|'),
+      trailingPipe: lastTok !== undefined && lastTok.value.endsWith('|'),
+    };
+  }
+
+  /**
+   * Parses @cols/@data content as delimiter-separated cells, each cell holding
+   * inline content (text plus a curated set of formatting nodes — @n, @span,
+   * @raw/@code/@kbd/..., and whatever registry.ts's isCellAllowedNode() lets
+   * through, e.g. @bold/@mark/@link). Anything else is unsupported here: fully
+   * consumed (cursor stays in sync), dropped from the output, and recorded as
+   * a diagnostic — same policy as collectRawText, just producing structured
+   * cells instead of a flat string.
    *
-   * Commas only split cells at this slot's own depth — a comma inside a nested
-   * node's own "[...]" (e.g. `@bold[a,b]`) stays literal, since that TEXT token
-   * is emitted while `depth > 0`.
+   * Delimiter is "|" if this content uses it anywhere at depth 0 (Block Syntax
+   * Specification §5 Table — the pipe syntax), otherwise the legacy "," (unchanged). Either
+   * way it only splits cells at this slot's own depth — a delimiter char
+   * inside a nested node's own "[...]" (e.g. `@bold[a,b]`) stays literal,
+   * since that TEXT token is emitted while `depth > 0`.
+   *
+   * A leading and/or trailing "|" (the Markdown-table habit of `[|a|b|]`) is
+   * decoration, stripped before splitting — each edge independently, so
+   * `[a|b|]`/`[|a|b]`/`[|a|b|]`/`[a|b]` all parse identically to 2 columns.
    */
   private parseInlineCellList(ownerName: string): (DocASTNode | string)[][] {
+    const { pipe, leadingPipe, trailingPipe } = this.scanCellDelimiter();
+    const delimiter = pipe ? '|' : ',';
+    const stripLeading = pipe && leadingPipe;
+    const stripTrailing = pipe && trailingPipe;
     const cells: (DocASTNode | string)[][] = [[]];
     let depth = 0;
+    let sawDepth0Text = false;
 
     const currentCell = () => cells[cells.length - 1];
     const pushText = (s: string) => { if (s !== '') currentCell().push(s); };
@@ -689,15 +836,20 @@ export class DocParser {
       if (cur.type === 'SLOT_CLOSE' && depth === 0) break;
 
       if (cur.type === 'TEXT') {
-        if (depth === 0 && cur.value.includes(',')) {
-          const parts = cur.value.split(',');
+        let value = cur.value;
+        if (depth === 0 && stripLeading && !sawDepth0Text && value.startsWith('|')) {
+          value = value.slice(1);
+        }
+        if (depth === 0) sawDepth0Text = true;
+        if (depth === 0 && value.includes(delimiter)) {
+          const parts = value.split(delimiter);
           pushText(parts[0]);
           for (let k = 1; k < parts.length; k++) {
             cells.push([]);
             pushText(parts[k]);
           }
         } else {
-          pushText(cur.value);
+          pushText(value);
         }
         this.cursor++;
         continue;
@@ -753,11 +905,21 @@ export class DocParser {
       this.cursor++;
     }
 
+    // The leading "|" was already stripped before it could split off an empty
+    // first cell (above); the trailing one wasn't (stripping it up front would
+    // need knowing mid-stream that a chunk is the *last* one), so it always
+    // leaves an empty cell here — drop it now that stripTrailing confirms
+    // it's decoration.
+    if (stripTrailing && cells.length > 0 && cells[cells.length - 1].length === 0) {
+      cells.pop();
+    }
+
     return cells.map((cell) => this.trimCellEdges(cell));
   }
 
   private parseDataRows(): (DocASTNode | string)[][][] {
     const rows: (DocASTNode | string)[][][] = [];
+    const rowSpans: { start: number; end: number }[] = [];
     // eslint-disable-next-line no-constant-condition
     while (true) {
       this.skipWhitespaceText();
@@ -779,7 +941,9 @@ export class DocParser {
       const cells = this.parseInlineCellList('data row');
       this.closeSlot('data row');
       rows.push(cells);
+      rowSpans.push({ start: t.start, end: this.tokens[this.cursor - 1]?.end ?? t.end });
     }
+    this.lastRowSpans = rowSpans;
     return rows;
   }
 

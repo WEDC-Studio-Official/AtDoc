@@ -1,0 +1,6 @@
+@table[
+    @cols[a|b|c]
+    @data[
+        [1|2]
+    ]
+]

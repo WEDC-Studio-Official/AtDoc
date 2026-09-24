@@ -120,14 +120,17 @@ description = AI-native semantic document runtime
 ]
 
 @table[
-  @cols[id,name,price]
+  @cols[id|name|price]
   @data[
-    [1,Breakfast,60]
-    [2,Lunch,80]
-    [3,Dinner,90]
+    [1|Breakfast|60]
+    [2|Lunch|80]
+    [3|Dinner|90]
   ]
 ]
 ```
+
+> [!NOTE]
+> Table cells are separated with `|` (as of syntax v0.1.2), so commas can appear freely inside a cell (`$1,500`). The older comma-separated form still parses unchanged. See [Block Syntax Specification §5 Table](./Block-Syntax-Specification.md#table).
 
 > [!NOTE]
 > The following nodes have been adjusted: `@seo` and `@lang` have been merged into `@meta`; `@title` now uses `@heading` (alias `@h`); `@text` now uses `@paragraph` (alias `@p`); `@btn` is temporarily deprecated. The above is a partial example — the formal specification documents are the source of truth for actual syntax.
@@ -152,17 +155,37 @@ Dynamic values live in the AST as structured data (`{ prop: "w", value: "120px" 
 
 ---
 
+## What's New in Syntax v0.1.2
+
+| Change | Where it is specified |
+|---|---|
+| `@img` alignment: `float-left` / `float-right` (text wraps around the image), plus a bare form `@img(src,float-left)[...]` | [Block Spec §5 Image](./Block-Syntax-Specification.md#image) |
+| Table cells separated by `\|`; leading/trailing `\|` tolerated; comma form unchanged | [Block Spec §5 Table](./Block-Syntax-Specification.md#table) |
+| `@span(n)[...]` — one table cell covering `n` columns | [Block Spec §5 Table](./Block-Syntax-Specification.md#table) |
+| `@spoiler[...]` — inline hidden-until-revealed text | [Inline Spec §15](./Inline-Syntax-Specification.md#15-semantic-inline-spoiler-and-hex) |
+| `@hex[#3366ff]` — a color swatch plus its own code (not the same as `@color`) | [Inline Spec §15](./Inline-Syntax-Specification.md#15-semantic-inline-spoiler-and-hex) |
+| New diagnostics: row width ≠ column count, bad `@span` / `@hex`, unknown `{styles}` token, unknown `@img` align, non-numeric `@defn` id | [Inline Spec §11 Diagnostics](./Inline-Syntax-Specification.md#diagnostics) |
+| `@tabs` DOM ids unique per document; first tab marked selected initially | [Block Spec §8 Tabs](./Block-Syntax-Specification.md#tabs) |
+
+The guiding rule behind most of these: a mistake that used to parse cleanly and then render wrongly (a table with a missing cell, `@card{blue}`, `align=middle`) is now a *visible* diagnostic instead of a silent failure. The document still parses and renders either way.
+
+### Package versus syntax version
+
+`atdoc-core`'s package version (`0.1.x`) and the language's syntax version (`v0.1.2` here) are numbered separately. The package version tracks releases of this repository; the syntax version tracks changes to the grammar. Both specification files carry a revision number of their own (currently v1.5).
+
+---
+
 ## Node Taxonomy
 
 ### Core Nodes — Structural Primitives
 The document skeleton, atoms that can't be broken down further.
 
-`@heading` (alias `@h`) `@paragraph` (alias `@p`) `@quote` `@code` `@list` `@img` `@table`
+`@heading` (alias `@h`) `@paragraph` (alias `@p`) `@quote` `@code` `@list` `@img` `@table` (with its `@cols` / `@data` / `@span` parts)
 
 ### Semantic Nodes — Semantic Containers
 Two behavior modes:
 
-- **Inline Semantic** — renders as a tagged inline element: `@mark[important]`, `@link(example.com)[link]`
+- **Inline Semantic** — renders as a tagged inline element: `@mark[important]`, `@link(example.com)[link]`, `@spoiler[hidden]`, `@hex[#3366ff]`
 - **Block Metadata** — injects host configuration, renders no HTML: `@meta[key = value]`
 
 ---
@@ -232,14 +255,40 @@ The core Parser, Lexer, and dual-track adapters are functionally usable. The web
 ## What's in here
 
 ```
-src/            Lexer, Parser, registry (single source of truth for nodes), Adapters (two HTML render routes)
+src/            Lexer, Parser, Serializer, registry (single source of truth for nodes), types, pipeline, markdownImport
+src/index/      Default renderer plugin: Adapters (two HTML render routes) + index.css
 src/editor/     Monarch tokenizer for Monaco-style editors
-tests/          Strict Mode test cases for the Lexer/Parser, plus render verification for each node
+tests/          Strict Mode test cases for the Lexer/Parser (`tests/cases/*.atd`, expectations in `expected.json`), serializer round-trips, and render verification for the v0.1.2 nodes — run them all with `npm test`
 configs/        Node configuration for editor/tooling
 *-Specification.md   The authoritative grammar of the language (EBNF + semantic rules)
 ```
 
 The two `*-Specification.md` files are the authoritative grammar. Code comments occasionally cite per-node companion docs (`Structural-Blocks.md`, `Container-Blocks.md`, …) that aren't part of the v0.1 drop — everything they cover is in the two specifications.
+
+---
+
+## Adding a Renderer Theme
+
+Themes are plugins. A theme is a folder under `src/` whose adapter registers itself with the theme registry (`src/themeRegistry.ts`); nothing in the core — the pipeline, mermaid hydration, or the `PreviewStyle` type — names a specific theme.
+
+```ts
+// src/leaf/LeafAdapter.ts
+import { registerTheme } from '../themeRegistry.js';
+
+registerTheme({
+  id: 'leaf',
+  label: 'Leaf',
+  renderNode: (node) => renderLeafNode(node),
+  renderFootnotes: (ast) => renderLeafFootnotes(ast),
+  mermaid: { theme: 'base', themeVariables: { /* optional */ } },
+});
+```
+
+1. Create `src/<name>/` with a `<Name>Adapter.ts` (registers the theme) and/or `*.css` files. The folder is discovered automatically — `npm run build:css` produces `<name>.css`, and `npm run build:internal` generates the internal entry that imports the adapter.
+2. Render with it by id: `runAtDocPipeline(source, 'leaf')`. An unknown or omitted id falls back to the default theme, which is always `index` — internal themes never claim the default.
+3. **Not published by default.** Only the themes listed in `package.json` → `atdoc.publicThemes` (currently just `index`) ship. To publish one, add its name there and add `<name>.css` to `files`. `npm run build` refuses to produce a package that contains an unlisted theme.
+
+Registration happens when the adapter module is imported. The package entry imports `index`; every other theme is registered by importing it directly, or, for internal themes, through the generated `dist-internal/internal.js`.
 
 ---
 

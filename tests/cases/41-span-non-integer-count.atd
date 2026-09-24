@@ -1,0 +1,6 @@
+@table[
+    @cols[a|b]
+    @data[
+        [@span(two)[x]|y]
+    ]
+]

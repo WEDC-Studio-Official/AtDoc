@@ -122,14 +122,17 @@ description = AI-native semantic document runtime
 ]
 
 @table[
-  @cols[id,name,price]
+  @cols[id|name|price]
   @data[
-    [1,朝食,60]
-    [2,昼食,80]
-    [3,晩餐,90]
+    [1|朝食|60]
+    [2|昼食|80]
+    [3|晩餐|90]
   ]
 ]
 ```
+
+> [!NOTE]
+> テーブルのセルは `|` で区切る（構文 v0.1.2 以降）ため、セルの中でカンマを自由に使える（`$1,500`）。従来のカンマ区切りの書き方も、そのままパースされる。[Block Syntax Specification 第 5 節 Table](./Block-Syntax-Specification.md) を参照。
 
 > [!NOTE]
 > 以下のノードは変更されている：`@seo`、`@lang` は `@meta` に統合された。`@title` は `@heading`（別名 `@h`）に置き換えられた。`@text` は `@paragraph`（別名 `@p`）に置き換えられた。`@btn` は一時的に非推奨となっている。以上は一部の例であり、実際の構文は正式な仕様書を正としてください。
@@ -154,17 +157,37 @@ description = AI-native semantic document runtime
 
 ---
 
+## 構文 v0.1.2 の新機能
+
+| 変更 | 規定箇所 |
+|---|---|
+| `@img` の配置：`float-left`／`float-right`（テキストが画像を回り込む）と、キー省略形 `@img(src,float-left)[...]` | [Block Spec 第 5 節 Image](./Block-Syntax-Specification.md) |
+| テーブルのセルを `\|` で区切る。先頭・末尾の `\|` は許容。カンマ形式は変更なし | [Block Spec 第 5 節 Table](./Block-Syntax-Specification.md) |
+| `@span(n)[...]`——1 つのテーブルのセルが `n` 列にまたがる | [Block Spec 第 5 節 Table](./Block-Syntax-Specification.md) |
+| `@spoiler[...]`——開示されるまで隠れるインラインテキスト | [Inline Spec 第 15 節](./Inline-Syntax-Specification.md#15-semantic-inline-spoiler-and-hex) |
+| `@hex[#3366ff]`——色見本とそのコード自体（`@color` とは異なる） | [Inline Spec 第 15 節](./Inline-Syntax-Specification.md#15-semantic-inline-spoiler-and-hex) |
+| 新しい diagnostics：行の幅 ≠ 列数、不正な `@span`／`@hex`、未知の `{styles}` token、未知の `@img` align、数字でない `@defn` の id | [Inline Spec 第 11 節 Diagnostics](./Inline-Syntax-Specification.md#diagnostics) |
+| `@tabs` の DOM id を文書全体で一意にし、最初のタブを初期選択にする | [Block Spec 第 8 節 Tabs](./Block-Syntax-Specification.md) |
+
+これらの変更の大半に共通する指針：これまできれいにパースされたあとで誤って描画されていた間違い（セルが 1 つ足りないテーブル、`@card{blue}`、`align=middle`）が、黙って失敗するのではなく、*目に見える* diagnostic になる。どちらの場合でも、文書は従来どおりパース・レンダリングされる。
+
+### パッケージのバージョンと構文のバージョン
+
+`atdoc-core` のパッケージバージョン（`0.1.x`）と、言語の構文バージョン（ここでは `v0.1.2`）は別々に採番される。パッケージバージョンはこのリポジトリのリリースを追い、構文バージョンは文法の変更を追う。2 つの仕様ファイルもそれぞれ独自の改訂番号を持つ（現在は v1.5）。
+
+---
+
 ## ノードの分類
 
 ### Core Nodes — 構造プリミティブ
 文書の骨格であり、これ以上分割できない原子である。
 
-`@heading`（別名 `@h`） `@paragraph`（別名 `@p`） `@quote` `@code` `@list` `@img` `@table`
+`@heading`（別名 `@h`） `@paragraph`（別名 `@p`） `@quote` `@code` `@list` `@img` `@table`（`@cols`／`@data`／`@span` の各部分を含む）
 
 ### Semantic Nodes — セマンティックコンテナ
 2 つの振る舞いモードを持つ：
 
-- **Inline Semantic** — タグ付きのインライン要素としてレンダリングされる：`@mark[重要]`、`@link(example.com)[リンク]`
+- **Inline Semantic** — タグ付きのインライン要素としてレンダリングされる：`@mark[重要]`、`@link(example.com)[リンク]`、`@spoiler[隠す]`、`@hex[#3366ff]`
 - **Block Metadata** — ホストの設定に注入されるだけで、HTML はまったくレンダリングされない：`@meta[key = value]`
 
 ---
@@ -221,9 +244,10 @@ const html = ast.map(node => DocTranspiler.toTailwindHTML(node)).join('\n');
 ## このリポジトリに含まれるもの
 
 ```
-src/            Lexer、Parser、registry（ノードの単一の情報源）、Adapters（HTML レンダリングの2つのルート）
+src/            Lexer、Parser、Serializer、registry（ノードの単一の情報源）、types、pipeline、markdownImport
+src/index/      デフォルトのレンダラープラグイン：Adapters（HTML レンダリングの2つのルート）＋ index.css
 src/editor/     Monaco系エディタ向けのMonarch tokenizer
-tests/          Lexer/ParserのStrict Modeテストケース群、および各ノードのレンダリング検証
+tests/          Lexer/ParserのStrict Modeテストケース群（`tests/cases/*.atd`、期待値は `expected.json`）、serializerのラウンドトリップ、およびv0.1.2ノードのレンダリング検証——`npm test` で一括実行
 configs/        editor/tooling用のノード設定
 *-Specification.md   この言語の権威ある文法定義（EBNF + セマンティックルール）
 ```

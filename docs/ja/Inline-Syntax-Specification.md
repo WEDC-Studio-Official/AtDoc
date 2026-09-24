@@ -1,8 +1,11 @@
-# @Doc Inline Syntax Specification v1.4
+# @Doc Inline Syntax Specification v1.5
 
 > 🌐 他の言語版: [English](../en/Inline-Syntax-Specification.md) ・ [繁體中文](../zh-tw/Inline-Syntax-Specification.md) ・ [简体中文](../zh-cn/Inline-Syntax-Specification.md) ・ [한국어（AI 번역, 부정확할 수 있습니다）](../ko/Inline-Syntax-Specification.md)
 >
 > ⚠️ **この文書は AI による翻訳です。誤りが含まれる可能性があります。** 正確な内容を確認したい場合は、[繁體中文版](../zh-tw/Inline-Syntax-Specification.md) または [English 版](../en/Inline-Syntax-Specification.md) をご参照ください。
+
+> [!NOTE]
+> **変更履歴（構文 v0.1.2、仕様 v1.5）**——インラインノード `@spoiler` と `@hex` を新規追加（第 4 節、第 15 節）。第 11 節に **Diagnostics** の小節を追加し、Parser がこれまで黙って受け入れていたが現在は報告するケースをすべて列挙した。`@defn` の id は整数でなければならない（第 4 節）。テーブルのセル構文（`|` 区切り、`@span`）と `@img` の配置は Block Syntax Specification 第 5 節で定義している。
 
 ## 0. 目次
 
@@ -20,6 +23,7 @@
 * [12. アーキテクチャ](#12-アーキテクチャ)
 * [13. コア原則](#13-コア原則)
 * [14. 簡易構文エイリアス](#14-簡易構文エイリアス)
+* [15. Semantic Inline: @spoiler and @hex](#15-semantic-inline-spoiler-and-hex)
 
 ---
 
@@ -152,6 +156,8 @@ inline-node =
     | defn
     | kbd
     | link
+    | spoiler
+    | hex
     | br
     | escape ;
 
@@ -179,11 +185,21 @@ sub       = "@sub" , content ;
    defn = 脚注定義の本体であり、番号と実際の内容を持つ
 *)
 fn        = "@fn" , "[" , integer , "]" ;
+(* The modifier of defn is the footnote id. It must be an integer to be
+   referenceable at all — fn's own "[...]" only accepts an integer, so a
+   non-numeric id can be written but no @fn can ever point at it. The Parser
+   reports it (see §11 Diagnostics). *)
 defn      = "@defn" , modifier , content ;
 
 kbd       = "@kbd" , "[" , key , "]" ;
 
 link      = "@link" , uri , content ;
+
+(* v0.1.2. spoiler takes ordinary nestable content; hex takes a restricted
+   slot (like kbd's key), NOT generic content. See §15. *)
+spoiler   = "@spoiler" , content ;
+hex       = "@hex" , "[" , hex-code , "]" ;
+hex-code  = "#" , ( 3 * hex-digit | 6 * hex-digit ) ;
 
 br        = "@n" ;
 
@@ -819,6 +835,26 @@ Unexpected EOF while parsing @bold
 > [!TIP]
 > **TIP**：AtDoc は直接構文エラーを投げることを選択しており、非同期のエラーブレークポイント修復メカニズムを使用する
 
+### Diagnostics
+
+閉じられていない構造以外にも、Parser は「文法的には正しいが、ほぼ確実に作者の意図ではない」ケースを報告する——これらはこれまで、きれいにパースされたあとで誤って描画され、どこにも通知がなかった。それぞれ、ソース範囲とメッセージを持つ `DocDiagnostic` として報告される。いずれもパースを中断せず、文書の残りの部分が生成する AST も変えない。
+
+| ケース | 重大度 | 備考 |
+|---|---|---|
+| `@data` の行の幅（`@span` を含む）≠ `@cols` の列数 | error | 問題のある行に対して報告。自動的な補完や切り詰めは決して行わない。Block Spec 第 5 節 Table を参照 |
+| `@span(n)` の `n` が正の整数でない | error | 行の幅の検査では幅 1 として数えられるため、1 つの根本原因に対して diagnostic は 1 件だけ |
+| `@data` のセルの外にある `@span`（`@cols` 内、段落内、セル内の他の内容との混在） | error | `@tabs` の外の `@tab` と同じ配置制限の規則 |
+| `@hex[...]` の内容が `#RGB`／`#RRGGBB` でない | error | 名前付きカラー、4／5／8 桁のコード、または `#` の欠落。8 桁の `#RRGGBBAA` は現時点では意図的に拒否される（第 15 節） |
+| `@img` の `align` の値が認識できない | warning | その値は無視され（配置なし）、文書は引き続きレンダリングされる。Block Spec 第 5 節 Image を参照 |
+| ノードの `{styles}` 内に認識できない token がある | error | 例：`@card{blue}`、`@mark{bluee}`、`@img{radius-x}`。その token はレンダリング時には引き続き無視される。範囲は token 自体を指す |
+| `@defn(id)` の id が整数でない | error | `@fn[...]` は整数のみ受け付けるため、その脚注は決して参照できない。id が選ばれた場所である `@defn` に対して報告される |
+| `@color`／`@bordered` に `{styles}` の値がない | error | 虹色の見た目／意味のある枠線色なし、にフォールバックする |
+| 内容を飲み込む `@raw` のエスケープ、または消費されたあらゆるエスケープ | warning／info | 第 9 節を参照 |
+
+「重大度」は diagnostic が持つ値である。error が Strict Mode でブロックするか、Editor Mode で下線を引くだけかは、上で説明したとおり利用側が決める。
+
+---
+
 ---
 
 ### Editor Mode
@@ -890,3 +926,65 @@ Renderer は自由に次を出力できる：
 | `@underline` | `@u` |
 
 （Block Syntax の `@heading`/`@paragraph` のエイリアス `@h`/`@p` は Block Syntax Specification §11 で定義されている。）
+
+---
+
+## 15. Semantic Inline: @spoiler and @hex
+
+構文 v0.1.2 で追加された 2 つのインラインノード。どちらも通常のインラインノードであり、`inline-stream` が現れられる場所ならどこにでも置ける。
+
+### @spoiler
+
+```text
+この映画のラストで、@spoiler[主人公が実は悪役だった]ことが明かされ、展開が非常に見事だ。
+```
+
+```ebnf
+spoiler = "@spoiler" , content ;
+```
+
+文レベルの隠しスパン：読者が自分で開示するかどうかを選べる内容で、周囲の文章を独立したブロックに分断しない。`content` は標準のネスト可能な生成規則なので、`@spoiler[@bold[衝撃の逆転]]` は有効であり、隠されていても書式は保たれる。
+
+* **`@details` のブロックレベル版ではない。** `@details` はタイトル付きのブロックレベルの段階的開示——読者が展開するのはセクション全体である。`@spoiler` は文の*中*の断片であり、開示後も 1 つの段落として読める。ブロックレベルの spoiler ノードは意図的に設けていない：ブロックレベルのネタバレは「ネタバレ注意」のようなタイトルを付けた `@details` にすぎず、同じ役割に 2 つのノードを与えると、言語に同じことを言う方法が 2 通りできてしまう。
+* **テーブルのセル。** `@spoiler` はテーブルのセルの許可リストには**含まれない**（Block Spec 第 5 節 Table）。
+* **レンダリング（Web）。** 参照 renderer は `<span class="spoiler" tabindex="0">…</span>` を出力する。背景とテキストはどちらもデフォルトで隠され、`:hover`／`:focus` で両方とも解除される。スクリプトは不要。`tabindex` によりキーボードで到達できるようになり focus が発火し、同時に支援技術が内容を読み上げるためのフックにもなる。
+* **操作による開示ができない出力先**（プレーンテキスト、検索インデックス、LLM 向けの抽出結果、PDF）：具体的な代替表示は renderer が決めるが、renderer はネタバレの本文を検索インデックスや自動生成される要約に黙ってコピーしては**ならない**（MUST NOT）。`[ネタバレ]` のようなマーカーに置き換える、あるいはその文をインデックスから外すのはどちらも許容される。まったく対話性のない出力先（DOCX）では、脚注や展開可能なコメントに変換するのも妥当である。
+
+参照 renderer のスタイルフックは `.spoiler` クラスである。最小限のルールセット：
+
+```css
+.spoiler { background: currentColor; border-radius: 3px; cursor: pointer; outline: none; }
+.spoiler:hover, .spoiler:focus { background: transparent; }
+```
+
+（隠れている間はテキストの色が背景色と等しくなければならない——`background: currentColor` なら自動的にそうなる——そして開示時には両方をリセットする。）
+
+### @hex
+
+```text
+メインカラーは @hex[#3366ff]、アクセントカラーは @hex[#f80] です。
+```
+
+```ebnf
+hex      = "@hex" , "[" , hex-code , "]" ;
+hex-code = "#" , ( 3 * hex-digit | 6 * hex-digit ) ;
+```
+
+色見本と、その文字どおりのコードを並べて表示する——このノードの主題は色の値*そのもの*である。
+
+* **制限された内容。** `@kbd` の `key` と同様に、括弧の中には検証される値が入り、文章は入らない：`@hex[@bold[#fff]]` は太字の色コードではない。`@hex` の括弧の中では、文法は `inline-node` を経由しないからである。
+* **受け付ける形式：** `#RGB` と `#RRGGBB`。8 桁の `#RRGGBBAA` 形式はこの改訂では意図的に未決定とし、黙って受け入れるのではなく**拒否**する。これにより、あとでアルファ値の慣例を採用しても破壊的変更にならない。文法に合わない内容（名前付きカラー、4 桁や 5 桁のコード、`#` の欠落）は diagnostic となり、黙ってフォールバックすることは決してない。
+* **テーブルのセル。** `@hex` はテーブルのセルの許可リストに**含まれる**——色見本の表やデザイントークンの表が最も一般的な用途である。
+* **レンダリング（Web）。** 参照 renderer は `<span class="hex-swatch"><span class="hex-swatch-color" style="background-color:#3366ff;"></span><code>#3366ff</code></span>` を出力する。インラインなのは色見本の背景色だけで、サイズや余白はスタイルシートの役割（`.hex-swatch`、`.hex-swatch-color`）である。クリックしてコピーするといった操作は renderer に属し、文法には属さない。
+* **色を描画できない出力先**（プレーンテキストの terminal）：コード `#3366ff` を出力する。
+
+#### `@hex` は `@color` ではない
+
+この 2 つは互いに取り違えて使われやすいが、意味は正反対である：
+
+| ノード | 意味 |
+|---|---|
+| `@color{#3366ff}[テキスト]` | 「*このテキスト*をこの色にする」——hex 値は無関係な内容を着色する |
+| `@hex[#3366ff]` | 「*この色コードそのもの*を表示する」——コードが内容である |
+
+色見本を並べるデザインシステムの文書には `@hex` を、たまたま青い文字が必要な段落には `@color` を使う。色見本を見せるために `@color{#3366ff}[#3366ff]` と書くと、描画結果は正しく見えるが、構造上は誤ったノードである：「この文書が色見本として提示しているすべての色」を探すツールは、すべての `@hex` を見つけられる一方で、この偶然の `@color` を普通の色付きの単語と区別できない。

@@ -1,6 +1,9 @@
-# @Doc Block Syntax Specification v1.4
+# @Doc Block Syntax Specification v1.5
 
 > 🌐 Other languages: [Traditional Chinese](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-tw/Block-Syntax-Specification.md) ・ [Simplified Chinese](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-cn/Block-Syntax-Specification.md) ・ [Japanese (AI translation; may contain errors)](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ja/Block-Syntax-Specification.md) ・ [Korean (AI translation; may contain errors)](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ko/Block-Syntax-Specification.md)
+
+> [!NOTE]
+> **Changelog (syntax v0.1.2, spec v1.5)** — `@img` gains `float-left` / `float-right` alignment and a bare-keyword form of `align` (§5 Image); `@table` cells may now be separated with `|`, and `@span(n)[...]` lets one cell cover several columns (§5 Table); a row whose width does not equal the `@cols` count is now a diagnostic; unrecognized `{styles}` tokens and non-numeric `@defn` ids are now diagnostics (§4, Inline Spec §11); `@tabs` panel ids are now unique across the whole document (§8 Tabs). Two inline nodes, `@spoiler` and `@hex`, are new — see Inline Spec §15.
 
 ## 0. Table of Contents
 
@@ -35,13 +38,16 @@ rather than:
 Therefore @Doc does not provide:
 
 * `@div`
-* `@span`
+* `@span` *(as a general-purpose layout wrapper)*
 * `@flex`
 * `@grid`
 * `@row`
 * `@col`
 * `@class`
 * `@style`
+
+> [!NOTE]
+> **NOTE**: `@span(n)[...]` *does* exist as of v0.1.2, but it is not a generic layout wrapper like an HTML `<span>`/`<div>`. It is a **table-structure marker**: it is only valid as the sole content of a `@data` cell and only says "this cell covers n columns." It carries no styling and no presentation information — see §5 Table.
 
 The renderer can freely decide, based on the platform:
 
@@ -277,6 +283,7 @@ image-option =
     | width-option
     | height-option
     | align-option
+    | bare-align-option
     | radius-option
     | border-option ;
 
@@ -290,7 +297,22 @@ height-option =
     "height=" , integer ;
 
 align-option =
-    "align=" , ( "left" | "center" | "right" ) ;
+    "align=" , align-value ;
+
+align-value =
+      "left"
+    | "center"
+    | "right"
+    | "float-left"
+    | "float-right" ;
+
+(* Because align-value is a closed set, a bare item that is exactly one of
+   its five values is also accepted as an align-option with no "align="
+   key (e.g. @img(src=a.png,float-left)[...]). This is checked BEFORE the
+   "first bare item is src" rule, so @img(float-left)[...] reads as align,
+   never as a URL that happens to spell "float-left". *)
+bare-align-option =
+    align-value ;
 
 radius-option =
     "radius=" , text ;
@@ -323,9 +345,14 @@ cols =
         column-list ,
     "]" ;
 
+(* Cell delimiter (v0.1.2): "|" if the row uses "|" anywhere at its own
+   top level, otherwise the legacy ",". Decided independently for @cols and
+   for each @data row. See §5 Table. *)
+cell-delimiter =
+    "|" | "," ;
+
 column-list =
-    cell ,
-    { "," , cell } ;
+    [ "|" ] , cell , { cell-delimiter , cell } , [ "|" ] ;
 
 data =
     "@data" ,
@@ -335,9 +362,18 @@ data =
 
 row =
     "[" ,
-        cell ,
-        { "," , cell } ,
+        [ "|" ] , row-cell , { cell-delimiter , row-cell } , [ "|" ] ,
     "]" ;
+
+(* A cell that is exactly one span-cell counts as n toward the row's width
+   instead of 1. A leading and/or trailing "|" is decoration and is
+   stripped, each edge independently. *)
+row-cell =
+      span-cell
+    | cell ;
+
+span-cell =
+    "@span" , "(" , integer , ")" , "[" , cell , "]" ;
 
 (* A cell isn't plain text only — it also allows a curated subset of
    inline-node (cell-inline-node), the same shape @cols columns and @data
@@ -346,7 +382,7 @@ row =
    @card, @table, @details) MUST throw rather than being silently dropped,
    per Strict Mode (Inline Syntax Specification §11). *)
 cell =
-    { cell-inline-node | any-unicode-char - "," - "]" } ;
+    { cell-inline-node | any-unicode-char - cell-delimiter - "]" } ;
 
 (* ==========================================================================
    Widget-Specific Grammar: @tabs / @tab
@@ -439,6 +475,13 @@ text =
 > neither reuses the named color swatch from Inline Spec §7.
 > Whether/how the renderer maps `styles` for Container/Callout/`@img` into
 > visual styling is left to each renderer to decide.
+>
+> **Unrecognized tokens are flagged (v0.1.2).** A token that is not part of the
+> node's own vocabulary — e.g. `@card{blue}` (`@card` takes `#RRGGBB` /
+> `radius-N` only, not named colors) or `@mark{bluee}` — used to be dropped
+> silently, leaving the node unstyled with no signal anywhere. The Parser now
+> reports it as a diagnostic on the offending token (see Inline Spec §11
+> Diagnostics). The document still parses and renders; the token is still ignored.
 
 ---
 
@@ -641,9 +684,32 @@ Currently supported options:
 | `src` (optional) | Image source URL | `src=https://...` |
 | `width` | Display width (unit decided by the renderer) | `width=200` |
 | `height` | Display height (unit decided by the renderer) | `height=150` |
-| `align` | Alignment | `align=left/center/right` |
+| `align` | Alignment / text wrap (see below) | `align=left/center/right/float-left/float-right` |
 | `radius` | Corner radius (CSS value passed directly through to the renderer) | `radius=8px` |
 | `border` | Border (CSS value passed directly through to the renderer) | `border=1px solid #ccc` |
+
+#### Image `align` values (v0.1.2)
+
+The `align` value set is closed:
+
+| Value | Effect |
+|---|---|
+| `left` | Image aligned left; following content continues **below** the image |
+| `center` | Image centered (the previous behavior) |
+| `right` | Image aligned right; following content continues **below** the image |
+| `float-left` | Image aligned left; following text **wraps around it on the right** |
+| `float-right` | Image aligned right; following text **wraps around it on the left** |
+
+```text
+@img(./a.png,align=float-left)[Alt text]
+```
+
+* **Bare keyword form.** Because the value set is closed, a bare option that is exactly one of the five values is recognized as `align` without the `align=` key: `@img(./a.png,float-left)[...]` is equivalent to `@img(./a.png,align=float-left)[...]`. This check runs *before* the "first bare option is `src`" rule, so `@img(float-left)[...]` (no `src` at all) is an alignment, not a URL that happens to be spelled "float-left".
+* **A single option value, not a combination.** There is deliberately no `align=left,float=true` pair — an invalid combination cannot be written at all, and the author (or model) makes one choice instead of two.
+* **No `center` + wrap.** Wrapping text on both sides of a centered image is not something CSS `float` can express and most renderers cannot implement it; keeping it would only make renderers fall back to different effects silently.
+* **Where the wrap ends.** The wrap is a renderer-level convention, not recorded in the AST: it SHOULD end at the next heading, the next `@hr`, or the end of the enclosing container.
+* **Narrow screens and non-flowing targets** (phones, terminals, some PDF): the renderer MAY ignore alignment and wrap and show the image centered or full-width. Alignment is **positional semantics**; it does not promise a pixel-level layout.
+* **Unrecognized values** (e.g. `align=middle`, a typo): the renderer ignores the value and uses the default (no alignment). The Parser additionally reports a **warning** diagnostic — the document still renders, so it is not an error, but it is no longer silent.
 
 > [!TIP]
 > **TIP**: This extension mechanism follows the same design philosophy as Inline Spec §7 `@mark Styles Semantics` — the grammar level only defines "a comma-separated option list inside parentheses"; the actual set of keys belongs to the semantic level, so adding new options in the future (e.g. `alt`, `loading`) does not require modifying the EBNF itself. The renderer MUST ignore unrecognized keys, and SHOULD fall back to "applying only `src`" rather than throwing an error.
@@ -686,13 +752,58 @@ The internal structure of `@table` is fixed as two dedicated child nodes, `@cols
 ]
 ```
 
-* `@cols[...]`: a comma-separated list of column headers that defines the column order and count; each column is a `cell` (see below) just like `@data`'s cells, not limited to plain-text identifiers.
-* `@data[...]`: each row is wrapped in `[...]`; the number of `cell`s SHOULD match the number of columns defined by `@cols`. The Parser MAY throw a warning or error for a row whose count doesn't match (decided by Strict / Editor Mode, see Inline Spec §11 Parser Recovery Strategy).
+* `@cols[...]`: a delimiter-separated list of column headers that defines the column order and count; each column is a `cell` (see below) just like `@data`'s cells, not limited to plain-text identifiers.
+* `@data[...]`: each row is wrapped in `[...]`; the row's **width** MUST equal the number of columns defined by `@cols` (a `@span(n)` cell counts as `n`, every other cell as 1). A row whose width differs is reported as a diagnostic — see "Row width" below.
+
+#### Cell delimiter: `|` or `,` (v0.1.2)
+
+`@cols` and each `@data` row originally split cells on `,` only, which left no way to write a cell that itself contains a comma (`$1,500`, `Web, iOS, Android`, `DECIMAL(10,2)`) without silently producing an extra column. As of v0.1.2 the delimiter is chosen **per row** by one mechanical rule:
+
+```text
+If "|" appears anywhere at a row's own top level, the row is split on "|";
+otherwise it is split on "," exactly as before.
+```
+
+```text
+@table[
+    @cols[Time|Talk|Speaker]
+
+    @data[
+        [09:00 - 10:30|Opening keynote|Alice Wang]
+        [10:30 - 11:00|@span(2)[Break]]
+        [11:00 - 12:00||Data Engineering group]
+        [13:30 - 15:00|Table syntax design|Carol Chen, Dana Lin]
+    ]
+]
+```
+
+* **In `|` mode, `,` is ordinary text** — no escaping and no restriction (see the last row's speaker cell above).
+* **`,` mode is unchanged.** A row with no `|` parses exactly as before, so existing documents need no migration. The comma form is considered legacy; an Editor Mode implementation MAY mark it as deprecated.
+* **Only top-level delimiters split.** A `|` or `,` inside a nested node's own brackets (`@bold[a,b]`, `@raw[a|b]`) stays literal — cell splitting follows bracket depth and never consults the registry. To put a literal `|` in a cell, wrap it in `@raw[...]`, which is also the semantically correct node for the kind of content (code) that usually needs one.
+* **Empty cells must be written out.** `[11:00 - 12:00||Data Engineering group]` has a deliberately empty middle cell.
+* **A leading and/or trailing `|` is decoration and is stripped, each edge independently.** `[|a|b|c|]` (the Markdown-table habit), `[|a|b|c]`, `[a|b|c|]` and `[a|b|c]` all parse identically. Consequence: an edge `|` can no longer express a genuinely empty *first* or *last* cell — put a placeholder in it or restructure the columns. An empty cell in the *middle* of a row is unaffected.
+* Avoid `<...>` as a cell wrapper — that shape is reserved for the `<action>` slot.
+
+#### Column-spanning cells: `@span(n)[...]` (v0.1.2)
+
+```text
+[10:30 - 11:00|@span(2)[Break]]
+```
+
+A cell whose content is **exactly one** `@span(n)[...]` node (`n` a positive integer) covers `n` columns and counts as `n` toward the row's width, so "every row's width equals the column count" holds with no exceptions. In the example above the row has 2 literal cells but a width of 1 + 2 = 3, matching the three columns of `@cols`. A renderer maps it to its own colspan concept (HTML: `<td colspan="n">`).
+
+* `@span` is only valid as the **sole content of a `@data` cell**. Inside `@cols`, outside a table, or mixed with other content in a cell, it is a misplaced node and is flagged in the same way `@tab` outside `@tabs` is.
+* `n` MUST be a plain positive integer. `@span(two)`, `@span(0)` and `@span(2.5)` are reported as their own diagnostic; for the row-width check such a cell is counted as width 1, so the same root cause is not reported twice.
+* `@span` has no styling or layout meaning of its own — see the note in §1.
+
+#### Row width
+
+A row whose width (`@span` counted) does not equal the number of columns in `@cols` is reported as a diagnostic, **regardless of which delimiter the row uses**. The Parser never auto-pads or truncates: a silent mismatch renders a table whose columns no longer line up with its header. The diagnostic is an error in Strict Mode and a reported (non-blocking) diagnostic in Editor Mode, and it points at the offending row.
 
 > [!TIP]
 > **TIP**: The fixed order and required presence of both `@cols` and `@data` is a deliberate design trade-off — sacrificing a bit of flexibility in exchange for a high degree of predictability, both for the Parser and for AI-generated content.
 
-Each `cell` is not merely plain text — besides the text itself, it also allows a curated set of inline formatting nodes (`@bold`, `@italic`, `@underline`, `@del`, `@mark`, `@color`, `@sup`, `@sub`, `@link`, `@fn`, and `@n`, which is converted into a line break), because these nodes only change how the text is presented and do not affect the table's own "columns aligned with data rows" structure. This list is maintained on the renderer side (`isCellAllowedNode` in `registry.ts`); the grammar level itself does not restrict the list's contents, and it can be extended in the future. A node not on the list (e.g. block nodes that bring their own layout structure, such as `@card`, `@table`, `@details`) MUST throw a syntax error rather than being silently dropped — this is consistent with the spirit of Strict Mode (Inline Syntax Specification §11): "prefer to throw an error rather than swallow erroneous content."
+Each `cell` is not merely plain text — besides the text itself, it also allows a curated set of inline formatting nodes (`@bold`, `@italic`, `@underline`, `@del`, `@mark`, `@color`, `@sup`, `@sub`, `@link`, `@fn`, `@hex`, `@span`, and `@n`, which is converted into a line break), (`@hex` because colour-swatch tables are one of its most common uses; `@span` because that is the only place it means anything; `@spoiler` is deliberately **not** on the list — a table cell is an awkward place for a click-to-reveal span) because these nodes only change how the text is presented and do not affect the table's own "columns aligned with data rows" structure. This list is maintained on the renderer side (`isCellAllowedNode` in `registry.ts`); the grammar level itself does not restrict the list's contents, and it can be extended in the future. A node not on the list (e.g. block nodes that bring their own layout structure, such as `@card`, `@table`, `@details`) MUST throw a syntax error rather than being silently dropped — this is consistent with the spirit of Strict Mode (Inline Syntax Specification §11): "prefer to throw an error rather than swallow erroneous content."
 
 > [!NOTE]
 > **Exception**: the raw family of nodes (`@code`, `@mermaid`, `@raw`, `@kbd`) are also not on the `isCellAllowedNode` list, but they are neither "block nodes that bring their own layout structure" nor subject to the MUST-throw rule above — `Parser.ts` (`parseInlineCellList`) deliberately flattens their raw content into plain text inside the cell, rather than throwing an error or parsing them as real nodes. This is separate behavior from how structural nodes like `@card`/`@table`/`@details` are handled; see the comments above `CELL_ALLOWED_INLINE` in `registry.ts` and above `parseInlineCellList` in `Parser.ts` for details.
@@ -914,6 +1025,9 @@ This operation may cause data loss.
 
 * `@tab(title)[content]`: `title` is the tab's display name, and `content` is a full `block-content` (may contain any block-node and inline-stream).
 * If a node other than `@tab` appears inside `@tabs[...]` (e.g. bare text or another block-node), the Parser MUST treat it as a syntax error (Strict Mode), or Editor Mode automatically ignores it / prompts a fix.
+
+* **Unique ids (v0.1.2).** A renderer that emits DOM ids for the tab widget MUST make them unique across the *whole document*. Numbering panels from 0 inside each `@tabs` block makes two `@tabs` blocks in one document both emit `tab-panel-0`, `tab-panel-1`, … so a trigger's `aria-controls` can no longer resolve to exactly one panel. The reference renderer prefixes a per-document widget counter (`tab-panel-<widget>-<index>`).
+* **Initial state.** The reference renderer marks the first tab as selected (`aria-selected="true"` on its trigger, `data-active="true"` on its panel) so the widget has a correct initial state before any script runs.
 
 > [!TIP]
 > **TIP**: The reason `@tab` is not folded into `block-node` is to prevent it from being misused outside of `@tabs` (e.g. placed directly at the top level of a document). This is similar in spirit to the Opaque Domain design of `@raw` in the Inline Spec: specific syntax is only valid in a specific context.

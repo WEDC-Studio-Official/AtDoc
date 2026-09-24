@@ -1,0 +1,420 @@
+/* index.css — the default stylesheet for Adapters.ts's HTML output.
+ *
+ * Adapters.ts emits semantic HTML (<h1>, <ul>, <blockquote>, <pre><code>,
+ * <table>, <mark>, <kbd>, …) rather than a class soup, so this file styles
+ * tags directly. That means it is optional: drop the HTML into a page with
+ * its own stylesheet and it still reads correctly, just unstyled.
+ *
+ * Route A (toTailwindHTML) adds `class="<node type>"` hooks on top of the same
+ * tags, so a Tailwind project can ignore this file entirely. Route B
+ * (toInlineStyleHTML) carries its per-instance colors inline, which override
+ * the rules here by specificity — as intended, since those come from the
+ * document's own {styles} slots.
+ *
+ * ## A neutral default
+ *
+ * This file is the neutral default, not a specific visual identity: system
+ * sans-serif at 16px / 1.7, a 66ch measure that scales with the type, plain
+ * white with a true dark mode, teal accent, sans headings at weight 600.
+ * Themes with their own look ship their own complete stylesheet; none of them
+ * is layered on top of this one.
+ *
+ * No imports, no webfonts, no framework, and no opinion about the page beyond
+ * a readable measure.
+ */
+
+:root {
+  --atd-text: #18212b;
+  --atd-muted: #5b6b7c;
+  --atd-border: #dde3e9;
+  --atd-surface: #f4f6f8;
+  --atd-ground: #ffffff;
+  --atd-accent: #0f766e;
+  --atd-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --atd-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", Helvetica, Arial, sans-serif;
+
+  /* highlight.js token colors (highlightCode() in Adapters.ts) — a small,
+     purpose-picked set rather than a copied canned theme, kept legible
+     against --atd-surface in both color schemes below. */
+  --atd-hl-comment: #7c8a99;
+  --atd-hl-keyword: #7c3aed;
+  --atd-hl-string: #15803d;
+  --atd-hl-number: #b45309;
+  --atd-hl-title: #0e6ba8;
+  --atd-hl-attr: #be123c;
+
+  /* Callout Blocks (@note/@tip/@important/@warning/@caution) — unlike @card,
+     these carry no per-instance style slot Adapters.ts renders (it emits a
+     bare `class="note"` etc. either route, see Adapters.ts's renderNode()),
+     so the five variants render visually identical without these. Same
+     Word-swatch family as the mark/color/bordered tokens above, just
+     repurposed as a fixed per-variant accent instead of an author-chosen
+     token. */
+  --atd-callout-note-accent: #808080;
+  --atd-callout-note-bg: #f4f6f8;
+  --atd-callout-tip-accent: #00B050;
+  --atd-callout-tip-bg: #e9f7ee;
+  --atd-callout-important-accent: #0070C0;
+  --atd-callout-important-bg: #e8f2fb;
+  --atd-callout-warning-accent: #FFC000;
+  --atd-callout-warning-bg: #fff8e1;
+  --atd-callout-caution-accent: #FF0000;
+  --atd-callout-caution-bg: #fdeaea;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --atd-text: #dfe6ed;
+    --atd-muted: #90a0b0;
+    --atd-border: #2c3742;
+    --atd-surface: #161d25;
+    --atd-ground: #0e141a;
+    --atd-accent: #5eead4;
+
+    --atd-hl-comment: #7c8a99;
+    --atd-hl-keyword: #c4b5fd;
+    --atd-hl-string: #86efac;
+    --atd-hl-number: #fbbf24;
+    --atd-hl-title: #7dd3fc;
+    --atd-hl-attr: #fda4af;
+
+    /* Accents stay the same vivid swatches; only the tint darkens to sit on
+       --atd-ground instead of white. */
+    --atd-callout-note-bg: #1c2530;
+    --atd-callout-tip-bg: #123322;
+    --atd-callout-important-bg: #102a40;
+    --atd-callout-warning-bg: #3a2e08;
+    --atd-callout-caution-bg: #3a1414;
+  }
+}
+
+body {
+  margin: 0 auto;
+  max-width: 66ch;
+  padding: 3rem 1.5rem 6rem;
+  background: var(--atd-ground);
+  color: var(--atd-text);
+  font-family: var(--atd-sans);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+/* --- Structural Blocks --- */
+
+/* v0.1.2 (README.md §A-1): a float-left/float-right @img's text wrap ends at
+   the next heading or @hr — clearing it here, once, covers every document
+   instead of each @img needing to know where its own wrap should stop. */
+h1, h2, h3, h4, h5, h6 { clear: both; line-height: 1.3; margin: 2.5rem 0 1rem; font-weight: 600; }
+h1 { font-size: 2.1rem; margin-top: 0; letter-spacing: -.02em; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.2rem; }
+h4 { font-size: 1.05rem; }
+h5 { font-size: .95rem; }
+h6 { font-size: .9rem; color: var(--atd-muted); }
+
+p { margin: 0 0 1.15rem; }
+
+blockquote {
+  margin: 0 0 1.15rem;
+  padding: .1rem 0 .1rem 1.25rem;
+  border-left: 3px solid var(--atd-accent);
+  color: var(--atd-muted);
+}
+
+ul, ol { margin: 0 0 1.15rem; padding-left: 1.6rem; }
+li { margin: .3rem 0; }
+li > ul, li > ol { margin: .3rem 0; }
+
+hr { clear: both; height: 1px; margin: 2.5rem 0; border: 0; background: var(--atd-border); }
+
+img { max-width: 100%; height: auto; }
+img.float-left { float: left; margin: 0 1.25rem 1rem 0; }
+img.float-right { float: right; margin: 0 0 1rem 1.25rem; }
+
+/* --- Code --- */
+
+/* @code — a block. `.code-block` now owns the frame (border/background/
+   radius/margin); the `pre` inside is just the scrollable text area under
+   `.code-header`'s language label + copy button (highlightCode() in
+   Adapters.ts). The inner `code` resets the inline decoration below so it
+   isn't chip-styled twice. */
+.code-block {
+  margin: 0 0 1.15rem;
+  background: var(--atd-surface);
+  border: 1px solid var(--atd-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .4rem .75rem;
+  border-bottom: 1px solid var(--atd-border);
+  font-family: var(--atd-mono);
+  font-size: .75rem;
+  color: var(--atd-muted);
+}
+.code-lang { display: flex; align-items: center; gap: .4rem; }
+.code-lang svg { flex-shrink: 0; }
+.copy-button {
+  display: flex;
+  align-items: center;
+  padding: .2rem;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--atd-muted);
+  cursor: pointer;
+}
+.copy-button:hover { background: var(--atd-border); color: var(--atd-text); }
+
+pre {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  font-size: .875em;
+  line-height: 1.55;
+}
+
+/* The pre-hydration `<pre class="mermaid">` placeholder (mermaidRenderer.ts
+   only replaces it once a diagram actually renders — see .mermaid-block
+   below) is a bare `pre`, not inside `.code-block`, so it lost the frame
+   above when that moved off the generic `pre` rule. Restore it here,
+   scoped to just this element, so raw/errored diagram source still reads as
+   a boxed block instead of unstyled text. */
+pre.mermaid {
+  margin: 0 0 1.15rem;
+  background: var(--atd-surface);
+  border: 1px solid var(--atd-border);
+  border-radius: 8px;
+}
+
+/* hljs token colors. */
+.hljs-comment, .hljs-quote { color: var(--atd-hl-comment); font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-subst { color: var(--atd-hl-keyword); }
+.hljs-string, .hljs-doctag, .hljs-regexp, .hljs-addition, .hljs-attribute, .hljs-meta-string { color: var(--atd-hl-string); }
+.hljs-number, .hljs-symbol, .hljs-bullet, .hljs-link { color: var(--atd-hl-number); }
+.hljs-title, .hljs-section, .hljs-name, .hljs-selector-id, .hljs-selector-class,
+.hljs-type, .hljs-built_in, .hljs-builtin-name { color: var(--atd-hl-title); }
+.hljs-attr, .hljs-variable, .hljs-template-variable, .hljs-tag, .hljs-deletion { color: var(--atd-hl-attr); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }
+
+/* @raw — inline code (Inline Syntax Specification §9's opaque domain: content
+   that must not be parsed, shown literally). Same role as Markdown's
+   backticks. No border, unlike <kbd>: inline code is dense in technical prose,
+   and a box around every occurrence chops the sentence into cells. */
+code {
+  font-family: var(--atd-mono);
+  font-size: .9em;
+  padding: .12em .38em;
+  background: var(--atd-surface);
+  border-radius: 4px;
+  /* @raw's content can contain newlines. It usually doesn't — inline code is
+     one line by nature — but @code defines no escape mechanism at all (Inline
+     Spec §9), so a fenced block whose brackets don't balance can only be kept
+     by degrading it to @raw. The default `white-space: normal` collapses those
+     newlines into spaces, turning a 165-line EBNF grammar into one run-on
+     line; pre-wrap keeps the structure, and single-line inline code is
+     unaffected either way. */
+  white-space: pre-wrap;
+}
+
+pre code { padding: 0; background: none; border-radius: 0; font-size: inherit; }
+
+/* @mermaid — hydrated client-side (mermaidRenderer.ts) from the
+   <pre class="mermaid"> placeholder above into a pannable/zoomable <div>
+   wrapping the rendered <svg>. Reuses the same surface/border look as
+   `pre` above since it takes over that same visual role once hydrated. */
+.mermaid-viewport {
+  position: relative;
+  overflow: hidden;
+  height: 380px;
+  margin: 0 0 1.15rem;
+  padding: 1rem 1.1rem;
+  background: var(--atd-surface);
+  border: 1px solid var(--atd-border);
+  border-radius: 8px;
+  cursor: grab;
+  touch-action: none;
+  /* Without this, a drag-to-pan that passes over the rendered SVG's <text>
+     nodes also starts the browser's native text-selection drag — panZoom.ts
+     already preventDefault()s the triggering mousedown, but this is the
+     belt-and-suspenders CSS half of that (some input paths, e.g. touch,
+     don't fully respect preventDefault() for selection the way mouse does). */
+  user-select: none;
+}
+.mermaid-viewport[data-dragging="true"] { cursor: grabbing; }
+.mermaid-canvas { display: inline-block; transform-origin: 0 0; }
+.mermaid-canvas svg { display: block; max-width: none; }
+
+/* Once a diagram has actually rendered, mermaidRenderer.ts wraps the
+   (otherwise untouched) `.mermaid-viewport` above in one more outer
+   `.mermaid-block`, reusing `.code-header`'s exact markup (icon + "mermaid"
+   label, copy-source button). It only ever appears post-render, never around
+   the pre-hydration `pre.mermaid` placeholder above. */
+.mermaid-block {
+  margin: 0 0 1.15rem;
+  background: var(--atd-surface);
+  border: 1px solid var(--atd-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mermaid-block .mermaid-viewport { margin: 0; border: none; border-radius: 0; }
+
+/* @kbd — a physical key, so it keeps the border and cap look. */
+kbd {
+  font-family: var(--atd-mono);
+  font-size: .85em;
+  padding: .12em .45em;
+  background: var(--atd-ground);
+  border: 1px solid var(--atd-border);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 var(--atd-border);
+}
+
+/* --- Table --- */
+
+table { border-collapse: collapse; margin: 0 0 1.15rem; width: 100%; display: block; overflow-x: auto; }
+th, td { padding: .45rem .8rem; border: 1px solid var(--atd-border); text-align: left; }
+th { background: var(--atd-surface); font-weight: 600; }
+
+/* --- Inline --- */
+
+a { color: var(--atd-accent); text-decoration: underline; text-underline-offset: .18em; }
+a:hover { text-decoration-thickness: 2px; }
+
+/* @mark / @color / @bordered named tokens (Route A — toTailwindHTML emits
+   `mark-<token>`/`color-<token>`/`bordered-<token>` classes for these, no
+   inline style; a literal hex token still falls back to inline style, see
+   Adapters.ts's renderMark/renderColor/renderBordered). Values mirror
+   Adapters.ts's MARK_COLORS/COLOR_PRESETS exactly — Word's real Text
+   Highlight Color and Font Color "Standard Colors" swatches, not a softened
+   reinterpretation, kept in sync by hand. */
+mark {
+  padding: .1em .25em;
+  border-radius: 3px;
+  color: #000; /* Word never recolors text to match the highlight it sits on */
+}
+.mark-yellow { background: #FFFF00; }
+.mark-red { background: #FF0000; }
+.mark-green { background: #00FF00; }
+.mark-blue { background: #0000FF; color: #fff; }
+.mark-orange { background: #FFC000; }
+.mark-purple { background: #800080; color: #fff; }
+.mark-gray { background: #808080; }
+
+.color-yellow { color: #FFFF00; }
+.color-red { color: #FF0000; }
+.color-green { color: #00B050; }
+.color-blue { color: #0070C0; }
+.color-orange { color: #FFC000; }
+.color-purple { color: #7030A0; }
+.color-gray { color: #808080; }
+
+.bordered { border: 1px solid currentColor; border-radius: 4px; padding: .05em .35em; }
+.bordered-yellow { border-color: #FFFF00; }
+.bordered-red { border-color: #FF0000; }
+.bordered-green { border-color: #00B050; }
+.bordered-blue { border-color: #0070C0; }
+.bordered-orange { border-color: #FFC000; }
+.bordered-purple { border-color: #7030A0; }
+.bordered-gray { border-color: #808080; }
+
+sup, sub { font-size: .75em; line-height: 0; }
+
+/* v0.1.2 (README.md §A-2): no-JS reveal-on-hover/focus — background and text
+   both flattened to the same tone by default, both cleared on interaction.
+   outline: none since the tone-matched background already shows focus. */
+.spoiler {
+  background: var(--atd-text);
+  color: var(--atd-text);
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+}
+.spoiler:hover, .spoiler:focus {
+  background: transparent;
+  color: inherit;
+}
+
+/* v0.1.2 (README.md §A-3): color swatch + its own literal hex code. */
+.hex-swatch { display: inline-flex; align-items: center; gap: .35em; }
+.hex-swatch-color {
+  display: inline-block;
+  width: .9em;
+  height: .9em;
+  border-radius: 3px;
+  border: 1px solid var(--atd-border);
+}
+
+/* --- Container / Callout Blocks --- */
+
+details {
+  margin: 0 0 1.15rem;
+  padding: .8rem 1.1rem;
+  background: var(--atd-surface);
+  border-radius: 8px;
+}
+summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: .6rem; }
+
+/* @card's per-instance colors arrive as inline style (Adapters.ts's
+   renderCard), so only its shared frame belongs here; the callouts
+   (@note/@tip/@important/@warning/@caution) get real per-variant colors
+   below since Adapters.ts renders all five as a bare, colorless
+   `class="<type>"` (see the :root callout tokens above). */
+article, aside, section {
+  margin: 0 0 1.15rem;
+  padding: .8rem 1.1rem;
+  border: 1px solid var(--atd-border);
+  border-radius: 8px;
+}
+aside > header { font-weight: 600; margin-bottom: .3rem; }
+
+aside.note, aside.tip, aside.important, aside.warning, aside.caution {
+  border: none;
+  border-left: 3px solid var(--atd-border);
+}
+aside.note { background: var(--atd-callout-note-bg); border-left-color: var(--atd-callout-note-accent); }
+aside.tip { background: var(--atd-callout-tip-bg); border-left-color: var(--atd-callout-tip-accent); }
+aside.important { background: var(--atd-callout-important-bg); border-left-color: var(--atd-callout-important-accent); }
+aside.warning { background: var(--atd-callout-warning-bg); border-left-color: var(--atd-callout-warning-accent); }
+aside.caution { background: var(--atd-callout-caution-bg); border-left-color: var(--atd-callout-caution-accent); }
+
+/* --- Widgets --- */
+
+.tabs { margin: 0 0 1.15rem; border: 1px solid var(--atd-border); border-radius: 8px; overflow: hidden; }
+.tabs [role="tablist"] { display: flex; flex-wrap: wrap; gap: .25rem; padding: .3rem .4rem 0; background: var(--atd-surface); }
+.tabs button {
+  padding: .45rem .85rem;
+  border: 0;
+  border-radius: 6px 6px 0 0;
+  background: none;
+  font: inherit;
+  color: var(--atd-muted);
+  cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--atd-ground); color: var(--atd-text); font-weight: 600; }
+.tabs [role="tabpanel"] { padding: .9rem 1.1rem; }
+
+/* Progressive enhancement: with scripting off every panel stays reachable.
+   Hiding panels unconditionally would leave only the first panel reachable
+   and the rest permanently invisible. Here the hiding is gated on the marker
+   generate.ts's script sets at load, so no-JS output falls back to every panel
+   stacked and readable — Adapters.ts's renderTabs() emits no initial state of
+   its own, which turns out to be the safer default. */
+.tabs[data-enhanced="true"] [role="tabpanel"] { display: none; }
+.tabs[data-enhanced="true"] [role="tabpanel"][data-active="true"] { display: block; }
+.tabs:not([data-enhanced="true"]) [role="tabpanel"] + [role="tabpanel"] { border-top: 1px solid var(--atd-border); }
+
+/* --- Footnotes --- */
+
+.footnotes {
+  margin-top: 3rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--atd-border);
+  font-size: .9em;
+  color: var(--atd-muted);
+}

@@ -18,7 +18,8 @@
 // parsed `styles` slot (registry.ts `styles: true`) but this Adapter doesn't
 // yet map it to visual output. Everything else renders identically on both routes.
 
-import type { DocASTNode } from './types.js';
+import type { DocASTNode } from '../types.js';
+import { registerTheme } from '../themeRegistry.js';
 
 type Route = 'tailwind' | 'inline';
 
@@ -249,6 +250,25 @@ function renderChildrenToString(content: (DocASTNode | string)[], route: Route):
 }
 
 /**
+ * Renders one @data cell as a `<td>` — a column-spanning cell needs its own
+ * path because "n columns of width" (Parser.ts's rowEffectiveWidth, checked
+ * against @cols) is a fact about the *table structure*, not something a
+ * generic node case can express: @span itself carries no HTML of its own,
+ * it just tells this `<td>` to claim `colspan="n"` and then renders its own
+ * `content` in the cell's place (a bare cell whose sole content is one
+ * @span node — see registry.ts's isCellAllowedNode / Parser.ts's
+ * rowEffectiveWidth for the exact "exactly one @span node" shape this checks).
+ */
+function renderTableCell(cell: (DocASTNode | string)[], route: Route): string {
+  const only = cell.length === 1 ? cell[0] : undefined;
+  if (only && typeof only !== 'string' && only.type === 'span') {
+    const span = Math.max(1, only.count ?? 1);
+    return `<td colspan="${span}">${renderChildrenToString(only.content, route).replace(/\n/g, '<br>')}</td>`;
+  }
+  return `<td>${renderChildrenToString(cell, route).replace(/\n/g, '<br>')}</td>`;
+}
+
+/**
  * Recursively collects the plain text of a content list, discarding any
  * formatting nodes' tags — used where the output must be text-only (e.g.
  * @img's alt attribute), unlike the main renderer which renders real markup.
@@ -407,11 +427,27 @@ function pushList(stack: Frame[], node: DocASTNode, route: Route): void {
   stack.push(`<${tag}>`);
 }
 
+// A per-widget-local counter starting at 0 collides as soon as a document has
+// more than one @tabs block (both would emit "tab-panel-0", "tab-panel-1", ...);
+// aria-controls on a trigger has to resolve to exactly one panel's id,
+// document-wide.
+let tabsWidgetCounter = 0;
+function nextTabsWidgetId(): number {
+  return tabsWidgetCounter++;
+}
+
+/**
+ * `aria-selected`/`data-active` default to the first tab so the widget has a
+ * correct initial state even before any enhancement JS runs — a consumer's
+ * click handler only *toggles* them from here on, it doesn't establish which
+ * tab starts active.
+ */
 function pushTabs(stack: Frame[], node: DocASTNode, route: Route): void {
   const tabs = node.tabs ?? [];
+  const widgetId = nextTabsWidgetId();
   stack.push('</div>'); // closes the outer .tabs
   pushGroups(stack, tabs, route, (t, i) => ({
-    open: `<div role="tabpanel" id="tab-panel-${i}">`,
+    open: `<div role="tabpanel" id="tab-panel-${widgetId}-${i}" data-active="${i === 0}">`,
     content: t.content,
     close: '</div>',
   }));
@@ -419,7 +455,7 @@ function pushTabs(stack: Frame[], node: DocASTNode, route: Route): void {
   // Triggers have no children of their own (just an escaped title) — pushed
   // as flat strings, in reverse, same as pushGroups but without a wrap.
   pushReversed(stack, tabs.map((t, i) =>
-    `<button role="tab" aria-controls="tab-panel-${i}">${escapeHtml(t.title ?? '')}</button>`
+    `<button role="tab" aria-controls="tab-panel-${widgetId}-${i}" aria-selected="${i === 0}">${escapeHtml(t.title ?? '')}</button>`
   ));
   stack.push('<div class="tabs"><div role="tablist">');
 }
@@ -460,8 +496,15 @@ function pushNodeFrames(stack: Frame[], node: DocASTNode, route: Route): void {
       const attrs = [`src="${escapeHtml(opts.src ?? '')}"`, `alt="${escapeHtml(alt)}"`];
       if (opts.width) attrs.push(`width="${escapeHtml(opts.width)}"`);
       if (opts.height) attrs.push(`height="${escapeHtml(opts.height)}"`);
+      // float-left/float-right wrap text around the image instead of sitting
+      // it alone — a class instead of inline display/margin, so a stylesheet
+      // can define the float together with its wrap-clearing boundary (next
+      // heading/@hr).
+      if (opts.align === 'float-left' || opts.align === 'float-right') {
+        attrs.push(`class="${opts.align}"`);
+      }
       const styleParts: string[] = [];
-      if (opts.align) {
+      if (opts.align === 'left' || opts.align === 'center' || opts.align === 'right') {
         const margin = opts.align === 'center' ? '0 auto' : opts.align === 'right' ? '0 0 0 auto' : '0';
         styleParts.push(`display:block;margin:${margin};`);
       }
@@ -492,7 +535,7 @@ function pushNodeFrames(stack: Frame[], node: DocASTNode, route: Route): void {
         .map(c => `<th>${renderChildrenToString(c, route).replace(/\n/g, '<br>')}</th>`)
         .join('');
       const bodyRows = (node.rows ?? [])
-        .map(r => `<tr>${r.map(cell => `<td>${renderChildrenToString(cell, route).replace(/\n/g, '<br>')}</td>`).join('')}</tr>`)
+        .map(r => `<tr>${r.map(cell => renderTableCell(cell, route)).join('')}</tr>`)
         .join('');
       stack.push(`<table><thead><tr>${theadCells}</tr></thead><tbody>${bodyRows}</tbody></table>`);
       return;
@@ -577,6 +620,32 @@ function pushNodeFrames(stack: Frame[], node: DocASTNode, route: Route): void {
       return;
     case 'link':
       pushWrap(stack, `<a href="${escapeHtml(resolveUri(node.uri ?? ''))}">`, node.content, '</a>', route);
+      return;
+    // A no-JS reveal-on-hover/focus span (`.spoiler` — hidden by default,
+    // revealed on :hover/:focus by the consumer's stylesheet). tabindex makes
+    // it keyboard-reachable so focus actually fires, and doubles as the
+    // "readable by assistive tech" hook, since a screen reader announces
+    // focusable content.
+    case 'spoiler':
+      pushWrap(stack, '<span class="spoiler" tabindex="0">', node.content, '</span>', route);
+      return;
+    // A color swatch + its own literal code, distinct from @color{#hex}[...]
+    // which recolors other text. Parser.ts already rejects anything that
+    // isn't "#RGB"/"#RRGGBB" before this is reached, so node.raw is always a
+    // safe CSS color value here, not attacker input.
+    case 'hex': {
+      const hex = node.raw ?? '';
+      stack.push(`<span class="hex-swatch"><span class="hex-swatch-color" style="background-color:${escapeHtml(hex)};"></span><code>${escapeHtml(hex)}</code></span>`);
+      return;
+    }
+    // @span only carries real meaning as a @data cell's sole content
+    // (renderTableCell() unwraps it into a <td colspan>, never reaching this
+    // case). Reached only for a misplaced @span the Parser still recovered
+    // (restrictedTo flags it as a diagnostic but doesn't drop it) — no
+    // colspan context exists outside a cell, so just render its content
+    // plainly rather than falling through to the generic `<div data-node>`.
+    case 'span':
+      pushWrap(stack, '', node.content, '', route);
       return;
 
     // Footnotes
@@ -687,3 +756,12 @@ export class DocTranspiler {
     return route === 'tailwind' ? `<ol class="footnotes">${items}</ol>` : `<ol>${items}</ol>`;
   }
 }
+
+// Route A (class-driven) is what index.css is written against; Route B's inline
+// styles would fight the stylesheet rather than layer under it.
+registerTheme({
+  id: 'index',
+  label: 'Index',
+  renderNode: (n) => DocTranspiler.toTailwindHTML(n),
+  renderFootnotes: (ast) => DocTranspiler.renderFootnotes(ast, 'tailwind'),
+});

@@ -120,14 +120,17 @@ description = AI-native semantic document runtime
 ]
 
 @table[
-  @cols[id,name,price]
+  @cols[id|name|price]
   @data[
-    [1,早餐,60]
-    [2,午餐,80]
-    [3,晚餐,90]
+    [1|早餐|60]
+    [2|午餐|80]
+    [3|晚餐|90]
   ]
 ]
 ```
+
+> [!NOTE]
+> 表格儲存格以 `|` 分隔（自語法 v0.1.2 起），因此儲存格內可以自由使用逗號（`$1,500`）。舊式的逗號分隔寫法仍照原樣解析。見 [Block Syntax Specification 第 5 節 Table](./Block-Syntax-Specification.md#table)。
 
 > [!NOTE]
 > 以下節點已調整：`@seo`、`@lang` 已併入 `@meta`；`@title` 改用 `@heading`（別名 `@h`）；`@text` 改用 `@paragraph`（別名 `@p`）；`@btn` 暫時棄用。以上為部分範例，實際語法以正式規格文件為準。
@@ -152,17 +155,37 @@ description = AI-native semantic document runtime
 
 ---
 
+## 語法 v0.1.2 的新內容
+
+| 變更 | 規範位置 |
+|---|---|
+| `@img` 對齊：`float-left`／`float-right`（文字環繞圖片），以及裸關鍵字寫法 `@img(src,float-left)[...]` | [Block Spec 第 5 節 Image](./Block-Syntax-Specification.md#image) |
+| 表格儲存格以 `\|` 分隔；容許頭尾多一根 `\|`；逗號寫法不變 | [Block Spec 第 5 節 Table](./Block-Syntax-Specification.md#table) |
+| `@span(n)[...]`——一個表格儲存格橫跨 `n` 欄 | [Block Spec 第 5 節 Table](./Block-Syntax-Specification.md#table) |
+| `@spoiler[...]`——行內、揭露前隱藏的文字 | [Inline Spec 第 15 節](./Inline-Syntax-Specification.md#15-semantic-inline-spoiler-與-hex) |
+| `@hex[#3366ff]`——色塊加上它自己的色碼（與 `@color` 不同） | [Inline Spec 第 15 節](./Inline-Syntax-Specification.md#15-semantic-inline-spoiler-與-hex) |
+| 新增 diagnostics：列寬度 ≠ 欄數、錯誤的 `@span`／`@hex`、未知的 `{styles}` token、未知的 `@img` align、非數字的 `@defn` id | [Inline Spec 第 11 節 Diagnostics](./Inline-Syntax-Specification.md#diagnostics) |
+| `@tabs` 的 DOM id 在整份文件內唯一；預設選取第一個分頁 | [Block Spec 第 8 節 Tabs](./Block-Syntax-Specification.md#tabs) |
+
+這些變更背後大多遵循同一條原則：過去會乾淨解析、卻渲染出錯誤結果的錯誤（少一格的表格、`@card{blue}`、`align=middle`），現在都會變成*看得見*的 diagnostic，而不再是靜默失敗。無論如何，文件仍會照常解析與渲染。
+
+### 套件版本與語法版本
+
+`atdoc-core` 的套件版本（`0.1.x`）與語言的語法版本（此處為 `v0.1.2`）是分開編號的。套件版本追蹤本 repo 的發行；語法版本追蹤文法的變更。兩份規格文件各自帶有自己的修訂編號（目前為 v1.5）。
+
+---
+
 ## 節點分類
 
 ### Core Nodes — 結構原件
 文件骨架，不可再分割的原子。
 
-`@heading`（別名 `@h`） `@paragraph`（別名 `@p`） `@quote` `@code` `@list` `@img` `@table`
+`@heading`（別名 `@h`） `@paragraph`（別名 `@p`） `@quote` `@code` `@list` `@img` `@table`（含其 `@cols`／`@data`／`@span` 部分）
 
 ### Semantic Nodes — 語義容器
 兩種行為模式：
 
-- **Inline Semantic** — 渲染為帶標籤的行內元素：`@mark[重要]`、`@link(example.com)[連結]`
+- **Inline Semantic** — 渲染為帶標籤的行內元素：`@mark[重要]`、`@link(example.com)[連結]`、`@spoiler[隱藏]`、`@hex[#3366ff]`
 - **Block Metadata** — 注入 Host 的設定，不渲染任何 HTML：`@meta[key = value]`
 
 ---
@@ -219,9 +242,10 @@ const html = ast.map(node => DocTranspiler.toTailwindHTML(node)).join('\n');
 ## 這個 Repo 有什麼
 
 ```
-src/            Lexer、Parser、registry（節點的單一事實來源）、Adapters（HTML 渲染的兩條路線）
+src/            Lexer、Parser、Serializer、registry（節點的單一事實來源）、types、pipeline、markdownImport
+src/index/      預設渲染 plugin：Adapters（HTML 渲染的兩條路線）＋ index.css
 src/editor/     Monarch tokenizer，給 Monaco 類編輯器用
-tests/          Lexer/Parser 的 Strict Mode 案例集，以及各節點的渲染驗證
+tests/          Lexer/Parser 的 Strict Mode 案例集（`tests/cases/*.atd`，預期結果在 `expected.json`）、serializer round-trip，以及 v0.1.2 節點的渲染驗證——以 `npm test` 全部執行
 configs/        editor/tooling 用的節點設定
 *-Specification.md   語言的權威文法定義（EBNF + 語意規則）
 ```

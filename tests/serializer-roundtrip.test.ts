@@ -196,8 +196,23 @@ test('accepts: an allowed inline node inside a table cell', () => {
   accepts({ type: 'bold', content: ['x'] }, '@bold[x]', inside('cols'));
 });
 
-test('refuses: "," inside a table cell', () => {
-  refuses({ type: 'cols', content: [], columns: [['a,b']] }, 'cell separator', inside('table'));
+test('accepts: "," inside a table cell switches the row to "|" (v0.1.2)', () => {
+  accepts({ type: 'cols', content: [], columns: [['a,b'], ['c']] }, '@cols[a,b|c]', inside('table'));
+});
+
+test('refuses: "," inside a table cell that is the row\'s only cell', () => {
+  // Only one cell means no second cell to put a "|" between, so switching
+  // delimiters would leave no "|" in the emitted text at all — see
+  // Serializer.ts's emitCells.
+  refuses({ type: 'cols', content: [], columns: [['a,b']] }, 'only cell', inside('table'));
+});
+
+test('refuses: "|" inside a table cell', () => {
+  refuses({ type: 'cols', content: [], columns: [['a|b'], ['c']] }, 'cell separator', inside('table'));
+});
+
+test('refuses: "," forces "|" but the first/last cell is empty', () => {
+  refuses({ type: 'cols', content: [], columns: [[], ['a,b']] }, 'edge "|"', inside('table'));
 });
 
 test('refuses: insertion after an unpaired "@" in the source', () => {

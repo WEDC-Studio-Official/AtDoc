@@ -1,6 +1,9 @@
-# @Doc Block Syntax Specification v1.4
+# @Doc Block Syntax Specification v1.5
 
 > 🌐 其他语言版本：[English](../en/Block-Syntax-Specification.md) ・ [繁體中文](../zh-tw/Block-Syntax-Specification.md) ・ [日本語（AI 翻译，可能有误）](../ja/Block-Syntax-Specification.md) ・ [한국어（AI 번역，可能有误）](../ko/Block-Syntax-Specification.md)
+
+> [!NOTE]
+> **变更记录（语法 v0.1.2、规范 v1.5）**——`@img` 新增 `float-left`／`float-right` 对齐，以及 `align` 的裸关键字写法（第 5 节 Image）；`@table` 保存格现在可用 `|` 分隔，`@span(n)[...]` 可让一个保存格横跨多字段（第 5 节 Table）；某列的宽度不等于 `@cols` 字段数，现在会产生 diagnostic；无法识别的 `{styles}` token 与非数字的 `@defn` id 现在也会产生 diagnostic（第 4 节、Inline Spec 第 11 节）；`@tabs` 的 panel id 现在在整份文档内唯一（第 8 节 Tabs）。另有两个行内节点 `@spoiler` 与 `@hex` 为新增，见 Inline Spec 第 15 节。
 
 ## 0. Table of Contents
 
@@ -35,13 +38,16 @@
 因此 @Doc 不提供：
 
 * `@div`
-* `@span`
+* `@span`（作为通用布局包装节点）
 * `@flex`
 * `@grid`
 * `@row`
 * `@col`
 * `@class`
 * `@style`
+
+> [!NOTE]
+> **NOTE**：`@span(n)[...]` 自 v0.1.2 起**确实存在**，但它不是像 HTML `<span>`／`<div>` 那样的通用布局包装节点。它是**表格结构标记**：只能作为 `@data` 保存格的唯一内容，用来表示「这个保存格横跨 n 个字段」。它不带任何样式或呈现信息——见第 5 节 Table。
 
 Renderer 可以根据平台自由决定：
 
@@ -275,6 +281,7 @@ image-option =
     | width-option
     | height-option
     | align-option
+    | bare-align-option
     | radius-option
     | border-option ;
 
@@ -288,7 +295,22 @@ height-option =
     "height=" , integer ;
 
 align-option =
-    "align=" , ( "left" | "center" | "right" ) ;
+    "align=" , align-value ;
+
+align-value =
+      "left"
+    | "center"
+    | "right"
+    | "float-left"
+    | "float-right" ;
+
+(* Because align-value is a closed set, a bare item that is exactly one of
+   its five values is also accepted as an align-option with no "align="
+   key (e.g. @img(src=a.png,float-left)[...]). This is checked BEFORE the
+   "first bare item is src" rule, so @img(float-left)[...] reads as align,
+   never as a URL that happens to spell "float-left". *)
+bare-align-option =
+    align-value ;
 
 radius-option =
     "radius=" , text ;
@@ -321,9 +343,14 @@ cols =
         column-list ,
     "]" ;
 
+(* Cell delimiter (v0.1.2): "|" if the row uses "|" anywhere at its own
+   top level, otherwise the legacy ",". Decided independently for @cols and
+   for each @data row. See §5 Table. *)
+cell-delimiter =
+    "|" | "," ;
+
 column-list =
-    cell ,
-    { "," , cell } ;
+    [ "|" ] , cell , { cell-delimiter , cell } , [ "|" ] ;
 
 data =
     "@data" ,
@@ -333,9 +360,18 @@ data =
 
 row =
     "[" ,
-        cell ,
-        { "," , cell } ,
+        [ "|" ] , row-cell , { cell-delimiter , row-cell } , [ "|" ] ,
     "]" ;
+
+(* A cell that is exactly one span-cell counts as n toward the row's width
+   instead of 1. A leading and/or trailing "|" is decoration and is
+   stripped, each edge independently. *)
+row-cell =
+      span-cell
+    | cell ;
+
+span-cell =
+    "@span" , "(" , integer , ")" , "[" , cell , "]" ;
 
 (* A cell isn't plain text only — it also allows a curated subset of
    inline-node (cell-inline-node), the same shape @cols columns and @data
@@ -344,7 +380,7 @@ row =
    @card, @table, @details) MUST throw rather than being silently dropped,
    per Strict Mode (Inline Syntax Specification §11). *)
 cell =
-    { cell-inline-node | any-unicode-char - "," - "]" } ;
+    { cell-inline-node | any-unicode-char - cell-delimiter - "]" } ;
 
 (* ==========================================================================
    Widget-Specific Grammar: @tabs / @tab
@@ -431,6 +467,12 @@ text =
 > 色）；两者都不沿用 Inline Spec 第 7 节的具名色票。
 > Renderer 是否／如何把 Container／Callout／`@img` 的 `styles` 映射成视觉样式由各
 > Renderer 自行决定。
+>
+> **无法识别的 token 会被标示（v0.1.2）。** 不属于该节点自身词汇表的 token——例如
+> `@card{blue}`（`@card` 只接受 `#RRGGBB`／`radius-N`，不接受具名色）或
+> `@mark{bluee}`——过去会被静默丢弃，节点就这样没有样式，却没有任何地方提示。
+> Parser 现在会在该 token 上报告 diagnostic（见 Inline Spec 第 11 节 Diagnostics）。
+> 文档仍会照常解析与渲染，该 token 仍然被忽略。
 
 ---
 
@@ -636,9 +678,32 @@ WEDC Logo
 | `src`（可省略）| 图片来源 URL                        | `src=https://...`         |
 | `width`       | 显示宽度（单位由 Renderer 决定）     | `width=200`                |
 | `height`      | 显示高度（单位由 Renderer 决定）     | `height=150`               |
-| `align`       | 对齐方式                            | `align=left/center/right`  |
+| `align`       | 对齐方式                            | `align=left/center/right/float-left/float-right`  |
 | `radius`      | 圆角（直接透传给 Renderer 的 CSS 值）| `radius=8px`               |
 | `border`      | 外框（直接透传给 Renderer 的 CSS 值）| `border=1px solid #ccc`    |
+
+#### Image `align` 值（v0.1.2）
+
+`align` 的值集合是封闭的：
+
+| 值 | 效果 |
+|---|---|
+| `left` | 图片靠左；后续内容接在图片**下方** |
+| `center` | 图片居中（此前的行为） |
+| `right` | 图片靠右；后续内容接在图片**下方** |
+| `float-left` | 图片靠左；后续文本**环绕在右侧** |
+| `float-right` | 图片靠右；后续文本**环绕在左侧** |
+
+```text
+@img(./a.png,align=float-left)[替代文本]
+```
+
+* **裸关键字写法。** 因为值集合是封闭的，逗号项目只要恰好等于这五个值之一，就会被视为 `align`，不需要 `align=` 这个 key：`@img(./a.png,float-left)[...]` 等同 `@img(./a.png,align=float-left)[...]`。这项检查在「第一个裸项目就是 `src`」规则**之前**执行，所以 `@img(float-left)[...]`（完全没有 `src`）是对齐，而不是恰好拼成 "float-left" 的 URL。
+* **使用单一选项值，而非组合。** 刻意不提供 `align=left,float=true` 这种组合——无效状态根本写不出来，作者（或模型）只需做一次选择而非两次。
+* **不提供 `center` + 环绕。** 让文本同时排在居中图片的左右两侧，是 CSS `float` 无法表达的，多数 renderer 也无法实现；保留只会让各 renderer 静默退回不同效果。
+* **环绕的结束点。** 环绕是 renderer 层级的惯例，不记录在 AST 中：SHOULD 在下一个标题、下一个 `@hr`，或所属容器结束时停止。
+* **窄屏幕与无法排版的输出目标**（手机、terminal、部分 PDF）：renderer MAY 忽略对齐与环绕，改为居中或全宽显示。对齐是**位置语义**，不承诺像素级布局。
+* **无法识别的值**（例如 `align=middle`，或打错字）：renderer 忽略该值并沿用默认（不对齐）。Parser 另外会报告 **warning** diagnostic——文档仍会渲染，所以不算 error，但不再是静默的。
 
 > [!TIP]
 > **TIP**：这里的扩充方式与 Inline Spec 第 7 节 `@mark Styles Semantics`
@@ -695,14 +760,60 @@ WEDC Photo
 ]
 ```
 
-* `@cols[...]`：以逗号分隔的字段标题列表，定义字段顺序与数量；每个字段跟 `@data` 的保存格一样是 `cell`（见下方），不限于纯文本识别符。
-* `@data[...]`：每一列包装在 `[...]` 中，`cell` 数量 SHOULD 与 `@cols` 定义的字段数量一致；Parser MAY 对数量不符的列抛出警告或错误（由 Strict / Editor Mode 决定，参见 Inline Spec 第 11 节 Parser Recovery Strategy）。
+* `@cols[...]`：以分隔符分隔的字段标题列表，定义字段顺序与数量；每个字段跟 `@data` 的保存格一样是 `cell`（见下方），不限于纯文本识别符。
+* `@data[...]`：每一列包装在 `[...]` 中，该列的**宽度** MUST 等于 `@cols` 定义的字段数量（`@span(n)` 保存格算 `n`，其他保存格各算 1）。宽度不符的列会报告 diagnostic——见下方「列宽度」。
+
+#### 保存格分隔符：`|` 或 `,`（v0.1.2）
+
+`@cols` 与每一列 `@data` 原本只以 `,` 切分保存格，因此无法写出本身含有逗号的保存格（`$1,500`、`Web, iOS, Android`、`DECIMAL(10,2)`），否则会静默多出一个字段。自 v0.1.2 起，分隔符**逐列**依一条机械式规则决定：
+
+```text
+某一列在最外层出现 "|"，就以 "|" 分隔；
+否则照旧以 "," 分隔。
+```
+
+```text
+@table[
+    @cols[时间|讲题|讲者]
+
+    @data[
+        [09:00 - 10:30|开幕演讲|王小明]
+        [10:30 - 11:00|@span(2)[茶歇]]
+        [11:00 - 12:00||数据工程小组]
+        [13:30 - 15:00|表格语法设计|陈大文, 林美华]
+    ]
+]
+```
+
+* **在 `|` 模式下，`,` 就是普通文本**——不需要转义，也没有限制（见上方最后一列的讲者保存格）。
+* **`,` 模式保持不变。** 没有 `|` 的列解析结果与此前完全相同，既有文档不需要迁移。逗号写法视为旧式；Editor Mode 实现 MAY 将它标示为弃用。
+* **只有最外层的分隔符会切分。** 嵌套节点自己方括号内的 `|` 或 `,`（`@bold[a,b]`、`@raw[a|b]`）保持字面——保存格切分依方括号深度判断，不查 registry。若保存格需要字面的 `|`，用 `@raw[...]` 包起来；需要 `|` 的内容多半是代码，用它语义上也正确。
+* **空保存格必须写出来。** `[11:00 - 12:00||数据工程小组]` 的中间保存格是刻意留空的。
+* **头尾多一根 `|` 视为装饰并自动去除，头尾各自独立判断。** `[|a|b|c|]`（Markdown 表格的习惯）、`[|a|b|c]`、`[a|b|c|]` 与 `[a|b|c]` 解析结果完全相同。代价：无法再用边缘的 `|` 表示「真的留空的第一格或最后一格」——请放一个占位内容，或调整字段。列中间的空保存格不受影响。
+* 避免使用 `<...>` 包裹保存格——该形状已保留给 `<action>` 槽位。
+
+#### 跨字段保存格：`@span(n)[...]`（v0.1.2）
+
+```text
+[10:30 - 11:00|@span(2)[茶歇]]
+```
+
+内容**恰好**是一个 `@span(n)[...]` 节点（`n` 为正整数）的保存格会横跨 `n` 个字段，并在计算列宽度时算 `n` 而不是 1，因此「每列宽度等于字段数」没有例外。上例该列有 2 个实际保存格，宽度为 1 + 2 = 3，符合 `@cols` 的三个字段。Renderer 将它对应到自己的 colspan 概念（HTML：`<td colspan="n">`）。
+
+* `@span` 只在**`@data` 保存格的唯一内容**时有效。放在 `@cols` 内、表格之外，或与保存格内其他内容混用，都属于位置错误的节点，其标示方式与 `@tabs` 之外的 `@tab` 相同。
+* `n` MUST 是纯正整数。`@span(two)`、`@span(0)` 与 `@span(2.5)` 会各自报告 diagnostic；在列宽度检查中，这样的保存格以宽度 1 计算，因此同一个根本原因不会被重复报告。
+* `@hex` 与 `@span` 在保存格允许清单上（色板表是 `@hex` 最常见的用途；`@span` 只在这里才有意义）；`@spoiler` 则刻意**不**在清单上——表格保存格不适合放需要点击才揭露的片段。
+* `@span` 本身没有样式或布局意义——见第 1 节的说明。
+
+#### 列宽度
+
+某列的宽度（含 `@span`）不等于 `@cols` 的字段数时，**无论该列使用哪种分隔符**，都会报告 diagnostic。Parser 绝不自动补齐或截断：静默的不符会让表格字段与标题对不上。此 diagnostic 在 Strict Mode 下为 error，在 Editor Mode 下为报告但不阻断的 diagnostic，且指向有问题的那一列。
 
 > [!TIP]
 > **TIP**：`@cols` 与 `@data` 顺序固定且皆为必填，这是刻意的设计取舍——
 > 牺牲一点灵活性，换取 Parser 与 AI 生成内容时的高度可预测性。
 
-每个 `cell` 不是单纯的纯文本——除了文本本身，还允许一组经过筛选的行内格式节点（`@bold`、`@italic`、`@underline`、`@del`、`@mark`、`@color`、`@sup`、`@sub`、`@link`、`@fn`，以及会被转成换行的 `@n`），因为这些节点只改变文本的呈现方式，不会影响表格本身「字段对齐数据列」的结构。这份清单由 Renderer 端维护（`registry.ts` 的 `isCellAllowedNode`），语法层本身不限制清单内容，未来可以扩充。不在清单上的节点（例如 `@card`、`@table`、`@details` 这类会带来自己版面结构的区块节点）MUST 抛出语法错误，而不是被静默舍弃——这与 Strict Mode（Inline Syntax Specification 第 11 节）「宁可抛错，也不要吞掉错误内容」的精神一致。
+每个 `cell` 不是单纯的纯文本——除了文本本身，还允许一组经过筛选的行内格式节点（`@bold`、`@italic`、`@underline`、`@del`、`@mark`、`@color`、`@sup`、`@sub`、`@link`、`@fn`、`@hex`、`@span`，以及会被转成换行的 `@n`），因为这些节点只改变文本的呈现方式，不会影响表格本身「字段对齐数据列」的结构。这份清单由 Renderer 端维护（`registry.ts` 的 `isCellAllowedNode`），语法层本身不限制清单内容，未来可以扩充。不在清单上的节点（例如 `@card`、`@table`、`@details` 这类会带来自己版面结构的区块节点）MUST 抛出语法错误，而不是被静默舍弃——这与 Strict Mode（Inline Syntax Specification 第 11 节）「宁可抛错，也不要吞掉错误内容」的精神一致。
 
 > [!NOTE]
 > **例外**：raw 家族节点（`@code`、`@mermaid`、`@raw`、`@kbd`）也不在 `isCellAllowedNode` 的清单上，但它们既不是「会带来自己版面结构的区块节点」，也不适用上面的 MUST 抛错规则——`Parser.ts`（`parseInlineCellList`）刻意把它们的原始内容拉平成保存格里的纯文本，而不是抛错或当成真正的节点解析。这是跟 `@card`/`@table`/`@details` 那类结构节点分开处理的独立行为，细节见 `registry.ts`（`CELL_ALLOWED_INLINE` 上方注解）与 `Parser.ts`（`parseInlineCellList` 上方注解）。
@@ -937,6 +1048,9 @@ Fallback 精神一致），并沿用 Renderer 自己的缺省外观。`radius-N`
 
 * `@tab(标题)[内容]`：`标题` 为分页显示名称，`内容` 为完整 `block-content`（可包含任意 block-node 与 inline-stream）。
 * 若 `@tabs[...]` 内出现非 `@tab` 的节点（例如裸文本或其他 block-node），Parser MUST 视为语法错误（Strict Mode）或由 Editor Mode 自动忽略 / 提示修正。
+
+* **唯一 id（v0.1.2）。** 为标签页组件输出 DOM id 的 renderer，MUST 让它们在*整份文档*内唯一。若每个 `@tabs` 块都从 0 开始给 panel 编号，同一份文档中的两个 `@tabs` 会都输出 `tab-panel-0`、`tab-panel-1`……，触发按钮的 `aria-controls` 就无法对应到唯一的 panel。参考实现在 id 前面加上每份文档一个的 widget 计数（`tab-panel-<widget>-<index>`）。
+* **初始状态。** 参考实现会将第一个标签页标为已选中（触发按钮 `aria-selected="true"`、panel `data-active="true"`），让组件在任何脚本运行前就有正确的初始状态。
 
 > [!TIP]
 > **TIP**：`@tab` 之所以不并入 `block-node`，是为了避免它被误用在

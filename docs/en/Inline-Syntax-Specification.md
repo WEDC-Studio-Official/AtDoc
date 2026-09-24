@@ -1,6 +1,9 @@
-# @Doc Inline Syntax Specification v1.4
+# @Doc Inline Syntax Specification v1.5
 
 > 🌐 Other languages: [Traditional Chinese](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-tw/Inline-Syntax-Specification.md) ・ [Simplified Chinese](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/zh-cn/Inline-Syntax-Specification.md) ・ [Japanese (AI translation; may contain errors)](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ja/Inline-Syntax-Specification.md) ・ [Korean (AI translation; may contain errors)](https://github.com/WEDC-Studio-Official/AtDoc/blob/main/docs/ko/Inline-Syntax-Specification.md)
+
+> [!NOTE]
+> **Changelog (syntax v0.1.2, spec v1.5)** — two new inline nodes, `@spoiler` and `@hex` (§4, §15); a new **Diagnostics** subsection under §11 that lists every case the Parser now reports instead of accepting silently; `@defn` ids must be integers (§4). Table-cell syntax (`|` delimiter, `@span`) and `@img` alignment are specified in Block Syntax Specification §5.
 
 ## 0. Table of Contents
 
@@ -18,6 +21,7 @@
 * [12. Architecture](#12-architecture)
 * [13. Core Principle](#13-core-principle)
 * [14. Simplified Syntax Aliases](#14-simplified-syntax-aliases)
+* [15. Semantic Inline: @spoiler and @hex](#15-semantic-inline-spoiler-and-hex)
 
 ---
 
@@ -150,6 +154,8 @@ inline-node =
     | defn
     | kbd
     | link
+    | spoiler
+    | hex
     | br
     | escape ;
 
@@ -177,11 +183,21 @@ sub       = "@sub" , content ;
    defn = the footnote definition body, carries the number and the actual content
 *)
 fn        = "@fn" , "[" , integer , "]" ;
+(* The modifier of defn is the footnote id. It must be an integer to be
+   referenceable at all — fn's own "[...]" only accepts an integer, so a
+   non-numeric id can be written but no @fn can ever point at it. The Parser
+   reports it (see §11 Diagnostics). *)
 defn      = "@defn" , modifier , content ;
 
 kbd       = "@kbd" , "[" , key , "]" ;
 
 link      = "@link" , uri , content ;
+
+(* v0.1.2. spoiler takes ordinary nestable content; hex takes a restricted
+   slot (like kbd's key), NOT generic content. See §15. *)
+spoiler   = "@spoiler" , content ;
+hex       = "@hex" , "[" , hex-code , "]" ;
+hex-code  = "#" , ( 3 * hex-digit | 6 * hex-digit ) ;
 
 br        = "@n" ;
 
@@ -842,6 +858,24 @@ Unexpected EOF while parsing @bold
 > [!TIP]
 > **TIP**: AtDoc chose to throw a syntax error directly, and uses an asynchronous error-breakpoint recovery mechanism
 
+### Diagnostics
+
+Beyond unclosed structures, the Parser reports a set of cases where the input is *grammatical* but almost certainly not what the author meant — situations that used to parse cleanly and then render wrongly, with no signal anywhere. Each is reported as a `DocDiagnostic` carrying the source range and a message; none of them stops parsing or changes the AST the rest of the document produces.
+
+| Case | Severity | Notes |
+|---|---|---|
+| A `@data` row's width (`@span` counted) ≠ the `@cols` count | error | Reported on the offending row. Never auto-padded or truncated. See Block Spec §5 Table |
+| `@span(n)` where `n` is not a positive integer | error | Counted as width 1 for the row-width check, so one root cause yields one diagnostic |
+| `@span` outside a `@data` cell (in `@cols`, in a paragraph, mixed with other cell content) | error | Same restricted-placement rule as `@tab` outside `@tabs` |
+| `@hex[...]` content is not `#RGB` / `#RRGGBB` | error | A named color, a 4/5/8-digit code, or a missing `#`. 8-digit `#RRGGBBAA` is deliberately rejected for now (§15) |
+| `@img` with an unrecognized `align` value | warning | The value is ignored (no alignment); the document still renders. See Block Spec §5 Image |
+| Unrecognized token inside a node's `{styles}` | error | e.g. `@card{blue}`, `@mark{bluee}`, `@img{radius-x}`. The token is still ignored at render time. Range points at the token itself |
+| `@defn(id)` whose id is not an integer | error | `@fn[...]` only accepts integers, so the footnote could never be referenced. Reported on the `@defn`, where the id was chosen |
+| `@color` / `@bordered` with no `{styles}` value | error | Falls back to a rainbow appearance / no meaningful border color |
+| `@raw` escape that swallows content, or any consumed escape | warning / info | See §9 |
+
+"Severity" is the value carried on the diagnostic. Whether an error blocks (Strict Mode) or merely underlines (Editor Mode) is decided by the consumer, exactly as described above.
+
 ---
 
 ### Editor Mode
@@ -913,3 +947,65 @@ a next-generation document interchange format.
 | `@underline` | `@u` |
 
 (The Block Syntax aliases `@h`/`@p` for `@heading`/`@paragraph` are defined in Block Syntax Specification §11.)
+
+---
+
+## 15. Semantic Inline: @spoiler and @hex
+
+Two inline nodes added in syntax v0.1.2. Both are ordinary inline nodes — they can appear anywhere `inline-stream` can.
+
+### @spoiler
+
+```text
+The film's last act reveals that @spoiler[the hero was the villain all along].
+```
+
+```ebnf
+spoiler = "@spoiler" , content ;
+```
+
+A sentence-level hidden span: content the reader chooses to uncover, without breaking the surrounding prose into its own block. `content` is the standard nestable production, so `@spoiler[@bold[the twist]]` is valid and the formatting survives being hidden.
+
+* **Not the block-level counterpart of `@details`.** `@details` is a titled, block-level progressive disclosure — a whole section the reader expands. `@spoiler` is a fragment *inside* a sentence that still reads as one paragraph once revealed. There is deliberately no block-level spoiler node: a block-level spoiler is just `@details` with a title such as "Spoiler warning", and two nodes for one job would give the language two ways to say the same thing.
+* **Table cells.** `@spoiler` is *not* on the table-cell allowlist (Block Spec §5 Table).
+* **Rendering (web).** The reference renderer emits `<span class="spoiler" tabindex="0">…</span>`. Both the background and the text are hidden by default and both are cleared on `:hover` / `:focus`, with no script. `tabindex` makes the span keyboard-reachable so focus can fire, and doubles as the hook that lets assistive technology read the content.
+* **Targets that cannot reveal on interaction** (plain text, a search index, an LLM-facing extraction, PDF): the exact placeholder is the renderer's decision, but a renderer **MUST NOT** silently copy the spoiler's real text into a search index or a generated summary. Replacing it with a marker such as `[spoiler]`, or omitting the sentence from the index, are both acceptable. A target with no interactivity at all (DOCX) may reasonably turn it into a footnote or an expandable comment.
+
+The reference renderer's stylesheet hook is the `.spoiler` class. A minimal rule set:
+
+```css
+.spoiler { background: currentColor; border-radius: 3px; cursor: pointer; outline: none; }
+.spoiler:hover, .spoiler:focus { background: transparent; }
+```
+
+(The text color must equal the background while hidden — `background: currentColor` gives that for free — and both must be reset on reveal.)
+
+### @hex
+
+```text
+The primary color is @hex[#3366ff]; the accent is @hex[#f80].
+```
+
+```ebnf
+hex      = "@hex" , "[" , hex-code , "]" ;
+hex-code = "#" , ( 3 * hex-digit | 6 * hex-digit ) ;
+```
+
+Displays a color swatch alongside the literal code — the node's subject *is* the color value.
+
+* **Restricted content.** Like `@kbd`'s `key`, the bracket holds a validated value, not prose: `@hex[@bold[#fff]]` is not a bold hex code, because the grammar does not route through `inline-node` inside `@hex`'s brackets.
+* **Accepted forms:** `#RGB` and `#RRGGBB`. An 8-digit `#RRGGBBAA` form is intentionally undecided for this revision and is **rejected** rather than silently accepted, so that adopting an alpha convention later is not a breaking change. Content that fails the grammar (a named color, a 4- or 5-digit code, a missing `#`) is a diagnostic, never a silent fallback.
+* **Table cells.** `@hex` *is* on the table-cell allowlist — color-swatch and design-token tables are its most common home.
+* **Rendering (web).** The reference renderer emits `<span class="hex-swatch"><span class="hex-swatch-color" style="background-color:#3366ff;"></span><code>#3366ff</code></span>`. Only the swatch's background color is inline; sizing and spacing are the stylesheet's job (`.hex-swatch`, `.hex-swatch-color`). Interactions such as click-to-copy belong to the renderer, not the grammar.
+* **Targets that cannot paint color** (a plain-text terminal): print the code, `#3366ff`.
+
+#### `@hex` is not `@color`
+
+The two are easy to reach for interchangeably and mean opposite things:
+
+| Node | Meaning |
+|---|---|
+| `@color{#3366ff}[text]` | "Make *this text* this color" — the hex value styles unrelated content |
+| `@hex[#3366ff]` | "Display *this color code* itself" — the code is the content |
+
+A design-system document listing swatches wants `@hex`; a paragraph that happens to need blue text wants `@color`. Writing `@color{#3366ff}[#3366ff]` to show a swatch looks right when rendered but is structurally the wrong node: a tool scanning for "every color this document presents as a swatch" can find every `@hex`, but cannot tell that accidental `@color` apart from an ordinary colored word.

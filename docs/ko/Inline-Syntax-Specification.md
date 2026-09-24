@@ -1,8 +1,11 @@
-# @Doc Inline Syntax Specification v1.4
+# @Doc Inline Syntax Specification v1.5
 
 > 🌐 다른 언어 버전: [English](../en/Inline-Syntax-Specification.md) ・ [繁體中文](../zh-tw/Inline-Syntax-Specification.md) ・ [简体中文](../zh-cn/Inline-Syntax-Specification.md) ・ [日本語（AI 翻訳、誤りがある可能性があります）](../ja/Inline-Syntax-Specification.md)
 >
 > ⚠️ **이 문서는 AI가 번역했습니다. 부정확한 내용이 포함될 수 있습니다.** 정확한 내용을 확인하려면 [繁體中文版](../zh-tw/Inline-Syntax-Specification.md) 또는 [English 버전](../en/Inline-Syntax-Specification.md)을 참고하세요.
+
+> [!NOTE]
+> **변경 이력(문법 v0.1.2, 명세 v1.5)** — 인라인 노드 `@spoiler`와 `@hex`가 새로 추가되었다(4절, 15절). 11절에 **Diagnostics** 소절이 추가되어, Parser가 예전에는 조용히 받아들였지만 이제는 보고하는 모든 경우를 나열한다. `@defn`의 id는 정수여야 한다(4절). 표 셀 문법(`|` 구분자, `@span`)과 `@img` 정렬은 Block Syntax Specification 5절에서 정의한다.
 
 ## 0. 목차
 
@@ -20,6 +23,7 @@
 * [12. 아키텍처](#12-아키텍처)
 * [13. 핵심 원칙](#13-핵심-원칙)
 * [14. 간소화 문법 별칭](#14-간소화-문법-별칭)
+* [15. Semantic Inline: @spoiler and @hex](#15-semantic-inline-spoiler-and-hex)
 
 ---
 
@@ -152,6 +156,8 @@ inline-node =
     | defn
     | kbd
     | link
+    | spoiler
+    | hex
     | br
     | escape ;
 
@@ -179,11 +185,21 @@ sub       = "@sub" , content ;
    defn = 각주 정의 본체, 번호와 실제 내용을 가진다
 *)
 fn        = "@fn" , "[" , integer , "]" ;
+(* The modifier of defn is the footnote id. It must be an integer to be
+   referenceable at all — fn's own "[...]" only accepts an integer, so a
+   non-numeric id can be written but no @fn can ever point at it. The Parser
+   reports it (see §11 Diagnostics). *)
 defn      = "@defn" , modifier , content ;
 
 kbd       = "@kbd" , "[" , key , "]" ;
 
 link      = "@link" , uri , content ;
+
+(* v0.1.2. spoiler takes ordinary nestable content; hex takes a restricted
+   slot (like kbd's key), NOT generic content. See §15. *)
+spoiler   = "@spoiler" , content ;
+hex       = "@hex" , "[" , hex-code , "]" ;
+hex-code  = "#" , ( 3 * hex-digit | 6 * hex-digit ) ;
 
 br        = "@n" ;
 
@@ -838,6 +854,26 @@ Unexpected EOF while parsing @bold
 > [!TIP]
 > **TIP**: AtDoc는 바로 문법 오류를 던지는 방식을 선택했으며, 비동기 오류 브레이크포인트 복구 메커니즘을 사용한다
 
+### Diagnostics
+
+닫히지 않은 구조 외에도, Parser는 "문법적으로는 올바르지만 거의 확실히 작성자의 의도가 아닌" 경우들을 보고한다 — 이런 경우는 예전에는 깔끔하게 파싱된 뒤 잘못 렌더링되었고 어디에도 알림이 없었다. 각각 소스 범위와 메시지를 담은 `DocDiagnostic`으로 보고된다. 어느 것도 파싱을 중단시키거나 문서의 나머지 부분이 만들어내는 AST를 바꾸지 않는다.
+
+| 경우 | 심각도 | 비고 |
+|---|---|---|
+| `@data` 행의 너비(`@span` 포함) ≠ `@cols`의 칼럼 수 | error | 문제가 있는 행에 보고된다. 자동으로 채우거나 자르지 않는다. Block Spec 5절 Table 참고 |
+| `@span(n)`의 `n`이 양의 정수가 아님 | error | 행 너비 검사에서는 너비 1로 계산되므로, 하나의 근본 원인에 diagnostic은 하나만 나온다 |
+| `@data` 셀 바깥의 `@span`(`@cols` 안, 단락 안, 셀 안의 다른 내용과 혼용) | error | `@tabs` 바깥의 `@tab`과 같은 위치 제한 규칙 |
+| `@hex[...]`의 내용이 `#RGB`/`#RRGGBB`가 아님 | error | 이름 있는 색, 4/5/8자리 코드, 또는 `#` 누락. 8자리 `#RRGGBBAA`는 현재 의도적으로 거부된다(15절) |
+| `@img`의 `align` 값을 인식할 수 없음 | warning | 그 값은 무시되고(정렬 없음), 문서는 여전히 렌더링된다. Block Spec 5절 Image 참고 |
+| 노드의 `{styles}` 안에 인식할 수 없는 token이 있음 | error | 예: `@card{blue}`, `@mark{bluee}`, `@img{radius-x}`. 그 token은 렌더링 시 여전히 무시된다. 범위는 token 자체를 가리킨다 |
+| `@defn(id)`의 id가 정수가 아님 | error | `@fn[...]`은 정수만 받으므로 그 각주는 결코 참조될 수 없다. id가 정해진 곳인 `@defn`에 보고된다 |
+| `@color`/`@bordered`에 `{styles}` 값이 없음 | error | 무지개 모양/의미 있는 테두리 색 없음으로 대체된다 |
+| 내용을 삼키는 `@raw` 이스케이프, 또는 소비된 모든 이스케이프 | warning/info | 9절 참고 |
+
+"심각도"는 diagnostic이 담고 있는 값이다. error가 Strict Mode에서 차단하는지, Editor Mode에서 밑줄만 긋는지는 위에서 설명한 대로 사용하는 쪽이 결정한다.
+
+---
+
 ---
 
 ### Editor Mode
@@ -909,3 +945,65 @@ Renderer는 자유롭게 다음을 출력할 수 있다:
 | `@underline` | `@u` |
 
 (Block Syntax의 `@heading`/`@paragraph` 별칭 `@h`/`@p`는 Block Syntax Specification §11에 정의되어 있다.)
+
+---
+
+## 15. Semantic Inline: @spoiler and @hex
+
+문법 v0.1.2에서 추가된 두 인라인 노드. 둘 다 일반 인라인 노드이며, `inline-stream`이 나타날 수 있는 곳이라면 어디에나 쓸 수 있다.
+
+### @spoiler
+
+```text
+이 영화의 마지막에는 @spoiler[주인공이 사실 악당이었다]는 반전이 있어 전개가 매우 훌륭하다.
+```
+
+```ebnf
+spoiler = "@spoiler" , content ;
+```
+
+문장 수준의 숨김 스팬: 독자가 직접 열어 볼지 선택할 수 있는 내용으로, 주변 글을 별도의 블록으로 끊지 않는다. `content`는 표준적인 중첩 가능 생성 규칙이므로 `@spoiler[@bold[충격적인 반전]]`도 유효하며, 숨겨진 상태에서도 서식이 유지된다.
+
+* **`@details`의 블록 수준 대응물이 아니다.** `@details`는 제목이 있는 블록 수준의 점진적 공개로, 독자가 펼치는 것은 섹션 전체다. `@spoiler`는 문장 *안*의 조각이며 공개된 뒤에도 하나의 단락으로 읽힌다. 블록 수준의 spoiler 노드는 의도적으로 두지 않았다: 블록 수준의 스포일러 방지는 "스포일러 주의" 같은 제목을 붙인 `@details`일 뿐이며, 같은 역할에 노드를 둘 주면 언어에 같은 말을 하는 방법이 두 가지가 생긴다.
+* **표 셀.** `@spoiler`는 표 셀 허용 목록에 **포함되지 않는다**(Block Spec 5절 Table).
+* **렌더링(Web).** 참조 renderer는 `<span class="spoiler" tabindex="0">…</span>`를 출력한다. 배경과 텍스트는 기본적으로 모두 숨겨져 있고 `:hover`/`:focus` 시 둘 다 해제된다. 스크립트는 필요 없다. `tabindex`는 키보드로 도달할 수 있게 해서 focus가 발생하도록 하며, 동시에 보조 기술이 내용을 읽을 수 있게 하는 훅이 된다.
+* **상호작용으로 공개할 수 없는 출력 대상**(일반 텍스트, 검색 인덱스, LLM용 추출 결과, PDF): 구체적인 대체 표시는 renderer가 결정하지만, renderer는 스포일러의 실제 텍스트를 검색 인덱스나 자동 생성 요약에 조용히 복사해서는 **안 된다**(MUST NOT). `[스포일러]` 같은 표시로 대체하거나 그 문장을 인덱스에서 제외하는 것은 모두 허용된다. 상호작용이 전혀 없는 대상(DOCX)에서는 각주나 펼칠 수 있는 주석으로 바꾸는 것도 타당하다.
+
+참조 renderer의 스타일 훅은 `.spoiler` 클래스다. 최소한의 규칙 집합:
+
+```css
+.spoiler { background: currentColor; border-radius: 3px; cursor: pointer; outline: none; }
+.spoiler:hover, .spoiler:focus { background: transparent; }
+```
+
+(숨겨진 동안에는 텍스트 색이 배경색과 같아야 한다 — `background: currentColor`가 이를 자동으로 만족시킨다 — 그리고 공개할 때는 둘 다 초기화해야 한다.)
+
+### @hex
+
+```text
+메인 색상은 @hex[#3366ff], 보조 색상은 @hex[#f80]입니다.
+```
+
+```ebnf
+hex      = "@hex" , "[" , hex-code , "]" ;
+hex-code = "#" , ( 3 * hex-digit | 6 * hex-digit ) ;
+```
+
+색상 견본과 그 색상 코드 문자 그대로를 함께 표시한다 — 이 노드의 주제는 색상 값 *그 자체*다.
+
+* **제한된 내용.** `@kbd`의 `key`와 마찬가지로 대괄호 안에는 검증되는 값이 들어가며 글이 들어가지 않는다: `@hex[@bold[#fff]]`는 굵은 색상 코드가 아니다. `@hex`의 대괄호 안에서는 문법이 `inline-node`를 거치지 않기 때문이다.
+* **허용되는 형식:** `#RGB`와 `#RRGGBB`. 8자리 `#RRGGBBAA` 형식은 이번 개정에서 의도적으로 미정으로 두었으며, 조용히 받아들이는 대신 **거부**된다. 그래야 나중에 알파 관례를 채택하더라도 깨지는 변경이 되지 않는다. 문법에 맞지 않는 내용(이름 있는 색, 4자리 또는 5자리 코드, `#` 누락)은 diagnostic이며, 조용한 대체는 결코 없다.
+* **표 셀.** `@hex`는 표 셀 허용 목록에 **포함된다** — 색상 견본 표와 디자인 토큰 표가 가장 흔한 용도다.
+* **렌더링(Web).** 참조 renderer는 `<span class="hex-swatch"><span class="hex-swatch-color" style="background-color:#3366ff;"></span><code>#3366ff</code></span>`를 출력한다. 견본의 배경색만 인라인이고, 크기와 간격은 스타일시트의 몫이다(`.hex-swatch`, `.hex-swatch-color`). 클릭해서 복사하는 등의 상호작용은 renderer의 몫이며 문법의 몫이 아니다.
+* **색을 그릴 수 없는 출력 대상**(일반 텍스트 terminal): 코드 `#3366ff`를 출력한다.
+
+#### `@hex`는 `@color`가 아니다
+
+둘은 서로 바꿔 쓰기 쉽지만 뜻은 정반대다:
+
+| 노드 | 의미 |
+|---|---|
+| `@color{#3366ff}[텍스트]` | "*이 텍스트*를 이 색으로 만든다" — hex 값이 무관한 내용을 칠한다 |
+| `@hex[#3366ff]` | "*이 색상 코드 자체*를 표시한다" — 코드가 곧 내용이다 |
+
+색상 견본을 나열하는 디자인 시스템 문서에는 `@hex`를, 마침 파란 글자가 필요한 단락에는 `@color`를 쓴다. 견본을 보여 주려고 `@color{#3366ff}[#3366ff]`라고 쓰면 렌더링 결과는 맞아 보이지만 구조상으로는 잘못된 노드다: "이 문서가 견본으로 제시하는 모든 색"을 찾는 도구는 모든 `@hex`를 찾을 수 있지만, 이 우연한 `@color`를 평범한 색 있는 단어와 구별할 수 없다.

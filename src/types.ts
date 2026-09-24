@@ -25,6 +25,8 @@ export interface DocASTNode {
   color?: string;                    // @color, @bordered
   /** @list only — true when `@list(ordered)`; unset/false renders as a bullet list. */
   ordered?: boolean;
+  /** @span only (v0.1.2, README.md §3.4 point 3) — parsed positive-integer form of `paren`, undefined if it wasn't one. */
+  count?: number;
 
   /** @fn only — parsed integer form of `raw`. */
   number?: number;
@@ -64,6 +66,9 @@ export class DocSyntaxError extends Error {
 }
 
 /**
- * The supported preview style: index, the neutral default presentation.
+ * Id of a registered renderer theme (see themeRegistry.ts) — "index",
+ * "leaf", ... The set is open: a theme exists because its adapter called
+ * registerTheme(), not because it is listed here. Which ids are available at
+ * runtime is `listThemes()`.
  */
-export type PreviewStyle = 'index';
+export type PreviewStyle = string;

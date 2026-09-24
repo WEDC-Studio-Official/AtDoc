@@ -724,24 +724,59 @@ function emitContentByMode(node: DocASTNode, nodeDef: NodeDef): string {
 }
 
 /**
- * @cols / @data cells. The Parser splits cell text on "," at bracket depth 0,
- * so a comma inside a cell's own text would silently become a column break.
+ * @cols / @data cells — chooses "," or "|" the same way Parser.ts's reader-
+ * side transition rule does (Block Syntax Specification §5 Table): "," by default, "|" once
+ * something in this row/@cols needs it, decided for the row as a whole (the
+ * transition rule looks at "does '|' appear anywhere in the row", not
+ * per-cell, so the delimiter can't be chosen per cell either).
+ *
+ * A cell containing "," forces "|" — that's the actual point of the v0.1.2
+ * syntax (Block Syntax Specification §5 Table's motivating case, e.g. a thousands separator
+ * like "NT$ 1,500"). A cell containing "|" can't be fixed by switching
+ * delimiters, in either direction: once a row is read in "|" mode (which
+ * happens the moment *any* "|" appears anywhere at depth 0 — the reader
+ * doesn't distinguish "this one is the delimiter" from "this one is
+ * content"), that same "|" splits the cell again on the way back in; staying
+ * in "," mode isn't an option either; since the reader's mode choice isn't
+ * negotiable, it always splits on the first "|" it finds regardless of
+ * intent. Block Syntax Specification §5 Table, point 1's answer is `@raw[...]`, which bypasses
+ * delimiter-splitting entirely — that's a content decision for the caller
+ * to make, so this function bails instead of guessing.
  */
 function emitCells(owner: DocASTNode, cells: readonly (DocASTNode | string)[][]): string {
-  return cells
-    .map(cell => {
-      const text = emitRun(cell, owner.type);
-      const textOnly = cell.filter((p): p is string => typeof p === 'string').join('');
-      const { depth, wentNegative } = bracketBalance(textOnly);
-      if (wentNegative || depth !== 0) {
-        bail(`A \`@${owner.type}\` cell has an unbalanced "[" or "]" in its text.`);
-      }
-      if (textOnly.includes(',')) {
-        bail(`A \`@${owner.type}\` cell contains ",", which the parser reads as a cell separator.`);
-      }
-      return text;
-    })
-    .join(',');
+  const cellTexts = cells.map(cell => cell.filter((p): p is string => typeof p === 'string').join(''));
+  cellTexts.forEach(textOnly => {
+    const { depth, wentNegative } = bracketBalance(textOnly);
+    if (wentNegative || depth !== 0) {
+      bail(`A \`@${owner.type}\` cell has an unbalanced "[" or "]" in its text.`);
+    }
+  });
+
+  if (cellTexts.some(t => t.includes('|'))) {
+    bail(`A \`@${owner.type}\` cell contains "|", which the parser reads as a cell separator once any "|" appears in the row — wrap it in \`@raw[...]\` instead.`);
+  }
+
+  const rendered = cells.map(cell => emitRun(cell, owner.type));
+  if (!cellTexts.some(t => t.includes(','))) {
+    return rendered.join(',');
+  }
+
+  // No cell contains "|" (checked above), so every "|" left is one this
+  // function inserts itself below — safe. Except: with only one cell,
+  // `.join('|')` is a no-op (nothing to separate), so no "|" would actually
+  // appear in the emitted text at all, and the reader would silently stay in
+  // "," mode and mis-split this cell's own comma anyway.
+  if (cells.length < 2) {
+    bail(`A \`@${owner.type}\` cell contains "," but is the row's only cell — switching to "|" needs a second cell to put one between, so there'd be no "|" left in the emitted text to tell the parser to use it. Add another cell, or move this content into \`@raw[...]\`.`);
+  }
+  // An empty first/last cell would put the delimiter itself at the row's
+  // very edge (["", "b", "c"] -> "|b|c") — Parser.ts's edge leniency always
+  // reads an edge "|" as decoration and strips it, with no way to opt out,
+  // silently turning this back into one fewer cell than intended.
+  if (rendered[0] === '' || rendered[rendered.length - 1] === '') {
+    bail(`A \`@${owner.type}\` row needs "|" as its delimiter (a cell contains ",") but its first or last cell is empty — an edge "|" reads back as decoration and gets stripped, not a real empty cell. Put a placeholder there, or restructure the columns.`);
+  }
+  return rendered.join('|');
 }
 
 function emitMetaLine(node: DocASTNode, key: string, value: string): string {

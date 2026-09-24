@@ -122,14 +122,17 @@ description = AI-native semantic document runtime
 ]
 
 @table[
-  @cols[id,name,price]
+  @cols[id|name|price]
   @data[
-    [1,아침,60]
-    [2,점심,80]
-    [3,저녁,90]
+    [1|아침|60]
+    [2|점심|80]
+    [3|저녁|90]
   ]
 ]
 ```
+
+> [!NOTE]
+> 표 셀은 `|`로 구분한다(문법 v0.1.2부터). 따라서 셀 안에서 쉼표를 자유롭게 쓸 수 있다(`$1,500`). 기존의 쉼표 구분 방식도 그대로 파싱된다. [Block Syntax Specification 5절 Table](./Block-Syntax-Specification.md#table)을 참고.
 
 > [!NOTE]
 > 다음 노드는 조정되었습니다: `@seo`, `@lang`은 `@meta`에 통합되었습니다. `@title`은 `@heading`(별칭 `@h`)으로 바뀌었습니다. `@text`는 `@paragraph`(별칭 `@p`)로 바뀌었습니다. `@btn`은 잠정적으로 폐기되었습니다. 위는 일부 예시이며, 실제 문법은 정식 규격 문서를 기준으로 합니다.
@@ -154,17 +157,37 @@ description = AI-native semantic document runtime
 
 ---
 
+## 문법 v0.1.2의 새로운 내용
+
+| 변경 | 규정 위치 |
+|---|---|
+| `@img` 정렬: `float-left`/`float-right`(텍스트가 이미지를 감쌈), 그리고 키 생략형 `@img(src,float-left)[...]` | [Block Spec 5절 Image](./Block-Syntax-Specification.md#image) |
+| 표 셀을 `\|`로 구분. 앞뒤의 `\|`는 허용. 쉼표 형식은 변경 없음 | [Block Spec 5절 Table](./Block-Syntax-Specification.md#table) |
+| `@span(n)[...]` — 하나의 표 셀이 `n`개 칼럼에 걸침 | [Block Spec 5절 Table](./Block-Syntax-Specification.md#table) |
+| `@spoiler[...]` — 공개되기 전까지 숨겨지는 인라인 텍스트 | [Inline Spec 15절](./Inline-Syntax-Specification.md#15-semantic-inline-spoiler-and-hex) |
+| `@hex[#3366ff]` — 색상 견본과 그 코드 자체(`@color`와 다름) | [Inline Spec 15절](./Inline-Syntax-Specification.md#15-semantic-inline-spoiler-and-hex) |
+| 새 diagnostics: 행 너비 ≠ 칼럼 수, 잘못된 `@span`/`@hex`, 알 수 없는 `{styles}` token, 알 수 없는 `@img` align, 숫자가 아닌 `@defn` id | [Inline Spec 11절 Diagnostics](./Inline-Syntax-Specification.md#diagnostics) |
+| `@tabs`의 DOM id를 문서 전체에서 고유하게 하고, 첫 번째 탭을 초기 선택으로 함 | [Block Spec 8절 Tabs](./Block-Syntax-Specification.md#tabs) |
+
+이 변경들 대부분의 바탕에 있는 원칙: 예전에는 깔끔하게 파싱된 뒤 잘못 렌더링되던 실수(셀이 하나 빠진 표, `@card{blue}`, `align=middle`)가 이제 조용한 실패가 아니라 *눈에 보이는* diagnostic이 된다. 어느 쪽이든 문서는 여전히 파싱·렌더링된다.
+
+### 패키지 버전과 문법 버전
+
+`atdoc-core`의 패키지 버전(`0.1.x`)과 언어의 문법 버전(여기서는 `v0.1.2`)은 따로 번호가 매겨진다. 패키지 버전은 이 저장소의 릴리스를 따르고, 문법 버전은 문법의 변경을 따른다. 두 명세 파일도 각자 고유한 개정 번호를 가진다(현재 v1.5).
+
+---
+
 ## 노드 분류
 
 ### Core Nodes — 구조적 원소
 문서의 골격이자 더 이상 쪼갤 수 없는 원자 단위입니다.
 
-`@heading`(별칭 `@h`) `@paragraph`(별칭 `@p`) `@quote` `@code` `@list` `@img` `@table`
+`@heading`(별칭 `@h`) `@paragraph`(별칭 `@p`) `@quote` `@code` `@list` `@img` `@table`(`@cols`/`@data`/`@span` 부분 포함)
 
 ### Semantic Nodes — 시맨틱 컨테이너
 두 가지 동작 방식이 있습니다:
 
-- **Inline Semantic** — 태그가 붙은 인라인 요소로 렌더링됩니다: `@mark[중요]`, `@link(example.com)[링크]`
+- **Inline Semantic** — 태그가 붙은 인라인 요소로 렌더링됩니다: `@mark[중요]`, `@link(example.com)[링크]`, `@spoiler[숨김]`, `@hex[#3366ff]`
 - **Block Metadata** — Host에 설정을 주입할 뿐 어떠한 HTML도 렌더링하지 않습니다: `@meta[key = value]`
 
 ---
@@ -221,9 +244,10 @@ const html = ast.map(node => DocTranspiler.toTailwindHTML(node)).join('\n');
 ## 이 Repo에는 무엇이 있는가
 
 ```
-src/            Lexer, Parser, registry(노드의 단일 진실 공급원), Adapters(HTML 렌더링의 두 경로)
+src/            Lexer, Parser, Serializer, registry(노드의 단일 진실 공급원), types, pipeline, markdownImport
+src/index/      기본 렌더러 플러그인: Adapters(HTML 렌더링의 두 경로) + index.css
 src/editor/     Monaco류 에디터를 위한 Monarch tokenizer
-tests/          Lexer/Parser용 Strict Mode 테스트 케이스와 각 노드의 렌더링 검증
+tests/          Lexer/Parser용 Strict Mode 테스트 케이스(`tests/cases/*.atd`, 기대값은 `expected.json`), serializer 라운드트립, v0.1.2 노드의 렌더링 검증 — `npm test`로 한 번에 실행
 configs/        editor/tooling용 노드 설정
 *-Specification.md   언어의 권위 있는 문법 정의(EBNF + 시맨틱 규칙)
 ```

@@ -39,7 +39,8 @@ export type ParenRole =
   | 'options'  // @img
   | 'uri'      // @link
   | 'id'       // @defn
-  | 'ordered'; // @list
+  | 'ordered'  // @list
+  | 'count';   // @span — v0.1.2, Block Syntax Specification §5 Table, point 3
 
 /**
  * Which closed token set a node's "{styles}" slot accepts. Doubles as "does
@@ -50,6 +51,18 @@ export type StyleSet =
   | 'color'  // named color token or "#RRGGBB" — @mark/@color/@bordered (Inline Spec §7) and Container/Callout Blocks
   | 'card'   // Card Style v1: "#RRGGBB" background + "radius-N" (Block Spec §6)
   | 'image'; // Image Style v1: "#RRGGBB" border color + "radius-N" (Block Spec §5)
+
+/**
+ * @img's "align=" value set (Block Syntax Specification §5) — v0.1.2 adds
+ * float-left/float-right (text wraps around the image) alongside the
+ * original left/center/right (image alone, no wrap). Exported so a bare
+ * comma item matching one of these can be recognized as `align` without the
+ * "align=" key at all (see parseImgOptions below — the vocabulary is closed,
+ * so a bare token is unambiguous), and so Parser.ts's "unrecognized align
+ * value" diagnostic checks against the exact same set rather than a second
+ * hand-copied list that could drift out of sync.
+ */
+export const IMG_ALIGN_VALUES: ReadonlySet<string> = new Set(['left', 'center', 'right', 'float-left', 'float-right']);
 
 /**
  * How a "(...)" slot's raw text becomes the convenience field its `parenRole`
@@ -64,6 +77,11 @@ export function parseImgOptions(raw: string): Record<string, string> {
   parts.forEach((part, idx) => {
     const eq = part.indexOf('=');
     if (eq === -1) {
+      // A bare item matching a known align value needs no "align=" key —
+      // checked before the "first bare item is src" fallback below, so
+      // @img(float-left)[...] (no src at all) still reads as align, not as a
+      // literal URL that happens to spell "float-left".
+      if (IMG_ALIGN_VALUES.has(part)) { options.align = part; return; }
       if (idx === 0) options.src = part; // first bare option defaults to src — Block Syntax Spec §5 Image
       return;
     }
@@ -85,6 +103,22 @@ export function isOrderedParen(raw: string | undefined): boolean {
   return /^\s*ordered\s*$/i.test(raw ?? '');
 }
 
+/**
+ * @span's "(n)" column count (Block Syntax Specification §5 Table, point 3 — a table cell that
+ * spans n columns, so the row's cell count stays equal to @cols's column
+ * count with no exceptions). Unlike @heading's level, there's no sensible
+ * default to clamp an invalid value to (span-of-1 would silently turn a
+ * typo'd `@span(two)` into a no-op that hides the row-count mismatch it was
+ * meant to fix) — anything that isn't a plain positive integer comes back
+ * `undefined`, and Parser.ts diagnoses that explicitly.
+ */
+export function parseSpanCount(raw: string | undefined): number | undefined {
+  if (raw === undefined) return undefined;
+  const trimmed = raw.trim();
+  const n = parseInt(trimmed, 10);
+  return Number.isFinite(n) && n >= 1 && String(n) === trimmed ? n : undefined;
+}
+
 /** The convenience fields a `parenRole` derives from its "(...)" text. */
 export interface DerivedParenFields {
   level?: number;
@@ -94,6 +128,7 @@ export interface DerivedParenFields {
   id?: string;
   imgOptions?: Record<string, string>;
   ordered?: boolean;
+  count?: number;
 }
 
 /**
@@ -119,6 +154,7 @@ export function deriveParenFields(role: ParenRole | undefined, paren: string | u
     case 'id': return { id: paren };
     case 'options': return { imgOptions: parseImgOptions(paren ?? '') };
     case 'ordered': return isOrderedParen(paren) ? { ordered: true } : {};
+    case 'count': return { count: parseSpanCount(paren) };
     default: return {};
   }
 }
@@ -151,6 +187,16 @@ const REGISTRY: NodeDef[] = [
   def({ name: 'table', kind: 'block', content: 'table', paren: 'none' }),
   def({ name: 'cols', kind: 'block', content: 'comma-list', paren: 'none', restrictedTo: 'table' }),
   def({ name: 'data', kind: 'block', content: 'rows', paren: 'none', restrictedTo: 'table' }),
+  // v0.1.2 — Block Syntax Specification §5 Table, point 3: a column-spanning @data cell. Parsed via
+  // the same isCellAllowedNode() path as @bold/@link inside a cell (hence
+  // kind:'inline' despite the table-only restriction — the restrictedTo
+  // label 'data row' matches parseInlineCellList's ownerName for a row, not
+  // a real registered command, same convention @data rows already use in
+  // their own diagnostics). Parser.ts's row/@cols-count check treats a cell
+  // that's exactly one @span(n) node as contributing n toward the row's
+  // width instead of 1, so "every row's cell count equals @cols's column
+  // count" stays true with no exceptions.
+  def({ name: 'span', kind: 'inline', content: 'generic', paren: 'required', parenRole: 'count', restrictedTo: 'data row' }),
   def({ name: 'hr', kind: 'block', content: 'none', paren: 'none' }),
   def({ name: 'svg', kind: 'block', content: 'raw', paren: 'none' }),
 
@@ -188,6 +234,18 @@ const REGISTRY: NodeDef[] = [
   def({ name: 'sub', kind: 'inline', content: 'generic', paren: 'none' }),
   def({ name: 'kbd', kind: 'inline', content: 'key', paren: 'none' }),
   def({ name: 'link', kind: 'inline', content: 'generic', paren: 'required', parenRole: 'uri' }),
+  // v0.1.2 — Inline Syntax Specification, @spoiler: a sentence-level spoiler reveal. Nestable
+  // content (like @bold/@mark/...), not raw text — the hidden span can carry
+  // its own inline formatting. Block-level progressive disclosure is
+  // @details's job; this is deliberately not given a block-level sibling, so
+  // there's exactly one node for "hide this until revealed" instead of two
+  // competing ones.
+  def({ name: 'spoiler', kind: 'inline', content: 'generic', paren: 'none' }),
+  // v0.1.2 — Inline Syntax Specification, @hex: displays a color swatch + its own code, distinct
+  // from @color{#hex}[...] (which recolors *other* text). Content is a
+  // restricted format like @kbd's `key` (Parser.ts validates "#RGB"/
+  // "#RRGGBB" — see its content:'key' handling), not nestable content.
+  def({ name: 'hex', kind: 'inline', content: 'key', paren: 'none' }),
 
   // Footnotes — Inline §4
   def({ name: 'defn', kind: 'inline', content: 'generic', paren: 'required', parenRole: 'id' }),
@@ -267,8 +325,7 @@ export function getAllNodeDefs(): readonly NodeDef[] {
  * silently dropping it.
  *
  * @defn is deliberately excluded: it's collected document-wide and rendered
- * once as a real `<li>` inside the footnotes `<ol>` (see Adapters.ts's
- * renderFootnotes()), not loose inside a `<td>`.
+ * once as a real `<li>` inside the footnotes `<ol>` (see the renderers' renderFootnotes()), not loose inside a `<td>`.
  * @fn (the footnote *reference*, a self-contained `<sup><a>` back-link) is
  * fine and included — Parser.ts checks this set before its raw-family
  * carve-out so @fn gets parsed as a real node instead of dumped as bare digits.
@@ -281,6 +338,14 @@ const CELL_ALLOWED_INLINE: ReadonlySet<string> = new Set([
   // common kind — silently loses the monospace on every identifier in it, the
   // node being dropped and its text dumped in as a bare string.
   'raw',
+  // @hex — a color-swatch table is one of the most common places to want it
+  // (Inline Syntax Specification, @hex). @spoiler is deliberately NOT included: Inline Syntax Specification, @spoiler
+  // leaves this an open decision, and a table cell is an awkward place for a
+  // click-to-reveal span — add it here if a real use case shows up.
+  'hex',
+  // @span — v0.1.2 (Block Syntax Specification §5 Table, point 3), the whole reason it exists is to
+  // appear inside @data cells; excluding it here would make it unusable.
+  'span',
 ]);
 
 export function isCellAllowedNode(name: string): boolean {

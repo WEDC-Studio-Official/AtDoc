@@ -120,14 +120,17 @@ description = AI-native semantic document runtime
 ]
 
 @table[
-  @cols[id,name,price]
+  @cols[id|name|price]
   @data[
-    [1,早餐,60]
-    [2,午餐,80]
-    [3,晚餐,90]
+    [1|早餐|60]
+    [2|午餐|80]
+    [3|晚餐|90]
   ]
 ]
 ```
+
+> [!NOTE]
+> 表格保存格以 `|` 分隔（自语法 v0.1.2 起），因此保存格内可以自由使用逗号（`$1,500`）。旧式的逗号分隔写法仍照原样解析。见 [Block Syntax Specification 第 5 节 Table](./Block-Syntax-Specification.md#table)。
 
 > [!NOTE]
 > 以下节点已调整：`@seo`、`@lang` 已并入 `@meta`；`@title` 改用 `@heading`（别名 `@h`）；`@text` 改用 `@paragraph`（别名 `@p`）；`@btn` 暂时弃用。以上为部分范例，实际语法以正式规格文档为准。
@@ -152,17 +155,37 @@ description = AI-native semantic document runtime
 
 ---
 
+## 语法 v0.1.2 的新内容
+
+| 变更 | 规范位置 |
+|---|---|
+| `@img` 对齐：`float-left`／`float-right`（文本环绕图片），以及裸关键字写法 `@img(src,float-left)[...]` | [Block Spec 第 5 节 Image](./Block-Syntax-Specification.md#image) |
+| 表格保存格以 `\|` 分隔；容许头尾多一根 `\|`；逗号写法不变 | [Block Spec 第 5 节 Table](./Block-Syntax-Specification.md#table) |
+| `@span(n)[...]`——一个表格保存格横跨 `n` 个字段 | [Block Spec 第 5 节 Table](./Block-Syntax-Specification.md#table) |
+| `@spoiler[...]`——行内、揭露前隐藏的文本 | [Inline Spec 第 15 节](./Inline-Syntax-Specification.md#15-semantic-inline-spoiler-and-hex) |
+| `@hex[#3366ff]`——色块加上它自己的色码（与 `@color` 不同） | [Inline Spec 第 15 节](./Inline-Syntax-Specification.md#15-semantic-inline-spoiler-and-hex) |
+| 新增 diagnostics：列宽度 ≠ 字段数、错误的 `@span`／`@hex`、未知的 `{styles}` token、未知的 `@img` align、非数字的 `@defn` id | [Inline Spec 第 11 节 Diagnostics](./Inline-Syntax-Specification.md#diagnostics) |
+| `@tabs` 的 DOM id 在整份文档内唯一；默认选中第一个标签页 | [Block Spec 第 8 节 Tabs](./Block-Syntax-Specification.md#tabs) |
+
+这些变更背后大多遵循同一条原则：过去会干净解析、却渲染出错误结果的错误（少一格的表格、`@card{blue}`、`align=middle`），现在都会变成*看得见*的 diagnostic，而不再是静默失败。无论如何，文档仍会照常解析与渲染。
+
+### 包版本与语法版本
+
+`atdoc-core` 的包版本（`0.1.x`）与语言的语法版本（此处为 `v0.1.2`）是分开编号的。包版本追踪本 repo 的发布；语法版本追踪语法的变更。两份规范文件各自带有自己的修订编号（目前为 v1.5）。
+
+---
+
 ## 节点分类
 
 ### Core Nodes — 结构原件
 文档骨架，不可再分割的原子。
 
-`@heading`（别名 `@h`） `@paragraph`（别名 `@p`） `@quote` `@code` `@list` `@img` `@table`
+`@heading`（别名 `@h`） `@paragraph`（别名 `@p`） `@quote` `@code` `@list` `@img` `@table`（含其 `@cols`／`@data`／`@span` 部分）
 
 ### Semantic Nodes — 语义容器
 两种行为模式：
 
-- **Inline Semantic** — 渲染为带标签的行内元素：`@mark[重要]`、`@link(example.com)[链接]`
+- **Inline Semantic** — 渲染为带标签的行内元素：`@mark[重要]`、`@link(example.com)[链接]`、`@spoiler[隐藏]`、`@hex[#3366ff]`
 - **Block Metadata** — 注入 Host 的设置，不渲染任何 HTML：`@meta[key = value]`
 
 ---
@@ -219,9 +242,10 @@ const html = ast.map(node => DocTranspiler.toTailwindHTML(node)).join('\n');
 ## 这个 Repo 有什么
 
 ```
-src/            Lexer、Parser、registry（节点的单一事实来源）、Adapters（HTML 渲染的两条路线）
+src/            Lexer、Parser、Serializer、registry（节点的单一事实来源）、types、pipeline、markdownImport
+src/index/      默认渲染 plugin：Adapters（HTML 渲染的两条路线）＋ index.css
 src/editor/     Monarch tokenizer，给 Monaco 类编辑器用
-tests/          Lexer/Parser 的 Strict Mode 案例集，以及各节点的渲染验证
+tests/          Lexer/Parser 的 Strict Mode 案例集（`tests/cases/*.atd`，预期结果在 `expected.json`）、serializer round-trip，以及 v0.1.2 节点的渲染验证——以 `npm test` 全部运行
 configs/        editor/tooling 用的节点设置
 *-Specification.md   语言的权威文法定义（EBNF + 语意规则）
 ```

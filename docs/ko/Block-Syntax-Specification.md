@@ -1,8 +1,11 @@
-# @Doc Block Syntax Specification v1.4
+# @Doc Block Syntax Specification v1.5
 
 > 🌐 다른 언어 버전: [English](../en/Block-Syntax-Specification.md) ・ [繁體中文](../zh-tw/Block-Syntax-Specification.md) ・ [简体中文](../zh-cn/Block-Syntax-Specification.md) ・ [日本語（AI 翻訳、誤りがある可能性があります）](../ja/Block-Syntax-Specification.md)
 >
 > ⚠️ **이 문서는 AI가 번역했습니다. 부정확한 내용이 포함될 수 있습니다.** 정확한 내용을 확인하려면 [繁體中文版](../zh-tw/Block-Syntax-Specification.md) 또는 [English 버전](../en/Block-Syntax-Specification.md)을 참고하세요.
+
+> [!NOTE]
+> **변경 이력(문법 v0.1.2, 명세 v1.5)** — `@img`에 `float-left`/`float-right` 정렬과 `align`의 키 생략형(단독 키워드)이 추가되었다(5절 Image). `@table`의 셀을 `|`로 구분할 수 있게 되었고, `@span(n)[...]`으로 하나의 셀이 여러 칼럼에 걸칠 수 있다(5절 Table). 행의 너비가 `@cols`의 칼럼 수와 다르면 이제 diagnostic이 발생한다. 인식할 수 없는 `{styles}` token과 숫자가 아닌 `@defn` id도 이제 diagnostic이 된다(4절, Inline Spec 11절). `@tabs`의 panel id는 이제 문서 전체에서 고유하다(8절 Tabs). 인라인 노드 `@spoiler`와 `@hex`도 새로 추가되었다 — Inline Spec 15절을 참고.
 
 ## 0. 목차
 
@@ -37,13 +40,16 @@
 따라서 @Doc는 다음을 제공하지 않습니다:
 
 * `@div`
-* `@span`
+* `@span`(범용 레이아웃 래퍼로서)
 * `@flex`
 * `@grid`
 * `@row`
 * `@col`
 * `@class`
 * `@style`
+
+> [!NOTE]
+> **NOTE**: `@span(n)[...]`은 v0.1.2부터 **실제로 존재**하지만, HTML의 `<span>`/`<div>` 같은 범용 레이아웃 래퍼가 아니다. 이것은 **표 구조 마커**로서, `@data` 셀의 유일한 내용으로만 유효하며 "이 셀은 n개 칼럼에 걸친다"는 뜻만 나타낸다. 스타일이나 표현에 관한 정보는 전혀 담지 않는다 — 5절 Table을 참고.
 
 Renderer는 플랫폼에 따라 자유롭게 결정할 수 있습니다:
 
@@ -277,6 +283,7 @@ image-option =
     | width-option
     | height-option
     | align-option
+    | bare-align-option
     | radius-option
     | border-option ;
 
@@ -290,7 +297,22 @@ height-option =
     "height=" , integer ;
 
 align-option =
-    "align=" , ( "left" | "center" | "right" ) ;
+    "align=" , align-value ;
+
+align-value =
+      "left"
+    | "center"
+    | "right"
+    | "float-left"
+    | "float-right" ;
+
+(* Because align-value is a closed set, a bare item that is exactly one of
+   its five values is also accepted as an align-option with no "align="
+   key (e.g. @img(src=a.png,float-left)[...]). This is checked BEFORE the
+   "first bare item is src" rule, so @img(float-left)[...] reads as align,
+   never as a URL that happens to spell "float-left". *)
+bare-align-option =
+    align-value ;
 
 radius-option =
     "radius=" , text ;
@@ -323,9 +345,14 @@ cols =
         column-list ,
     "]" ;
 
+(* Cell delimiter (v0.1.2): "|" if the row uses "|" anywhere at its own
+   top level, otherwise the legacy ",". Decided independently for @cols and
+   for each @data row. See §5 Table. *)
+cell-delimiter =
+    "|" | "," ;
+
 column-list =
-    cell ,
-    { "," , cell } ;
+    [ "|" ] , cell , { cell-delimiter , cell } , [ "|" ] ;
 
 data =
     "@data" ,
@@ -335,9 +362,18 @@ data =
 
 row =
     "[" ,
-        cell ,
-        { "," , cell } ,
+        [ "|" ] , row-cell , { cell-delimiter , row-cell } , [ "|" ] ,
     "]" ;
+
+(* A cell that is exactly one span-cell counts as n toward the row's width
+   instead of 1. A leading and/or trailing "|" is decoration and is
+   stripped, each edge independently. *)
+row-cell =
+      span-cell
+    | cell ;
+
+span-cell =
+    "@span" , "(" , integer , ")" , "[" , cell , "]" ;
 
 (* cell은 순수 텍스트만 허용하는 것이 아니라, 엄선된 inline-node 부분집합
    (cell-inline-node)도 허용한다. 이 형태는 @cols의 columns와 @data의
@@ -346,7 +382,7 @@ row =
    (예: @card, @table, @details)는 Strict Mode(Inline Syntax Specification
    §11)에 따라 조용히 버려지는 대신 반드시(MUST) 예외를 던져야 한다. *)
 cell =
-    { cell-inline-node | any-unicode-char - "," - "]" } ;
+    { cell-inline-node | any-unicode-char - cell-delimiter - "]" } ;
 
 (* ==========================================================================
    Widget-Specific Grammar: @tabs / @tab
@@ -437,6 +473,12 @@ text =
 > 7절의 구체적 이름 색상표를 따르지 않는다.
 > Container/Callout/`@img`의 `styles`를 시각적 스타일로 매핑할지, 어떻게
 > 매핑할지는 각 Renderer가 자체적으로 결정한다.
+>
+> **인식할 수 없는 token은 표시된다(v0.1.2).** 해당 노드 자체의 어휘에 속하지 않는 token — 예를 들어
+> `@card{blue}`(`@card`는 `#RRGGBB`/`radius-N`만 받으며 이름 있는 색은 받지 않는다)나
+> `@mark{bluee}` — 은 예전에는 조용히 버려져서 노드가 스타일 없이 남았지만 어디에도 알림이 없었다.
+> Parser는 이제 해당 token에 대해 diagnostic을 보고한다(Inline Spec 11절 Diagnostics 참고).
+> 문서는 여전히 파싱·렌더링되며, 그 token은 계속 무시된다.
 
 ---
 
@@ -642,9 +684,32 @@ WEDC Logo
 | `src`(생략 가능)| 이미지 소스 URL                        | `src=https://...`         |
 | `width`       | 표시 너비(단위는 Renderer가 결정)     | `width=200`                |
 | `height`      | 표시 높이(단위는 Renderer가 결정)     | `height=150`               |
-| `align`       | 정렬 방식                            | `align=left/center/right`  |
+| `align`       | 정렬 방식                            | `align=left/center/right/float-left/float-right`  |
 | `radius`      | 모서리 둥글기(Renderer로 그대로 전달되는 CSS 값)| `radius=8px`               |
 | `border`      | 테두리(Renderer로 그대로 전달되는 CSS 값)| `border=1px solid #ccc`    |
+
+#### Image `align` 값(v0.1.2)
+
+`align`의 값 집합은 닫혀 있다:
+
+| 값 | 효과 |
+|---|---|
+| `left` | 이미지를 왼쪽에 정렬. 이어지는 내용은 이미지 **아래**에 이어진다 |
+| `center` | 이미지를 가운데 정렬(이전 동작) |
+| `right` | 이미지를 오른쪽에 정렬. 이어지는 내용은 이미지 **아래**에 이어진다 |
+| `float-left` | 이미지를 왼쪽에 정렬. 이어지는 텍스트가 **오른쪽으로 감싼다** |
+| `float-right` | 이미지를 오른쪽에 정렬. 이어지는 텍스트가 **왼쪽으로 감싼다** |
+
+```text
+@img(./a.png,align=float-left)[대체 텍스트]
+```
+
+* **키 생략형.** 값 집합이 닫혀 있으므로, 쉼표로 구분된 항목이 이 다섯 값 중 하나와 정확히 같으면 `align=`이라는 key가 없어도 `align`으로 인식된다: `@img(./a.png,float-left)[...]`은 `@img(./a.png,align=float-left)[...]`과 동일하다. 이 검사는 "키 없는 첫 항목은 `src`"라는 규칙보다 **먼저** 수행되므로, `@img(float-left)[...]`(`src`가 전혀 없음)는 우연히 "float-left"라고 쓰인 URL이 아니라 정렬로 읽힌다.
+* **조합이 아닌 단일 옵션 값.** `align=left,float=true` 같은 조합은 의도적으로 두지 않았다 — 잘못된 상태는 아예 쓸 수 없고, 작성자(또는 모델)는 두 번이 아니라 한 번만 선택하면 된다.
+* **`center` + 감싸기는 없다.** 가운데 정렬된 이미지의 양쪽에 텍스트를 감싸는 것은 CSS `float`로 표현할 수 없고 대부분의 renderer도 구현할 수 없다. 남겨 두면 renderer마다 조용히 서로 다른 동작으로 대체될 뿐이다.
+* **감싸기의 끝.** 감싸기는 renderer 수준의 관례이며 AST에는 기록되지 않는다: 다음 제목, 다음 `@hr`, 또는 둘러싼 컨테이너의 끝에서 끝나야 한다(SHOULD).
+* **좁은 화면과 흐름 배치를 할 수 없는 출력 대상**(휴대폰, terminal, 일부 PDF): renderer는 정렬과 감싸기를 무시하고 이미지를 가운데 또는 전체 너비로 표시해도 된다(MAY). 정렬은 **위치 의미론**이며, 픽셀 단위 레이아웃을 약속하지 않는다.
+* **인식할 수 없는 값**(예: `align=middle`, 오타): renderer는 그 값을 무시하고 기본값(정렬 없음)을 사용한다. Parser는 추가로 **warning** diagnostic을 보고한다 — 문서는 여전히 렌더링되므로 error는 아니지만, 더 이상 조용히 넘어가지 않는다.
 
 > [!TIP]
 > **TIP**: 여기서의 확장 방식은 Inline Spec 7절 `@mark 스타일 시맨틱스`와
@@ -705,15 +770,61 @@ WEDC Photo
 ]
 ```
 
-* `@cols[...]`: 쉼표로 구분된 칼럼 제목 목록으로, 칼럼의 순서와 개수를 정의한다. 각 칼럼은 `@data`의 셀과 마찬가지로 `cell`(아래 참고)이며, 순수 텍스트 식별자로 한정되지 않는다.
-* `@data[...]`: 각 행은 `[...]` 안에 감싸여 있으며, `cell` 개수는 `@cols`에서 정의한 칼럼 수와 일치해야(SHOULD) 한다. Parser는 개수가 맞지 않는 행에 대해 경고나 오류를 던질 수 있다(MAY)(Strict / Editor Mode에 따라 결정되며, Inline Spec 11절 Parser Recovery Strategy 참고).
+* `@cols[...]`: 구분자로 구분된 칼럼 제목 목록으로, 칼럼의 순서와 개수를 정의한다. 각 칼럼은 `@data`의 셀과 마찬가지로 `cell`(아래 참고)이며, 순수 텍스트 식별자로 한정되지 않는다.
+* `@data[...]`: 각 행은 `[...]` 안에 감싸여 있으며, 그 행의 **너비**는 `@cols`에서 정의한 칼럼 수와 같아야(MUST) 한다(`@span(n)` 셀은 `n`, 나머지 셀은 각각 1로 센다). 너비가 다른 행은 diagnostic으로 보고된다 — 아래 "행 너비"를 참고.
+
+#### 셀 구분자: `|` 또는 `,`(v0.1.2)
+
+`@cols`와 각 `@data` 행은 원래 `,`로만 셀을 나누었기 때문에, 그 자체에 쉼표가 들어 있는 셀(`$1,500`, `Web, iOS, Android`, `DECIMAL(10,2)`)을 쓸 방법이 없었고, 조용히 칼럼이 하나 더 생겼다. v0.1.2부터 구분자는 **행마다** 다음의 기계적인 규칙 하나로 결정된다:
+
+```text
+어떤 행의 최상위 수준에 "|"가 나타나면 그 행은 "|"로 나눈다.
+그렇지 않으면 기존처럼 ","로 나눈다.
+```
+
+```text
+@table[
+    @cols[시간|강연|연사]
+
+    @data[
+        [09:00 - 10:30|개막 강연|왕샤오밍]
+        [10:30 - 11:00|@span(2)[휴식]]
+        [11:00 - 12:00||데이터 엔지니어링 분과]
+        [13:30 - 15:00|표 문법 설계|천다원, 린메이화]
+    ]
+]
+```
+
+* **`|` 모드에서 `,`는 일반 텍스트다** — 이스케이프도 제한도 필요 없다(위 마지막 행의 연사 셀 참고).
+* **`,` 모드는 변경 없음.** `|`가 없는 행은 이전과 완전히 똑같이 파싱되므로 기존 문서는 마이그레이션이 필요 없다. 쉼표 형식은 구식으로 간주되며, Editor Mode 구현은 이를 더 이상 권장하지 않음으로 표시해도 된다(MAY).
+* **최상위 구분자만 나눈다.** 중첩된 노드 자신의 대괄호 안에 있는 `|`나 `,`(`@bold[a,b]`, `@raw[a|b]`)는 리터럴로 남는다 — 셀 분할은 대괄호 깊이를 따르며 registry를 조회하지 않는다. 셀에 리터럴 `|`가 필요하면 `@raw[...]`로 감싼다. `|`가 필요한 내용은 대개 코드이며, 의미상으로도 그것이 올바른 노드다.
+* **빈 셀은 반드시 써야 한다.** `[11:00 - 12:00||데이터 엔지니어링 분과]`의 가운데 셀은 의도적으로 비워 둔 것이다.
+* **앞뒤에 붙은 `|` 하나는 장식으로 간주되어 제거되며, 양쪽 끝은 각각 독립적으로 판단한다.** `[|a|b|c|]`(Markdown 표의 습관), `[|a|b|c]`, `[a|b|c|]`, `[a|b|c]`는 모두 똑같이 파싱된다. 대가: 가장자리의 `|`로는 "정말로 비어 있는 첫 번째/마지막 셀"을 표현할 수 없다 — 자리 표시 내용을 넣거나 칼럼을 조정할 것. 행 중간의 빈 셀은 영향을 받지 않는다.
+* 셀을 `<...>`로 감싸는 것은 피할 것 — 그 형태는 `<action>` 슬롯을 위해 예약되어 있다.
+
+#### 칼럼에 걸치는 셀: `@span(n)[...]`(v0.1.2)
+
+```text
+[10:30 - 11:00|@span(2)[휴식]]
+```
+
+내용이 **정확히 하나**의 `@span(n)[...]` 노드(`n`은 양의 정수)인 셀은 `n`개 칼럼에 걸치며, 행의 너비를 셀 때 1이 아니라 `n`으로 계산되므로 "모든 행의 너비가 칼럼 수와 같다"는 규칙에 예외가 없다. 위 예에서 그 행은 실제 셀이 2개이지만 너비는 1 + 2 = 3으로, `@cols`의 세 칼럼과 일치한다. Renderer는 이를 자체의 colspan 개념에 대응시킨다(HTML: `<td colspan="n">`).
+
+* `@span`은 **`@data` 셀의 유일한 내용**일 때만 유효하다. `@cols` 안, 표 바깥, 또는 셀 안에서 다른 내용과 섞여 있으면 위치가 잘못된 노드이며, `@tabs` 바깥의 `@tab`과 같은 방식으로 표시된다.
+* `n`은 단순한 양의 정수여야 한다(MUST). `@span(two)`, `@span(0)`, `@span(2.5)`는 각각 별도의 diagnostic으로 보고된다. 행 너비 검사에서 그런 셀은 너비 1로 계산되므로, 같은 근본 원인이 두 번 보고되지는 않는다.
+* `@hex`와 `@span`은 셀 허용 목록에 들어 있다(색상 견본 표가 `@hex`의 가장 흔한 용도이고, `@span`은 여기서만 의미가 있다). `@spoiler`는 의도적으로 목록에 **포함되지 않는다** — 클릭해서 여는 스팬을 표 셀에 두는 것은 어울리지 않기 때문이다.
+* `@span` 자체에는 스타일이나 레이아웃상의 의미가 없다 — 1절의 참고를 볼 것.
+
+#### 행 너비
+
+행의 너비(`@span` 포함)가 `@cols`의 칼럼 수와 같지 않으면, 그 행이 **어떤 구분자를 쓰든** diagnostic으로 보고된다. Parser는 자동으로 채우거나 잘라내지 않는다: 조용히 불일치로 두면 칼럼이 제목과 어긋난 표가 렌더링된다. 이 diagnostic은 Strict Mode에서는 error이고, Editor Mode에서는 보고되지만 차단하지 않는 diagnostic이며, 문제가 있는 행을 가리킨다.
 
 > [!TIP]
 > **TIP**: `@cols`와 `@data`의 순서가 고정되어 있고 둘 다 필수인 것은
 > 의도적인 설계 상의 트레이드오프다 — 약간의 유연성을 희생하는 대신
 > Parser와 AI가 콘텐츠를 생성할 때의 높은 예측 가능성을 얻는다.
 
-각 `cell`은 단순한 순수 텍스트가 아니다 — 텍스트 자체 외에도, 엄선된 인라인 서식 노드 집합(`@bold`, `@italic`, `@underline`, `@del`, `@mark`, `@color`, `@sup`, `@sub`, `@link`, `@fn`, 그리고 줄바꿈으로 변환되는 `@n`)을 허용한다. 이 노드들은 텍스트의 표현 방식만 바꿀 뿐, 표 자체의 "칼럼이 데이터 행과 정렬된다"는 구조에는 영향을 주지 않기 때문이다. 이 목록은 Renderer 쪽(`registry.ts`의 `isCellAllowedNode`)에서 관리되며, 문법 레벨 자체는 목록 내용을 제한하지 않으므로 앞으로 확장될 수 있다. 목록에 없는 노드(예: 자체 레이아웃 구조를 가져오는 `@card`, `@table`, `@details` 같은 블록 노드)는 조용히 버려지는 대신 반드시(MUST) 문법 오류를 던져야 한다 — 이는 Strict Mode(Inline Syntax Specification 11절)의 "오류를 삼키기보다는 차라리 오류를 던진다"는 정신과 일치한다.
+각 `cell`은 단순한 순수 텍스트가 아니다 — 텍스트 자체 외에도, 엄선된 인라인 서식 노드 집합(`@bold`, `@italic`, `@underline`, `@del`, `@mark`, `@color`, `@sup`, `@sub`, `@link`, `@fn`, `@hex`, `@span`, 그리고 줄바꿈으로 변환되는 `@n`)을 허용한다. 이 노드들은 텍스트의 표현 방식만 바꿀 뿐, 표 자체의 "칼럼이 데이터 행과 정렬된다"는 구조에는 영향을 주지 않기 때문이다. 이 목록은 Renderer 쪽(`registry.ts`의 `isCellAllowedNode`)에서 관리되며, 문법 레벨 자체는 목록 내용을 제한하지 않으므로 앞으로 확장될 수 있다. 목록에 없는 노드(예: 자체 레이아웃 구조를 가져오는 `@card`, `@table`, `@details` 같은 블록 노드)는 조용히 버려지는 대신 반드시(MUST) 문법 오류를 던져야 한다 — 이는 Strict Mode(Inline Syntax Specification 11절)의 "오류를 삼키기보다는 차라리 오류를 던진다"는 정신과 일치한다.
 
 > [!NOTE]
 > **예외**: raw 계열 노드(`@code`, `@mermaid`, `@raw`, `@kbd`)도 `isCellAllowedNode` 목록에는 없지만, 이들은 "자체 레이아웃 구조를 가져오는 블록 노드"도 아니고, 위의 MUST 오류 규칙도 적용되지 않는다 — `Parser.ts`(`parseInlineCellList`)는 이들의 원본 내용을 오류를 던지거나 실제 노드로 파싱하는 대신, 의도적으로 셀 안의 순수 텍스트로 평탄화(flatten)한다. 이는 `@card`/`@table`/`@details` 같은 구조 노드와는 별개로 처리되는 독립적인 동작이며, 자세한 내용은 `registry.ts`(`CELL_ALLOWED_INLINE` 위쪽 주석)와 `Parser.ts`(`parseInlineCellList` 위쪽 주석)를 참고.
@@ -956,6 +1067,9 @@ Container Blocks의 동일한 설명 참고)도 `(title)` 뒤에 함께 사용�
 
 * `@tab(제목)[내용]`: `제목`은 탭에 표시되는 이름이며, `내용`은 완전한 `block-content`(임의의 block-node와 inline-stream을 포함할 수 있다)이다.
 * 만약 `@tabs[...]` 내부에 `@tab`이 아닌 노드(예: 순수 텍스트나 다른 block-node)가 나타나면, Parser는 반드시(MUST) 이를 문법 오류(Strict Mode)로 처리하거나, Editor Mode가 자동으로 무시/수정을 제안해야 한다.
+
+* **고유 id(v0.1.2).** 탭 위젯용 DOM id를 출력하는 renderer는 그 id가 *문서 전체*에서 고유하도록 해야 한다(MUST). 각 `@tabs` 블록 안에서 panel에 0부터 번호를 매기면, 한 문서의 두 `@tabs`가 모두 `tab-panel-0`, `tab-panel-1`, …을 출력하여 트리거의 `aria-controls`가 정확히 하나의 panel로 해석되지 않는다. 참조 구현은 문서마다 하나씩 증가하는 widget 카운터를 붙인다(`tab-panel-<widget>-<index>`).
+* **초기 상태.** 참조 구현은 첫 번째 탭을 선택된 것으로 표시한다(트리거에 `aria-selected="true"`, panel에 `data-active="true"`). 이로써 스크립트가 실행되기 전에도 위젯이 올바른 초기 상태를 가진다.
 
 > [!TIP]
 > **TIP**: `@tab`을 `block-node`에 포함시키지 않은 이유는, `@tabs` 이외의

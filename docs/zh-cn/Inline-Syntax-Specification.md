@@ -1,6 +1,9 @@
-# @Doc Inline Syntax Specification v1.4
+# @Doc Inline Syntax Specification v1.5
 
 > 🌐 其他语言版本：[English](../en/Inline-Syntax-Specification.md) ・ [繁體中文](../zh-tw/Inline-Syntax-Specification.md) ・ [日本語（AI 翻译，可能有误）](../ja/Inline-Syntax-Specification.md) ・ [한국어（AI 번역，可能有误）](../ko/Inline-Syntax-Specification.md)
+
+> [!NOTE]
+> **变更记录（语法 v0.1.2、规范 v1.5）**——新增两个行内节点 `@spoiler` 与 `@hex`（第 4 节、第 15 节）；第 11 节新增 **Diagnostics** 小节，列出 Parser 现在会报告、而不再静默接受的所有情况；`@defn` 的 id 必须是整数（第 4 节）。表格保存格语法（`|` 分隔符、`@span`）与 `@img` 对齐定义于 Block Syntax Specification 第 5 节。
 
 ## 0. Table of Contents
 
@@ -18,6 +21,7 @@
 * [12. Architecture](#12-architecture)
 * [13. Core Principle](#13-core-principle)
 * [14. Simplified Syntax Aliases](#14-simplified-syntax-aliases)
+* [15. Semantic Inline: @spoiler and @hex](#15-semantic-inline-spoiler-and-hex)
 
 ---
 
@@ -150,6 +154,8 @@ inline-node =
     | defn
     | kbd
     | link
+    | spoiler
+    | hex
     | br
     | escape ;
 
@@ -177,11 +183,21 @@ sub       = "@sub" , content ;
    defn = 脚注定义本体，带编号与实际内容
 *)
 fn        = "@fn" , "[" , integer , "]" ;
+(* The modifier of defn is the footnote id. It must be an integer to be
+   referenceable at all — fn's own "[...]" only accepts an integer, so a
+   non-numeric id can be written but no @fn can ever point at it. The Parser
+   reports it (see §11 Diagnostics). *)
 defn      = "@defn" , modifier , content ;
 
 kbd       = "@kbd" , "[" , key , "]" ;
 
 link      = "@link" , uri , content ;
+
+(* v0.1.2. spoiler takes ordinary nestable content; hex takes a restricted
+   slot (like kbd's key), NOT generic content. See §15. *)
+spoiler   = "@spoiler" , content ;
+hex       = "@hex" , "[" , hex-code , "]" ;
+hex-code  = "#" , ( 3 * hex-digit | 6 * hex-digit ) ;
 
 br        = "@n" ;
 
@@ -822,6 +838,26 @@ Unexpected EOF while parsing @bold
 > [!TIP]
 > **TIP**：AtDoc 选择直接抛出语法错误，并使用异步错误断点修复机制
 
+### Diagnostics
+
+除了未关闭的结构之外，Parser 也会报告一类「语法上合法、但几乎可以确定不是作者本意」的情况——这些情况过去会干净地解析、然后渲染出错误结果，却没有任何地方提示。每一项都以 `DocDiagnostic` 报告，带有源码范围与消息；它们都不会中止解析，也不会改变文档其余部分产生的 AST。
+
+| 情况 | 严重程度 | 说明 |
+|---|---|---|
+| `@data` 某列的宽度（含 `@span`）≠ `@cols` 字段数 | error | 报告在有问题的那一列。绝不自动补齐或截断。见 Block Spec 第 5 节 Table |
+| `@span(n)` 的 `n` 不是正整数 | error | 列宽度检查时以宽度 1 计算，因此一个根本原因只产生一条 diagnostic |
+| `@span` 出现在 `@data` 保存格之外（`@cols` 内、段落内、与其他保存格内容混用） | error | 与 `@tabs` 之外的 `@tab` 采用相同的限定位置规则 |
+| `@hex[...]` 内容不是 `#RGB`／`#RRGGBB` | error | 具名色、4／5／8 位色码，或缺少 `#`。8 位 `#RRGGBBAA` 目前刻意拒绝（第 15 节） |
+| `@img` 的 `align` 值无法识别 | warning | 该值被忽略（不对齐），文档仍会渲染。见 Block Spec 第 5 节 Image |
+| 节点 `{styles}` 内有无法识别的 token | error | 例如 `@card{blue}`、`@mark{bluee}`、`@img{radius-x}`。该 token 在渲染时仍被忽略。范围指向该 token 本身 |
+| `@defn(id)` 的 id 不是整数 | error | `@fn[...]` 只接受整数，这条脚注永远无法被引用。报告在 `@defn` 上，也就是选定该 id 的地方 |
+| `@color`／`@bordered` 没有 `{styles}` 值 | error | 会退回彩虹外观／没有有意义的边框颜色 |
+| 吞掉内容的 `@raw` 转义，或任何被消耗的转义 | warning／info | 见第 9 节 |
+
+「严重程度」是 diagnostic 上携带的值。error 在 Strict Mode 下是否阻断、在 Editor Mode 下是否仅加下划线，由使用方决定，与上文所述完全相同。
+
+---
+
 ---
 
 ### Editor Mode
@@ -893,3 +929,65 @@ Renderer 可以自由输出：
 | `@underline` | `@u` |
 
 （Block Syntax 的 `@heading`/`@paragraph` 别名 `@h`/`@p` 定义在 Block Syntax Specification §11。）
+
+---
+
+## 15. Semantic Inline: @spoiler and @hex
+
+语法 v0.1.2 新增的两个行内节点。两者都是普通行内节点——凡是 `inline-stream` 能出现的地方都能使用。
+
+### @spoiler
+
+```text
+这部电影最后@spoiler[主角其实是反派]，剧情转折非常精彩。
+```
+
+```ebnf
+spoiler = "@spoiler" , content ;
+```
+
+句子层级的隐藏片段：由读者自行选择是否揭露的内容，不会把周围的行文拆成独立块。`content` 是标准的可嵌套产生式，因此 `@spoiler[@bold[惊天逆转]]` 是合法的，格式在被隐藏时也会保留。
+
+* **不是 `@details` 的块级版。** `@details` 是有标题的块级渐进式揭露——读者展开的是整个段落。`@spoiler` 是句子*之中*的一个片段，揭露后仍然是同一个段落。刻意不设块级的 spoiler 节点：块级的防雷就是标题为「剧透警告」之类的 `@details`，同一件事用两个节点表达，会让语言有两种说法。
+* **表格保存格。** `@spoiler` **不在**表格保存格允许清单上（Block Spec 第 5 节 Table）。
+* **渲染（Web）。** 参考 renderer 输出 `<span class="spoiler" tabindex="0">…</span>`。背景与文字默认都是隐藏的，并在 `:hover`／`:focus` 时同时清除，不需要 script。`tabindex` 让该 span 可用键盘到达、使 focus 能触发，同时也是让辅助技术能读取内容的挂钩。
+* **无法在交互时揭露的输出目标**（纯文本、搜索索引、供 LLM 使用的提取结果、PDF）：实际的替代标示由 renderer 决定，但 renderer **MUST NOT** 把防雷的真实文本悄悄复制进搜索索引或自动生成的摘要。以 `[防雷]` 之类的标记取代，或把该句从索引中排除，都可接受。完全无交互能力的目标（DOCX）可以合理地将它转成脚注或可展开的批注。
+
+参考 renderer 的样式挂钩是 `.spoiler` class。最小规则集：
+
+```css
+.spoiler { background: currentColor; border-radius: 3px; cursor: pointer; outline: none; }
+.spoiler:hover, .spoiler:focus { background: transparent; }
+```
+
+（隐藏时文字颜色必须等于背景色——`background: currentColor` 可以顺带达成——揭露时两者都要重设。）
+
+### @hex
+
+```text
+主色为 @hex[#3366ff]，辅助色为 @hex[#f80]。
+```
+
+```ebnf
+hex      = "@hex" , "[" , hex-code , "]" ;
+hex-code = "#" , ( 3 * hex-digit | 6 * hex-digit ) ;
+```
+
+显示一个色块与其字面色码——这个节点的主体*就是*颜色值本身。
+
+* **受限内容。** 与 `@kbd` 的 `key` 相同，括号内放的是要验证的值，不是正文：`@hex[@bold[#fff]]` 不是粗体色码，因为在 `@hex` 的括号内，语法不会经过 `inline-node`。
+* **接受的形式：** `#RGB` 与 `#RRGGBB`。8 位的 `#RRGGBBAA` 在本版本刻意保持未定，并且会被**拒绝**而不是静默接受，这样日后采用 alpha 惯例时就不会是破坏性变更。不符合语法的内容（具名色、4 或 5 位色码、缺少 `#`）是 diagnostic，绝不是静默退回。
+* **表格保存格。** `@hex` **在**表格保存格允许清单上——色板表与设计 token 表是它最常见的用途。
+* **渲染（Web）。** 参考 renderer 输出 `<span class="hex-swatch"><span class="hex-swatch-color" style="background-color:#3366ff;"></span><code>#3366ff</code></span>`。只有色块的背景色是 inline 的；尺寸与间距由样式表负责（`.hex-swatch`、`.hex-swatch-color`）。点击复制等交互属于 renderer，不属于语法。
+* **无法显示颜色的输出目标**（纯文本 terminal）：打印色码 `#3366ff`。
+
+#### `@hex` 不是 `@color`
+
+两者很容易被互相替代使用，意思却相反：
+
+| 节点 | 意思 |
+|---|---|
+| `@color{#3366ff}[文字]` | 「让*这段文字*变成这个颜色」——hex 值是在为无关的内容上色 |
+| `@hex[#3366ff]` | 「显示*这个色码本身*」——色码就是内容 |
+
+列出色板的设计系统文档要用 `@hex`；刚好需要蓝色文字的段落要用 `@color`。写成 `@color{#3366ff}[#3366ff]` 来显示色板，渲染出来看起来没错，但结构上是错的节点：扫描「这份文档把哪些颜色当色板呈现」的工具找得到每一个 `@hex`，却无法把这个意外的 `@color` 与普通的彩色文字区分开来。

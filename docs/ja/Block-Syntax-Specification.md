@@ -117,7 +117,9 @@ Document AST
     │   ├── @sup
     │   ├── @sub
     │   ├── @kbd
-    │   └── @link
+    │   ├── @link
+    │   ├── @spoiler
+    │   └── @hex
     │
     ├── Footnotes
     │   ├── @fn

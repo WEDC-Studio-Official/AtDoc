@@ -777,26 +777,33 @@ export class DocParser {
    */
   private scanCellDelimiter(): { pipe: boolean; leadingPipe: boolean; trailingPipe: boolean } {
     let depth = 0;
+    // The row's first/last token at depth 0 of *any* type, not just TEXT: an
+    // edge "|" only counts as decoration when it really is at the row's edge.
+    // In `[@raw[x]|b|c]` the first TEXT token is "|b|c", but a node comes
+    // before it, so that "|" is the delimiter between cells 1 and 2 — treating
+    // it as a leading `[|a|b]` and stripping it merged the first two cells.
     let firstTok: Token | undefined;
     let lastTok: Token | undefined;
     let pipe = false;
     for (let i = this.cursor; i < this.tokens.length; i++) {
       const t = this.tokens[i];
+      if (t.type === 'SLOT_CLOSE' && depth === 0) break;
+      if (depth === 0) {
+        if (firstTok === undefined) firstTok = t;
+        lastTok = t;
+      }
       if (t.type === 'SLOT_CLOSE') {
-        if (depth === 0) break;
         depth--;
       } else if (t.type === 'SLOT_OPEN') {
         depth++;
       } else if (t.type === 'TEXT' && depth === 0) {
         if (t.value.includes('|')) pipe = true;
-        if (firstTok === undefined) firstTok = t;
-        lastTok = t;
       }
     }
     return {
       pipe,
-      leadingPipe: firstTok !== undefined && firstTok.value.startsWith('|'),
-      trailingPipe: lastTok !== undefined && lastTok.value.endsWith('|'),
+      leadingPipe: firstTok?.type === 'TEXT' && firstTok.value.startsWith('|'),
+      trailingPipe: lastTok?.type === 'TEXT' && lastTok.value.endsWith('|'),
     };
   }
 

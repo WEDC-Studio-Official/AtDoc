@@ -38,6 +38,22 @@ test('pipe-delimited table renders the same as the comma form', () => {
   assert.strictEqual(render('@table[@cols[a|b]@data[[1|2]]]'), render('@table[@cols[a,b]@data[[1,2]]]'));
 });
 
+// A row whose first cell starts with a node (Markdown inline code imports as
+// @raw) used to lose its first "|": the leading-pipe check looked at the first
+// depth-0 TEXT token ("|b|c" here), not the row's first token, and stripped
+// the real delimiter as if it were `[|a|b]` decoration.
+test('pipe row whose first cell starts with a node keeps every cell', () => {
+  for (const row of ['[@raw[x]|b|c]', '[@bold[x]|b|c]', '[@raw[x]|b, still b|c]']) {
+    const ast = new DocParser(tokenize(`@table[@cols[A|B|C]@data[${row}]]`));
+    const table = ast.parse()[0] as { rows?: unknown[][] };
+    assert.strictEqual(table.rows?.[0]?.length, 3, `${row} -> ${JSON.stringify(table.rows?.[0])}`);
+    assert.strictEqual(ast.diagnostics.length, 0, `${row}: ${ast.diagnostics.map(d => d.message).join('; ')}`);
+  }
+  // A real leading "|" before a node is still decoration.
+  const decorated = new DocParser(tokenize('@table[@cols[A|B|C]@data[[|@raw[x]|b|c|]]]')).parse()[0] as { rows?: unknown[][] };
+  assert.strictEqual(decorated.rows?.[0]?.length, 3);
+});
+
 test('@spoiler renders a focusable .spoiler span', () => {
   assert.ok(render('@spoiler[secret]').includes('<span class="spoiler" tabindex="0">secret</span>'));
 });

@@ -1,0 +1,83 @@
+# Tests every push and pull request; on main, publishes to npm whenever
+# package.json's version isn't on npm yet. Releasing = bumping the version.
+#
+# Publishing uses npm trusted publishing (OIDC): no NPM_TOKEN secret. It has to
+# be enabled once on npmjs.com → atdoc-core → Settings → Trusted Publisher:
+# GitHub Actions, organization WEDC-Studio-Official, repository AtDoc,
+# workflow publish.yml.
+#
+# Dist-tag: a prerelease version (0.1.6-beta.0) goes to its preid tag (beta);
+# a plain version (0.1.6) goes to latest.
+
+name: Test and publish
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build
+
+  publish:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push the v<version> tag
+      id-token: write   # npm trusted publishing + provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or newer.
+      - run: npm install -g npm@latest
+
+      - name: Is this version already on npm?
+        id: version
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "$name@$version is already published; nothing to do."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+          case "$version" in
+            *-*) pre=${version#*-}; echo "tag=${pre%%.*}" >> "$GITHUB_OUTPUT" ;;
+            *)   echo "tag=latest" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - if: steps.version.outputs.publish == 'true'
+        run: npm ci
+
+      # prepublishOnly runs `npm run build`, which includes the guard that
+      # refuses to ship any internal theme.
+      - if: steps.version.outputs.publish == 'true'
+        run: npm publish --provenance --access public --tag ${{ steps.version.outputs.tag }}
+
+      - if: steps.version.outputs.publish == 'true'
+        run: |
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"

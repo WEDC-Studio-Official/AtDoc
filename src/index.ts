@@ -60,5 +60,13 @@ export { registerTheme, getTheme, hasTheme, listThemes, getDefaultTheme, resolve
 export type { AtDocPipelineResult } from './pipeline.js';
 export { runAtDocPipeline, getAtDocDiagnostics } from './pipeline.js';
 
+export type { StandaloneOptions, StandaloneResult } from './standalone.js';
+export { renderStandaloneHtml } from './standalone.js';
+
+// Mermaid hydration (src/mermaidRenderer.ts) and pan-zoom (src/panZoom.ts) are
+// browser-only and import the optional `mermaid` peer, so they are separate
+// entry points (atdoc-core/mermaidRenderer, atdoc-core/panZoom) instead of
+// being re-exported here.
+
 export type { MarkdownImportResult } from './markdownImport.js';
 export { convertMarkdownToAtDoc, SUPPORTED_MARKDOWN_FEATURES } from './markdownImport.js';

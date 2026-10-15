@@ -50,7 +50,9 @@ English is the primary language for the package and its documentation; Chinese i
 ## What's in here
 
 ```
-src/            Lexer, Parser, Serializer, registry (single source of truth for nodes), types, pipeline, markdownImport
+src/            Lexer, Parser, Serializer, registry (single source of truth for nodes), types, pipeline, markdownImport,
+                standalone (single-file HTML export), mermaidRenderer + panZoom (browser-side diagrams)
+scripts/        Build and publish guard; render-html.mjs (`npm run render -- doc.atd`)
 src/index/      Default renderer plugin: Adapters (two HTML render routes) + index.css
 src/editor/    Monarch tokenizer for Monaco-style editors
 tests/          Strict Mode test cases for the Lexer/Parser, serializer round-trips, and render verification (`npm test`)

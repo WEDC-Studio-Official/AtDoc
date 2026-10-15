@@ -214,6 +214,16 @@ const html = ast.map(node => DocTranspiler.toTailwindHTML(node)).join('\n');
 
 輸入 @Doc 原始碼，輸出結構化 AST，用符合你技術棧的適配器渲染。Parser 和 Adapters 直接加入你的 pipeline，沒有額外依賴。
 
+要把文件匯出成單一 HTML 檔（主題 CSS 內嵌、分頁與複製按鈕可用，有 `@mermaid` 時才從 CDN 載入 Mermaid），用 `renderStandaloneHtml`，或在這個 repo 執行 `npm run render -- 文件.atd`：
+
+```ts
+import { renderStandaloneHtml } from 'atdoc-core';
+
+const { html } = renderStandaloneHtml(source, { css, title: '我的文件' });
+```
+
+在瀏覽器裡，`hydrateMermaidDiagrams`（`atdoc-core/mermaidRenderer`）會把渲染好的 `@mermaid` 區塊變成可拖曳、可滾輪縮放的圖表。它會在需要時才載入 `mermaid`，這是選用的 peer dependency，要自己安裝（`npm install mermaid`）。
+
 ---
 
 ## 設計邊界

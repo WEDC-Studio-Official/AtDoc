@@ -215,7 +215,7 @@ const ast = new DocParser(tokens).parse();
 const html = ast.map(node => DocTranspiler.toTailwindHTML(node)).join('\n');
 ```
 
-Feed in @Doc source, get a structured AST out, and render it with an adapter that matches your stack. The package has no runtime dependencies of its own. Plain Node ESM works (no bundler required) — every relative import in the published build carries its explicit `.js` extension, which `moduleResolution: "NodeNext"` requires.
+Feed in @Doc source, get a structured AST out, and render it with an adapter that matches your stack. The package has no runtime dependencies of its own (Mermaid is an optional peer, see below). Plain Node ESM works (no bundler required) — every relative import in the published build carries its explicit `.js` extension, which `moduleResolution: "NodeNext"` requires.
 
 Round-tripping the AST back to @Doc source — for an editor's "safe write-back" after a structural edit — is `serializeDocument`, also exported from the root package (or `atdoc-core/Serializer`):
 
@@ -223,6 +223,24 @@ Round-tripping the AST back to @Doc source — for an editor's "safe write-back"
 import { serializeDocument } from 'atdoc-core';
 
 const result = serializeDocument(ast); // { ok: true, text: string } | { ok: false, reason: string }
+```
+
+To export a document as one self-contained HTML page (theme CSS inlined, tabs and copy buttons working, Mermaid loaded from a CDN only when the document has a diagram), use `renderStandaloneHtml`, or the `npm run render -- doc.atd` command in this repo:
+
+```ts
+import { renderStandaloneHtml } from 'atdoc-core';
+import { readFileSync } from 'node:fs';
+
+const css = readFileSync('node_modules/atdoc-core/index.css', 'utf8');
+const { html } = renderStandaloneHtml(source, { css, title: 'My doc' });
+```
+
+In the browser, `hydrateMermaidDiagrams` (`atdoc-core/mermaidRenderer`) turns the rendered `@mermaid` blocks into live diagrams with drag-to-pan and wheel zoom. It loads `mermaid` on demand, an optional peer dependency you install yourself (`npm install mermaid`):
+
+```ts
+import { hydrateMermaidDiagrams } from 'atdoc-core/mermaidRenderer';
+
+await hydrateMermaidDiagrams(container, 'index');
 ```
 
 Prefer copying from source instead? `src/` has no extra dependencies either — see [What's in here](#whats-in-here) below.

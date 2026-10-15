@@ -69,16 +69,29 @@
     "./themeRegistry": {
       "types": "./dist/themeRegistry.d.ts",
       "default": "./dist/themeRegistry.js"
+    },
+    "./standalone": {
+      "types": "./dist/standalone.d.ts",
+      "default": "./dist/standalone.js"
+    },
+    "./mermaidRenderer": {
+      "types": "./dist/mermaidRenderer.d.ts",
+      "default": "./dist/mermaidRenderer.js"
+    },
+    "./panZoom": {
+      "types": "./dist/panZoom.d.ts",
+      "default": "./dist/panZoom.js"
     }
   },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --import ./tests/ts-resolve-hook.mjs tests/serializer-roundtrip.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/raw-escape-notice.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/run-tests.ts && node --import ./tests/ts-resolve-hook.mjs tests/monarch-tokenize.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/lexer-styles-scan.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/markdown-import.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/v012-render.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/theme-registry.test.ts",
+    "test": "node --import ./tests/ts-resolve-hook.mjs tests/serializer-roundtrip.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/raw-escape-notice.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/run-tests.ts && node --import ./tests/ts-resolve-hook.mjs tests/monarch-tokenize.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/lexer-styles-scan.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/markdown-import.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/v012-render.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/theme-registry.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/pan-zoom.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/standalone.test.ts",
     "prepublishOnly": "npm run build",
     "build:css": "node scripts/build-css.mjs",
     "typecheck": "tsc -p tsconfig.check.json",
     "build:internal": "node scripts/build-internal.mjs",
-    "test:internal": "node --import ./tests/ts-resolve-hook.mjs tests/internal/adapters-render.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/internal/card-render.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/internal/color-render.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/internal/img-render.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/internal/mermaid-render.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/internal/pan-zoom.test.ts"
+    "render": "node --import ./tests/ts-resolve-hook.mjs scripts/render-html.mjs",
+    "test:internal": "node --import ./tests/ts-resolve-hook.mjs tests/internal/adapters-render.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/internal/card-render.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/internal/color-render.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/internal/img-render.test.ts && node --import ./tests/ts-resolve-hook.mjs tests/internal/mermaid-render.test.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
@@ -86,14 +99,20 @@
     "mermaid": "^11.16.1",
     "highlight.js": "^11.12.0"
   },
+  "peerDependencies": {
+    "mermaid": "^11"
+  },
+  "peerDependenciesMeta": {
+    "mermaid": {
+      "optional": true
+    }
+  },
   "atdoc": {
     "publicThemes": [
       "index"
     ],
     "internalFiles": [
-      "src/internal.ts",
-      "src/mermaidRenderer.ts",
-      "src/panZoom.ts"
+      "src/internal.ts"
     ]
   }
 }
